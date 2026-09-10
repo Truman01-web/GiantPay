@@ -1,0 +1,42 @@
+import { Navigate, useLocation } from 'react-router-dom';
+import { useSession, useSessionStatus } from '@/hooks/useSession';
+import { hasPermission, hasAnyPermission, type Permission } from '@/types/auth';
+import { PermissionDenied } from '@/components/feedback/PermissionDenied';
+import { FullPageLoader } from '@/components/feedback/FullPageLoader';
+
+/** Redirects to /login (preserving a safe returnTo) if there's no session.
+ * A hidden nav link is never treated as authorization — this guard also
+ * re-checks on every direct URL entry, protecting deep links. */
+export function RequireAuth({ children }: { children: React.ReactNode }) {
+  const status = useSessionStatus();
+  const location = useLocation();
+
+  if (status === 'loading') return <FullPageLoader label="Checking your session…" />;
+  if (status === 'unauthenticated') {
+    const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/login?returnTo=${returnTo}`} replace />;
+  }
+  return children;
+}
+
+export function RequirePermission({
+  permission,
+  anyOf,
+  children,
+}: {
+  permission?: Permission;
+  anyOf?: Permission[];
+  children: React.ReactNode;
+}) {
+  const session = useSession();
+  const allowed = permission ? hasPermission(session, permission) : anyOf ? hasAnyPermission(session, anyOf) : true;
+  if (!allowed) return <PermissionDenied />;
+  return children;
+}
+
+/** Keeps an authenticated user off the auth screens (login/register/etc). */
+export function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
+  const status = useSessionStatus();
+  if (status === 'authenticated') return <Navigate to="/dashboard" replace />;
+  return children;
+}

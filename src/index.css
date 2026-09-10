@@ -1,0 +1,54 @@
+@import 'tailwindcss';
+@import './app/theme/tokens.css';
+
+@layer base {
+  * {
+    border-color: var(--color-neutral-200);
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-neutral-50);
+    color: var(--color-neutral-900);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tabular numerals wherever money/reference/table figures render. */
+  .tabular-nums,
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-blue-500);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-blue-100);
+  }
+}
+
+@layer utilities {
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+    background: var(--color-navy-950);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .skip-link:focus {
+    left: 0.75rem;
+    top: 0.75rem;
+  }
+}
