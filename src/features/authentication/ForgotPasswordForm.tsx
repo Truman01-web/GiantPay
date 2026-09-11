@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
-import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LOGO_SRC, MARK_SRC } from '@/assets/brand';
@@ -22,27 +21,23 @@ const cardStyle: React.CSSProperties = {
   boxShadow: '0 32px 64px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.22)',
 };
 
-function WavingMark() {
-  return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden="true">
-      <img
-        src={MARK_SRC}
-        alt=""
-        className="animate-flag-wave-slow w-[320px] max-w-none opacity-[0.12] select-none object-contain"
-        style={{ filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.25))' }}
-      />
-    </div>
-  );
-}
+const accentBar = (
+  <div
+    className="h-1.5 w-full rounded-t-2xl"
+    style={{ background: 'linear-gradient(90deg, #1a6dcc 0%, #c9a227 50%, #c01c28 100%)' }}
+  />
+);
 
-function AccentBar() {
-  return (
-    <div
-      className="h-1.5 w-full rounded-t-2xl"
-      style={{ background: 'linear-gradient(90deg, #1a6dcc 0%, #c9a227 50%, #c01c28 100%)' }}
+const wavingMark = (
+  <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden="true">
+    <img
+      src={MARK_SRC}
+      alt=""
+      className="animate-flag-wave-slow w-[320px] max-w-none opacity-[0.12] select-none object-contain"
+      style={{ filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.25))' }}
     />
-  );
-}
+  </div>
+);
 
 export function ForgotPasswordForm() {
   const [submitted, setSubmitted] = useState(false);
@@ -61,11 +56,14 @@ export function ForgotPasswordForm() {
   if (submitted) {
     return (
       <div className="relative overflow-hidden rounded-2xl shadow-2xl" style={cardStyle}>
-        <WavingMark />
-        <AccentBar />
+        {wavingMark}
+        {accentBar}
         <div className="relative z-10 px-8 py-10 text-center">
+          {/* Mail icon as SVG — no lucide context needed */}
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ background: 'rgba(26,109,204,0.2)' }}>
-            <Mail className="h-8 w-8 text-blue-400" aria-hidden="true" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
           </div>
           <h1 className="mt-4 text-2xl font-bold text-white">Check your email</h1>
           {/* Deliberately does not confirm whether the account exists. */}
@@ -86,8 +84,8 @@ export function ForgotPasswordForm() {
 
   return (
     <div className="relative overflow-hidden rounded-2xl shadow-2xl" style={cardStyle}>
-      <WavingMark />
-      <AccentBar />
+      {wavingMark}
+      {accentBar}
 
       <div className="relative z-10 px-8 py-9">
         <div className="mb-6 flex justify-center">

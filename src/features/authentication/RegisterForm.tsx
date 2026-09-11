@@ -7,7 +7,6 @@ import { Input, PasswordInput } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Alert } from '@/components/feedback/Alert';
-import { CheckCircle2 } from 'lucide-react';
 import { ApiError } from '@/services/api/errors';
 import { LOGO_SRC, MARK_SRC } from '@/assets/brand';
 import { registerSchema, type RegisterFormValues } from './schemas';
@@ -84,7 +83,9 @@ export function RegisterForm() {
       <div className="relative overflow-hidden rounded-2xl shadow-2xl" style={cardStyle}>
         {accentBar}
         <div className="relative z-10 px-8 py-10 text-center">
-          <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-400 drop-shadow-lg" aria-hidden="true" />
+          <svg className="mx-auto h-14 w-14 text-emerald-400 drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <h1 className="mt-4 text-2xl font-bold text-white">Check your email</h1>
           <p className="mt-2 text-sm text-white/60">
             We&apos;ve sent a verification link to confirm your account. Once verified, you can sign in and start your merchant application.
