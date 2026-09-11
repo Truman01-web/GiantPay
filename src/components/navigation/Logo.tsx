@@ -1,54 +1,121 @@
-import { LOGO_SRC } from '@/assets/brand';
+import { MARK_SRC, LOGO_SRC } from '@/assets/brand';
 import { cn } from '@/lib/cn';
 
+/**
+ * GiantPay logo component.
+ *
+ * variant="full"   → GP mark icon  +  "GiantPay" wordmark side-by-side.
+ *                    Clean in any navbar / header.
+ *
+ * variant="mark"   → Standalone GP icon only. Used in the collapsed sidebar,
+ *                    watermark backgrounds, and tight/compact slots.
+ *
+ * variant="lockup" → Full-size official PNG lockup (mark + wordmark + tagline).
+ *                    Only for large hero / splash contexts.
+ *
+ * The `inverted` prop is kept for call-site compatibility but is a no-op
+ * because all PNGs now have a transparent background.
+ */
 export function Logo({
   variant = 'full',
-  inverted,
+  inverted: _inverted,
   className,
 }: {
-  variant?: 'full' | 'mark';
-  /** Use on dark surfaces (e.g. the navy sidebar) so the wordmark stays legible. */
+  variant?: 'full' | 'mark' | 'lockup';
   inverted?: boolean;
   className?: string;
 }) {
-  // The supplied asset is a single full lockup (icon + "GiantPay" +
-  // tagline) rendered on its own light backing — there's no standalone
-  // icon-only crop to use for the collapsed-sidebar "mark" slot without
-  // cropping the source file, which isn't allowed. That slot keeps the
-  // typographic placeholder until a proper icon-only/favicon asset exists.
-  if (LOGO_SRC && variant === 'full') {
-    const img = (
-      <img
-        src={LOGO_SRC}
-        alt="GiantPay"
-        className={cn('h-10 w-auto object-contain', !inverted && className)}
-      />
-    );
-
-    if (!inverted) return img;
-
-    // The source image has an opaque light background, which would be a
-    // "visually conflicting background" directly on the dark navy sidebar
-    // (spec explicitly disallows that) — give it a light backing plate
-    // instead of altering the asset itself.
+  /* ── Standalone icon only ── */
+  if (variant === 'mark') {
     return (
-      <span className={cn('inline-flex items-center rounded-[var(--radius-sm)] bg-white px-2 py-1', className)}>
-        {img}
-      </span>
+      <img
+        src={MARK_SRC}
+        alt=""
+        aria-hidden="true"
+        className={cn('h-9 w-auto object-contain', className)}
+      />
     );
   }
 
-  // Swappable typographic placeholder — see src/assets/brand/index.ts.
+  /* ── Full official PNG lockup (hero / card) ── */
+  if (variant === 'lockup') {
+    return (
+      <img
+        src={LOGO_SRC}
+        alt="GiantPay"
+        className={cn('h-16 w-auto object-contain', className)}
+      />
+    );
+  }
+
+  /* ── Default: GP mark icon + "GiantPay" wordmark in a row ── */
   return (
-    <span className={cn('inline-flex items-center gap-2 font-semibold tracking-tight', className)} aria-label="GiantPay">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-blue-600)] text-[15px] font-bold text-white">
-        G
-      </span>
-      {variant === 'full' && (
-        <span className={cn('text-[length:var(--text-h4)]', inverted ? 'text-white' : 'text-[var(--color-navy-950)]')}>
-          Giant<span className="text-[var(--color-blue-400)]">Pay</span>
+    <span
+      className={cn('inline-flex items-center gap-2.5', className)}
+      aria-label="GiantPay"
+    >
+      {/* GP mark icon — square crop of the PNG */}
+      <img
+        src={MARK_SRC}
+        alt=""
+        aria-hidden="true"
+        className="h-8 w-8 object-contain flex-shrink-0"
+      />
+      {/* Wordmark */}
+      <span className="flex flex-col leading-none">
+        <span
+          className="text-[17px] font-bold tracking-tight"
+          style={{
+            background: 'linear-gradient(135deg, #1a6dcc 0%, #0d3e8a 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}
+        >
+          Giant
+          <span
+            style={{
+              background: 'linear-gradient(135deg, #c01c28 0%, #8b0000 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            Pay
+          </span>
         </span>
-      )}
+        <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-neutral-400 mt-0.5">
+          Global Finance
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/**
+ * White-on-dark version of the inline logo (for dark navbars / sidebars).
+ * Uses the same mark icon + pure-white wordmark.
+ */
+export function LogoWhite({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn('inline-flex items-center gap-2.5', className)}
+      aria-label="GiantPay"
+    >
+      <img
+        src={MARK_SRC}
+        alt=""
+        aria-hidden="true"
+        className="h-8 w-8 object-contain flex-shrink-0"
+      />
+      <span className="flex flex-col leading-none">
+        <span className="text-[17px] font-bold tracking-tight text-white">
+          Giant<span className="text-[#c9a227]">Pay</span>
+        </span>
+        <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40 mt-0.5">
+          Global Finance
+        </span>
+      </span>
     </span>
   );
 }

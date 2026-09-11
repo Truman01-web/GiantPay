@@ -229,6 +229,35 @@ paths:
       responses:
         '200': { description: Refund detail }
         '404': { $ref: '#/components/responses/Error' }
+  /admin/refunds/pending:
+    get:
+      tags: [Refunds]
+      security: [{ cookieSession: [] }]
+      operationId: listPendingRefundApprovals
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses:
+        '200': { description: Refunds awaiting an independent decision }
+        '403': { $ref: '#/components/responses/Error' }
+  /admin/refunds/{id}/decision:
+    post:
+      tags: [Refunds]
+      security: [{ cookieSession: [] }]
+      operationId: decideRefund
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, note]
+              properties:
+                decision: { enum: [APPROVE, REJECT] }
+                note: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        '200': { description: Decision and checker identity recorded; approval does not execute provider refund }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
   /dashboard/summary:
     get:
       tags: [Dashboard]
