@@ -14,6 +14,7 @@ tags:
   - name: Provider webhooks
   - name: Refunds
   - name: Dashboard
+  - name: Ledger
 paths:
   /health:
     get:
@@ -335,6 +336,40 @@ paths:
           }
         '403': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
+  /ledger/entries:
+    get:
+      tags: [Ledger]
+      security: [{ cookieSession: [] }]
+      operationId: listLedgerEntries
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+        - { name: currency, in: query, schema: { type: string, pattern: '^[A-Z]{3}$' } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200': { description: Merchant-scoped journal entries }
+        '403': { $ref: '#/components/responses/Error' }
+  /ledger/entries/{id}:
+    get:
+      tags: [Ledger]
+      security: [{ cookieSession: [] }]
+      operationId: getLedgerEntry
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Ledger entry with merchant-owned postings only }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /ledger/balances:
+    get:
+      tags: [Ledger]
+      security: [{ cookieSession: [] }]
+      operationId: getLedgerBalances
+      parameters:
+        - { name: currency, in: query, schema: { type: string, pattern: '^[A-Z]{3}$' } }
+      responses:
+        '200': { description: Merchant-owned account balances grouped by currency }
+        '403': { $ref: '#/components/responses/Error' }
   /dashboard/summary:
     get:
       tags: [Dashboard]

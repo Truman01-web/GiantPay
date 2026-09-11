@@ -12,8 +12,8 @@ npm run db:seed
 npm run dev
 ```
 
-Provider callbacks, real-money execution, ledger posting, reconciliation,
-settlement, MFA and regulatory reporting remain production stop conditions.
+Real-money execution, reconciliation, settlement, MFA and regulatory reporting
+remain production stop conditions.
 
 ## Payment provider boundary
 
@@ -31,3 +31,14 @@ window unless a test specifically requires otherwise.
 
 For database integration tests, set `TEST_DATABASE_URL` to a non-production
 PostgreSQL database. The suite creates and drops an isolated schema.
+
+## Ledger and outbox
+
+Verified `SUCCEEDED` webhooks atomically create an immutable, balanced journal
+entry and a deduplicated outbox event. Amounts remain integer minor units.
+Merchant ledger reads require `ledger:read` and never expose platform-owned
+accounts. See `docs/database.md` and `docs/operations.md`.
+
+The internal outbox publisher is deliberately not an external broker. Enable
+it locally with `OUTBOX_WORKER_ENABLED=true`; production must supply an
+approved publisher implementation before enabling delivery.

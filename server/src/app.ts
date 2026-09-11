@@ -15,6 +15,7 @@ import { createPaymentProvider } from './providers/index.js';
 import type { PaymentProvider } from './providers/types.js';
 import { WebhookVerificationError } from './providers/sandboxProvider.js';
 import { processPaymentWebhook } from './payments/webhookProcessor.js';
+import { LedgerError } from './ledger/ledgerService.js';
 
 declare module 'fastify' {
   interface FastifyRequest { rawWebhookBody?: Buffer }
@@ -80,6 +81,10 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
       const fields = Object.fromEntries(error.issues.map((i) => [i.path.join('.') || 'request', i.message]));
       return reply.code(422).send(apiError(request, 'VALIDATION_ERROR', 'Check the highlighted fields.', fields));
     }
+    if (error instanceof LedgerError) {
+      const status = error.code === 'LEDGER_ENTRY_NOT_FOUND' ? 404 : error.code === 'LEDGER_REVERSAL_CONFLICT' ? 409 : 422;
+      return reply.code(status).send(apiError(request, error.code, error.message));
+    }
     request.log.error(error);
     return reply.code(500).send(apiError(request, 'INTERNAL_ERROR', 'Something went wrong.'));
   });
@@ -98,7 +103,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
     const passwordHash = await argon2.hash(body.password + config.PASSWORD_PEPPER, { type: argon2.argon2id });
     await transaction(db, async (client) => {
       await client.query('INSERT INTO merchants(id,name) VALUES($1,$2)', [merchantId, body.businessName]);
-      await client.query(`INSERT INTO users(id,merchant_id,name,email,password_hash,role,permissions) VALUES($1,$2,$3,$4,$5,'OWNER',$6)`, [userId,merchantId,body.businessName,body.email,passwordHash,['payments:read','payments.links:manage','payments.refunds:request','settings:manage']]);
+      await client.query(`INSERT INTO users(id,merchant_id,name,email,password_hash,role,permissions) VALUES($1,$2,$3,$4,$5,'OWNER',$6)`, [userId,merchantId,body.businessName,body.email,passwordHash,['payments:read','payments.links:manage','payments.refunds:request','ledger:read','settings:manage']]);
     });
     return reply.code(202).send({ accepted: true });
   });
@@ -212,6 +217,56 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
 
   app.get('/v1/admin/refunds/pending',{preHandler:[auth,requirePermission('admin.refunds:approve')]},async(request)=>{const q=pageSchema.parse(request.query);const total=await db.query(`SELECT count(*) FROM refunds WHERE status='PENDING_APPROVAL'`);const rows=await db.query(`${refundJoin} WHERE r.status='PENDING_APPROVAL' ORDER BY r.created_at LIMIT $1 OFFSET $2`,[q.pageSize,(q.page-1)*q.pageSize]);return {data:rows.rows.map(refund),page:q.page,pageSize:q.pageSize,total:Number(total.rows[0].count)};});
   app.post('/v1/admin/refunds/:id/decision',{preHandler:[auth,requirePermission('admin.refunds:approve')]},async(request,reply)=>{const {id}=z.object({id:z.string()}).parse(request.params);const body=z.object({decision:z.enum(['APPROVE','REJECT']),note:z.string().trim().min(3).max(500)}).parse(request.body);try{return await transaction(db,async(client)=>{const locked=await client.query(`SELECT * FROM refunds WHERE id=$1 FOR UPDATE`,[id]);if(!locked.rowCount){reply.code(404);return apiError(request,'NOT_FOUND','Refund not found.');}const next=decideRefundState(locked.rows[0],request.actor!.id,body.decision);await client.query(`UPDATE refunds SET status=$1,approved_by=$2,decided_by=$3,decision_note=$4,decided_at=now(),updated_at=now() WHERE id=$5`,[next.status,next.approvedBy,next.decidedBy,body.note,id]);await client.query(`INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,'refund',$5,$6)`,[newId('aud'),request.actor!.id,locked.rows[0].merchant_id,`REFUND_${next.status}`,id,{note:body.note}]);const result=await client.query(`${refundJoin} WHERE r.id=$1`,[id]);return refund(result.rows[0]);});}catch(error){if(error instanceof RefundDecisionError)return reply.code(error.statusCode).send(apiError(request,error.code,error.message));throw error;}});
+
+  const ledgerFilters = pageSchema.extend({
+    currency: z.string().regex(/^[A-Z]{3}$/).optional(),
+    from: z.iso.datetime().optional(),
+    to: z.iso.datetime().optional(),
+  }).refine((value) => !value.from || !value.to || value.from <= value.to, { message: 'The date range is invalid.', path: ['from'] });
+  app.get('/v1/ledger/entries', { preHandler: [auth,requirePermission('ledger:read')] }, async (request) => {
+    const query = ledgerFilters.parse(request.query);
+    const values: unknown[] = [request.actor!.merchantId];
+    const where = ['e.merchant_id=$1'];
+    if (query.currency) { values.push(query.currency); where.push(`EXISTS(SELECT 1 FROM journal_postings p WHERE p.entry_id=e.id AND p.currency=$${values.length})`); }
+    if (query.from) { values.push(query.from); where.push(`e.posted_at>=$${values.length}`); }
+    if (query.to) { values.push(query.to); where.push(`e.posted_at<=$${values.length}`); }
+    const total = await db.query(`SELECT count(*) FROM journal_entries e WHERE ${where.join(' AND ')}`, values);
+    values.push(query.pageSize, (query.page - 1) * query.pageSize);
+    const entries = await db.query(
+      `SELECT e.id,e.source_type "sourceType",e.source_id "sourceId",e.description,e.reversed_entry_id "reversedEntryId",e.reversal_reason "reversalReason",e.posted_at "postedAt"
+       FROM journal_entries e WHERE ${where.join(' AND ')} ORDER BY e.posted_at DESC,e.id DESC LIMIT $${values.length - 1} OFFSET $${values.length}`,
+      values,
+    );
+    return { data: entries.rows, page: query.page, pageSize: query.pageSize, total: Number(total.rows[0].count) };
+  });
+  app.get('/v1/ledger/entries/:id', { preHandler: [auth,requirePermission('ledger:read')] }, async (request, reply) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(request.params);
+    const entry = await db.query(
+      `SELECT id,source_type "sourceType",source_id "sourceId",description,reversed_entry_id "reversedEntryId",reversal_reason "reversalReason",posted_at "postedAt"
+       FROM journal_entries WHERE id=$1 AND merchant_id=$2`,
+      [id, request.actor!.merchantId],
+    );
+    if (!entry.rowCount) return reply.code(404).send(apiError(request, 'LEDGER_ENTRY_NOT_FOUND', 'Ledger entry was not found.'));
+    const postings = await db.query(
+      `SELECT p.id,a.code "accountCode",a.name "accountName",p.direction,p.amount_minor "amountMinor",p.currency
+       FROM journal_postings p JOIN ledger_accounts a ON a.id=p.account_id
+       WHERE p.entry_id=$1 AND a.owner_type='MERCHANT' AND a.merchant_id=$2 ORDER BY p.id`,
+      [id, request.actor!.merchantId],
+    );
+    return { ...entry.rows[0], postings: postings.rows.map((row:any) => ({ ...row, amountMinor: Number(row.amountMinor) })) };
+  });
+  app.get('/v1/ledger/balances', { preHandler: [auth,requirePermission('ledger:read')] }, async (request) => {
+    const { currency } = z.object({ currency: z.string().regex(/^[A-Z]{3}$/).optional() }).parse(request.query);
+    const result = await db.query(
+      `SELECT a.code "accountCode",a.name "accountName",a.currency,
+       coalesce(sum(CASE p.direction WHEN 'CREDIT' THEN p.amount_minor ELSE -p.amount_minor END),0) "balanceMinor"
+       FROM ledger_accounts a LEFT JOIN journal_postings p ON p.account_id=a.id
+       WHERE a.owner_type='MERCHANT' AND a.merchant_id=$1 AND ($2::text IS NULL OR a.currency=$2)
+       GROUP BY a.id ORDER BY a.currency,a.code`,
+      [request.actor!.merchantId, currency ?? null],
+    );
+    return result.rows.map((row:any) => ({ ...row, balanceMinor: Number(row.balanceMinor) }));
+  });
 
   const range=z.object({from:z.iso.datetime(),to:z.iso.datetime()});
   app.get('/v1/dashboard/summary',{preHandler:[auth,requirePermission('payments:read')]},async(request)=>{const q=range.parse(request.query);const r=await db.query(`SELECT count(*) FILTER(WHERE status IN('SUCCEEDED','PARTIALLY_REFUNDED','REFUNDED')) successful,count(*) FILTER(WHERE status IN('PENDING','PROCESSING')) pending,count(*) FILTER(WHERE status IN('FAILED','EXPIRED')) failed,coalesce(sum(gross_minor) FILTER(WHERE status IN('SUCCEEDED','PARTIALLY_REFUNDED','REFUNDED')),0) total,coalesce(sum(refunded_minor),0) refunded,coalesce(sum(fee_minor) FILTER(WHERE status IN('SUCCEEDED','PARTIALLY_REFUNDED','REFUNDED')),0) fees,count(*) all_count,count(*) FILTER(WHERE reconciliation_state='MATCHED') matched,count(*) FILTER(WHERE reconciliation_state='UNRECONCILED') unmatched,count(*) FILTER(WHERE reconciliation_state='EXCEPTION') exceptions,count(*) FILTER(WHERE settlement_state='PENDING') settlement_pending,count(*) FILTER(WHERE settlement_state='SETTLED') settled FROM payments WHERE merchant_id=$1 AND created_at BETWEEN $2 AND $3`,[request.actor!.merchantId,q.from,q.to]);const x=r.rows[0];const recent=await db.query(`SELECT id,reference,customer->>'name' "customerName",gross_minor "amountMinor",status,created_at "createdAt" FROM payments WHERE merchant_id=$1 ORDER BY created_at DESC LIMIT 8`,[request.actor!.merchantId]);return {environment:request.actor!.environment,currency:'MWK',totalProcessed:{amountMinor:Number(x.total)},successfulCount:Number(x.successful),pendingCount:Number(x.pending),failedCount:Number(x.failed),refundedAmountMinor:Number(x.refunded),feesAmountMinor:Number(x.fees),successRate:Number(x.all_count)?Number(x.successful)/Number(x.all_count):0,reconciliation:{matched:Number(x.matched),unmatched:Number(x.unmatched),exceptions:Number(x.exceptions)},settlements:{available:0,pending:Number(x.settlement_pending),processing:0,completed:Number(x.settled)},attentionQueue:[],recentTransactions:recent.rows.map((v:any)=>({...v,amountMinor:Number(v.amountMinor)}))};});

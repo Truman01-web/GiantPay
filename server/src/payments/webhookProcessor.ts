@@ -5,6 +5,7 @@ import { newId } from '../security.js';
 import type { ProviderWebhookEvent } from '../providers/types.js';
 import { payloadHash } from '../providers/sandboxProvider.js';
 import { decidePaymentTransition, type PaymentStatus } from './paymentState.js';
+import { postSuccessfulPayment } from '../ledger/ledgerService.js';
 
 export type WebhookProcessResult =
   | { outcome: 'PROCESSED' | 'DUPLICATE'; paymentStatus?: PaymentStatus }
@@ -86,15 +87,24 @@ export async function processPaymentWebhook(
         [event.status, event.providerPaymentId, payment.id],
       );
       if (!attemptUpdate.rowCount) throw new Error('Payment attempt is missing');
+      const ledger = event.status === 'SUCCEEDED'
+        ? await postSuccessfulPayment(client, payment, event.eventId)
+        : null;
       await client.query(
         `INSERT INTO payment_events(id,payment_id,type,label,detail)
          VALUES($1,$2,'WEBHOOK_RECEIVED','Verified provider status received',$3)`,
         [newId('evt'), payment.id, `${provider}: ${event.status}`],
       );
+      if (ledger?.created) {
+        await client.query(
+          `INSERT INTO payment_events(id,payment_id,type,label,detail) VALUES($1,$2,'LEDGER_RECORDED','Balanced ledger entry posted',$3)`,
+          [newId('evt'), payment.id, ledger.entryId],
+        );
+      }
       await client.query(
         `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id,metadata)
          VALUES($1,NULL,$2,'PAYMENT_STATUS_CHANGED','payment',$3,$4)`,
-        [newId('aud'), payment.merchant_id, payment.id, { provider, eventId: event.eventId, from: payment.status, to: event.status }],
+        [newId('aud'), payment.merchant_id, payment.id, { provider, eventId: event.eventId, from: payment.status, to: event.status, journalEntryId: ledger?.entryId }],
       );
     }
 

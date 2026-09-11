@@ -7,6 +7,7 @@ const db = createDb(config.DATABASE_URL);
 const permissions = [
   'payments:read', 'payments.links:manage', 'payments.refunds:request', 'payments.refunds:approve',
   'settlements:read', 'reconciliation:read', 'reconciliation:manage', 'reports:read',
+  'ledger:read',
   'developer.apiKeys:manage', 'developer.webhooks:manage', 'team:manage', 'roles:manage',
   'settings:manage', 'support:read', 'support:manage', 'compliance:read',
 ];

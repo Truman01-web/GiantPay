@@ -10,7 +10,7 @@ import { buildApp } from '../src/app.js';
 import { SandboxPaymentProvider } from '../src/providers/sandboxProvider.js';
 import type { Config } from '../src/config.js';
 
-const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+const databaseUrl = process.env.TEST_DATABASE_URL;
 const suite = databaseUrl ? describe : describe.skip;
 const schema = `webhook_test_${randomUUID().replaceAll('-', '')}`;
 let admin: pg.Pool;
@@ -45,7 +45,7 @@ suite('transactional webhook processing', () => {
   });
 
   beforeEach(async () => {
-    await db.query('TRUNCATE webhook_receipts,payment_attempts,payment_events,audit_events,payments,users,merchants CASCADE');
+    await db.query('TRUNCATE outbox_events,journal_postings,journal_entries,ledger_accounts,webhook_receipts,payment_attempts,payment_events,audit_events,payments,users,merchants CASCADE');
     await db.query(`INSERT INTO merchants(id,name) VALUES('m1','Test Merchant')`);
     await db.query(`INSERT INTO payments(id,merchant_id,reference,status,channel,provider_name,gross_minor,currency,customer,provider_submitted_at)
       VALUES('p1','m1','GP-TEST-1','PROCESSING','MOBILE_MONEY','sandbox',1000,'MWK','{}',now())`);
@@ -56,9 +56,11 @@ suite('transactional webhook processing', () => {
   it('applies a valid transition and creates one event and audit record', async () => {
     expect(await processPaymentWebhook(db, 'sandbox', baseEvent, raw(baseEvent))).toMatchObject({ outcome: 'PROCESSED', paymentStatus: 'SUCCEEDED' });
     expect((await db.query(`SELECT status FROM payments WHERE id='p1'`)).rows[0].status).toBe('SUCCEEDED');
-    expect(Number((await db.query(`SELECT count(*) FROM payment_events WHERE payment_id='p1'`)).rows[0].count)).toBe(1);
+    expect(Number((await db.query(`SELECT count(*) FROM payment_events WHERE payment_id='p1'`)).rows[0].count)).toBe(2);
     expect(Number((await db.query(`SELECT count(*) FROM audit_events WHERE resource_id='p1'`)).rows[0].count)).toBe(1);
     expect((await db.query(`SELECT status FROM payment_attempts WHERE id='pa1'`)).rows[0].status).toBe('SUCCEEDED');
+    expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE source_id='p1'`)).rows[0].count)).toBe(1);
+    expect(Number((await db.query(`SELECT count(*) FROM outbox_events WHERE aggregate_id='p1'`)).rows[0].count)).toBe(1);
   });
 
   it('records an unknown payment without changing payment data', async () => {
@@ -71,7 +73,8 @@ suite('transactional webhook processing', () => {
   it('acknowledges duplicate delivery without duplicating events', async () => {
     await processPaymentWebhook(db, 'sandbox', baseEvent, raw(baseEvent));
     expect(await processPaymentWebhook(db, 'sandbox', baseEvent, raw(baseEvent))).toEqual({ outcome: 'DUPLICATE' });
-    expect(Number((await db.query(`SELECT count(*) FROM payment_events WHERE payment_id='p1'`)).rows[0].count)).toBe(1);
+    expect(Number((await db.query(`SELECT count(*) FROM payment_events WHERE payment_id='p1'`)).rows[0].count)).toBe(2);
+    expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE source_id='p1'`)).rows[0].count)).toBe(1);
   });
 
   it('rejects reuse of an event id with a changed payload and records it as suspicious', async () => {
@@ -95,7 +98,8 @@ suite('transactional webhook processing', () => {
       processPaymentWebhook(db, 'sandbox', baseEvent, raw(baseEvent)),
     ]);
     expect(results.map((x) => x.outcome).sort()).toEqual(['DUPLICATE', 'PROCESSED']);
-    expect(Number((await db.query(`SELECT count(*) FROM payment_events WHERE payment_id='p1'`)).rows[0].count)).toBe(1);
+    expect(Number((await db.query(`SELECT count(*) FROM payment_events WHERE payment_id='p1'`)).rows[0].count)).toBe(2);
+    expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE source_id='p1'`)).rows[0].count)).toBe(1);
   });
 
   it('rolls back all state when a required write fails', async () => {
@@ -104,6 +108,8 @@ suite('transactional webhook processing', () => {
     await expect(processPaymentWebhook(db, 'sandbox', baseEvent, raw(baseEvent))).rejects.toThrow(/audit failure/);
     expect((await db.query(`SELECT status FROM payments WHERE id='p1'`)).rows[0].status).toBe('PROCESSING');
     expect(Number((await db.query(`SELECT count(*) FROM webhook_receipts`)).rows[0].count)).toBe(0);
+    expect(Number((await db.query(`SELECT count(*) FROM journal_entries`)).rows[0].count)).toBe(0);
+    expect(Number((await db.query(`SELECT count(*) FROM outbox_events`)).rows[0].count)).toBe(0);
     await db.query('DROP TRIGGER reject_audit ON audit_events');
   });
 
@@ -111,7 +117,8 @@ suite('transactional webhook processing', () => {
     const config: Config = {
       NODE_ENV: 'test', HOST: '127.0.0.1', PORT: 4000, DATABASE_URL: databaseUrl!,
       PASSWORD_PEPPER: 'p'.repeat(32), COOKIE_SECRET: 'c'.repeat(32), FRONTEND_ORIGIN: 'http://127.0.0.1:5173',
-      PAYMENT_PROVIDER: 'sandbox', SANDBOX_WEBHOOK_SECRET: 'w'.repeat(32), WEBHOOK_TOLERANCE_SECONDS: 300, SESSION_TTL_HOURS: 12,
+      PAYMENT_PROVIDER: 'sandbox', SANDBOX_WEBHOOK_SECRET: 'w'.repeat(32), WEBHOOK_TOLERANCE_SECONDS: 300,
+      OUTBOX_WORKER_ENABLED: false, OUTBOX_POLL_MS: 1000, SESSION_TTL_HOURS: 12,
     };
     const app = await buildApp(config, db, new SandboxPaymentProvider(config.SANDBOX_WEBHOOK_SECRET, 300, 'test'));
     const response = await app.inject({ method: 'GET', url: '/v1/payment-status/GP-TEST-1' });

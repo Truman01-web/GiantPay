@@ -10,8 +10,10 @@ flowchart TD
   API -->|transactions| DB[(PostgreSQL)]
   API -->|adapter interface| Provider[Licensed payment provider]
   Provider -->|signed callback| API
-  API --> Workers[Reconciliation and settlement workers]
-  Workers --> DB
+  API --> Ledger[Immutable ledger]
+  Ledger --> DB
+  API --> Outbox[Transactional outbox]
+  Outbox --> Worker[Bounded internal worker]
 ```
 
 The current adapter is a local sandbox simulator. Configuration prevents it from being enabled when `NODE_ENV=production`.
@@ -37,7 +39,33 @@ payload hash is recorded as suspicious and rejected.
 - The browser learns outcomes only through `GET /v1/payment-status/{reference}`.
 - Refund requests require approval by a different user before future provider execution.
 - Amounts are integer minor units; floating-point currency arithmetic is forbidden.
-- Provider callbacks, reconciliation, ledger posting and settlements remain disabled until their production implementations and controls exist.
+- Provider callbacks post the sandbox ledger only after signature and transition verification.
+- Reconciliation and settlements remain disabled until their production implementations and controls exist.
+
+## Accounting boundary
+
+```mermaid
+flowchart LR
+  Webhook[Verified provider webhook] --> Tx[Single database transaction]
+  Tx --> Payment[Payment becomes SUCCEEDED]
+  Tx --> Journal[Balanced journal entry]
+  Journal --> Debit[Debit provider clearing: gross]
+  Journal --> Net[Credit merchant payable: net]
+  Journal --> Fee[Credit platform fee revenue: fee]
+  Journal --> Tax[Credit tax payable: tax]
+  Tx --> Event[Payment and audit events]
+  Tx --> Outbox[Outbox payment finder]
+```
+
+Payment processing records provider state. Accounting records financial
+effects. Reconciliation compares internal and provider records. Settlement
+moves obligations through an approved execution process. None of these steps
+is treated as equivalent to another.
+
+Journal entries and postings cannot be updated or deleted. Corrections create
+linked opposite entries. A deferred PostgreSQL constraint trigger validates at
+commit that each entry contains at least two positive postings and balances
+debits and credits independently for every currency.
 
 ## Team integration rule
 

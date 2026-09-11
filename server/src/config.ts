@@ -12,6 +12,8 @@ const schema = z.object({
   PAYMENT_PROVIDER: z.enum(['sandbox']).default('sandbox'),
   SANDBOX_WEBHOOK_SECRET: z.string().min(32),
   WEBHOOK_TOLERANCE_SECONDS: z.coerce.number().int().positive().max(900).default(300),
+  OUTBOX_WORKER_ENABLED: z.enum(['true','false']).default('false').transform((value) => value === 'true'),
+  OUTBOX_POLL_MS: z.coerce.number().int().min(100).max(60_000).default(1000),
   SESSION_TTL_HOURS: z.coerce.number().int().positive().max(720).default(12),
 });
 
