@@ -99,10 +99,11 @@ export function ForgotPasswordForm() {
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-white/75">
+            <label htmlFor="forgot-email" className="text-sm font-medium text-white/75">
               Email address <span className="text-red-400" aria-hidden="true">*</span>
             </label>
             <Input
+              id="forgot-email"
               type="email"
               autoComplete="email"
               placeholder="you@company.mw"

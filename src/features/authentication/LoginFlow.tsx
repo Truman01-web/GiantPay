@@ -37,11 +37,13 @@ function useDemoAccounts(): DemoAccountSummary[] {
 
 /** Labelled field block styled for the dark glassmorphism card. */
 function GlassField({
+  id,
   label,
   required,
   error,
   children,
 }: {
+  id?: string;
   label: string;
   required?: boolean;
   error?: string;
@@ -49,7 +51,7 @@ function GlassField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-white/75">
+      <label htmlFor={id} className="text-sm font-medium text-white/75">
         {label}
         {required && <span className="ml-0.5 text-red-400" aria-hidden="true">*</span>}
       </label>
@@ -146,8 +148,9 @@ export function LoginFlow() {
         )}
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <GlassField label="Email address" required error={errors.email?.message}>
+          <GlassField id="login-email" label="Email address" required error={errors.email?.message}>
             <Input
+              id="login-email"
               type="email"
               autoComplete="email"
               placeholder="you@company.mw"
@@ -157,8 +160,9 @@ export function LoginFlow() {
             />
           </GlassField>
 
-          <GlassField label="Password" required error={errors.password?.message}>
+          <GlassField id="login-password" label="Password" required error={errors.password?.message}>
             <PasswordInput
+              id="login-password"
               autoComplete="current-password"
               placeholder="••••••••"
               invalid={Boolean(errors.password)}

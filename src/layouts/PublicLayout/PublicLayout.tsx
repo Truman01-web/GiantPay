@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { Logo } from '@/components/navigation/Logo';
-import { Button } from '@/components/ui/Button';
+import { PublicNavbar } from '@/components/navigation/PublicNavbar';
 import { FullPageLoader } from '@/components/feedback/FullPageLoader';
 import { ErrorBoundary } from '@/app/providers/ErrorBoundary';
 
@@ -11,21 +11,7 @@ export function PublicLayout() {
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <header className="border-b border-[var(--color-neutral-200)]">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" aria-label="GiantPay home">
-            <Logo />
-          </Link>
-          <nav aria-label="Primary" className="flex items-center gap-2">
-            <Button asChild variant="ghost">
-              <Link to="/login">Sign in</Link>
-            </Button>
-            <Button asChild variant="primary">
-              <Link to="/register">Get started</Link>
-            </Button>
-          </nav>
-        </div>
-      </header>
+      <PublicNavbar />
       <main id="main-content" className="flex-1">
         <ErrorBoundary boundaryName="this page">
           <Suspense fallback={<FullPageLoader />}>

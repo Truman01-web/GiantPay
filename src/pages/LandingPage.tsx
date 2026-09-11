@@ -1,3 +1,4 @@
+import { Landmark } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MARK_SRC } from '@/assets/brand';
 
@@ -107,75 +108,102 @@ export default function LandingPage() {
           />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-20 sm:px-6 sm:pt-24 sm:pb-28 text-center">
-          {/* Trust Badge */}
+        <div className="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6 sm:pt-36 sm:pb-24 text-center">
+          {/* Trust / Regulatory Context Badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/80 backdrop-blur-md mb-6">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Malawi&apos;s Modern Payments Infrastructure</span>
+            <span>Malawi Digital Payments Foundation</span>
             <span className="hidden sm:inline text-white/30">•</span>
-            <span className="hidden sm:inline text-white/60">Bank-Grade 256-Bit SSL</span>
+            <span className="hidden sm:inline text-white/60">Developer Sandbox Live</span>
           </div>
 
-          {/* Responsive Heading */}
+          {/* Required Heading */}
           <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl leading-[1.15]">
-            Unified payments.{' '}
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #4da3ff 0%, #c9a227 50%, #ff5263 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              One integration.
-            </span>
+            Payments built for modern Malawian businesses.
           </h1>
 
-          {/* Responsive Subheading */}
+          {/* Required Supporting Text */}
           <p className="mx-auto mt-5 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed text-white/70">
-            GiantPay helps businesses and digital platforms in Malawi accept and manage configured digital payment
-            methods through one secure integration, with clear transaction evidence, developer tools, reconciliation
-            and reporting.
+            Create payment experiences, manage transactions and prepare your business for secure mobile-money, card and
+            bank-transfer integrations.
           </p>
 
-          {/* Responsive CTA buttons */}
+          {/* Required Actions */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
             <Link
               to="/register"
-              className="w-full sm:w-auto text-center rounded-xl px-7 py-3 text-sm sm:text-base font-semibold text-white transition-all duration-200 active:scale-[0.98]"
+              className="w-full sm:w-auto text-center rounded-xl px-7 py-3 text-sm sm:text-base font-semibold text-white transition-all duration-200 active:scale-[0.98] shadow-md hover:brightness-110"
               style={{
                 background: 'linear-gradient(135deg, #1a6dcc 0%, #0e4da6 100%)',
-                boxShadow: '0 4px 20px rgba(26,109,204,0.4)',
+                boxShadow: '0 4px 20px rgba(26,109,204,0.35)',
               }}
             >
-              Get Started Free
+              Create sandbox account
             </Link>
             <Link
               to="/developers"
               className="w-full sm:w-auto text-center rounded-xl px-7 py-3 text-sm sm:text-base font-semibold text-white/90 border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all duration-200"
             >
-              Explore Developer Tools
+              Explore the API
             </Link>
           </div>
 
-          {/* Supported Channels Bar */}
+          {/* Designed for Local Payment Integrations — Official Brand Row */}
           <div className="mt-14 pt-8 border-t border-white/10 flex flex-col items-center gap-3">
             <p className="text-[11px] uppercase font-semibold tracking-widest text-white/40">
-              Supported digital channels across Malawi
+              Designed for local payment integrations
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs font-medium text-white/80">
-              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-                📱 Airtel Money
-              </span>
-              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-                ⚡ TNM Mpamba
-              </span>
-              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-                💳 Visa & Mastercard
-              </span>
-              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-                🏦 National Switch / Bank Transfer
-              </span>
+            <div className="flex flex-wrap items-stretch justify-center gap-2.5 sm:gap-3.5" aria-label="Supported payment methods">
+              {/* Airtel Money */}
+              <div className="flex min-h-11 items-center gap-2.5 rounded-md border border-white/15 bg-white/[0.07] px-3 py-1.5 backdrop-blur-sm shadow-sm">
+                <span className="inline-flex h-8 min-w-14 items-center justify-center rounded bg-white px-2 py-1">
+                  <img src="/brands/airtel-money.svg" alt="Airtel logo" className="h-4 w-auto max-w-12 object-contain" />
+                </span>
+                <span className="text-xs font-semibold text-white/90">Airtel Money</span>
+              </div>
+
+              {/* TNM Mpamba */}
+              <div className="flex min-h-11 items-center gap-2.5 rounded-md border border-white/15 bg-white/[0.07] px-3 py-1.5 backdrop-blur-sm shadow-sm">
+                <span className="inline-flex h-8 min-w-14 items-center justify-center rounded bg-white px-2 py-1">
+                  <img src="/brands/tnm-mpamba.svg" alt="TNM logo" className="h-5 w-auto max-w-12 object-contain" />
+                </span>
+                <span className="text-xs font-semibold text-white/90">TNM Mpamba</span>
+              </div>
+
+              {/* Visa */}
+              <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3.5 py-1.5 backdrop-blur-sm shadow-sm">
+                <img
+                  src="/brands/visa.svg"
+                  alt="Visa logo"
+                  className="h-3.5 w-auto object-contain"
+                />
+                <span className="text-xs font-semibold text-white/90">Visa</span>
+              </div>
+
+              {/* Mastercard */}
+              <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 backdrop-blur-sm shadow-sm">
+                <img
+                  src="/brands/mastercard.svg"
+                  alt="Mastercard logo"
+                  className="h-4 w-auto object-contain"
+                />
+                <span className="text-xs font-semibold text-white/90">Mastercard</span>
+              </div>
+
+              {/* National Switch / Bank Transfer */}
+              <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 backdrop-blur-sm shadow-sm">
+                <svg
+                  className="h-4 w-4 text-blue-300 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <span className="text-xs font-semibold text-white/90">National Switch / Bank Transfer</span>
+              </div>
             </div>
           </div>
         </div>

@@ -193,7 +193,6 @@ export function RegisterForm() {
             />
           </GlassField>
 
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="flex items-start gap-2.5 text-sm text-white/65 cursor-pointer select-none">
             <Controller
               control={control}
