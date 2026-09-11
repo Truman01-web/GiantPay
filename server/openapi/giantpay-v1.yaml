@@ -1,0 +1,303 @@
+openapi: 3.1.0
+info:
+  title: GiantPay API
+  version: 0.1.0
+  description: Contract for the GiantPay backend foundation. Amounts are integer minor units. Sandbox only.
+servers:
+  - url: http://127.0.0.1:4000/v1
+tags:
+  - name: Authentication
+  - name: Merchants
+  - name: Payments
+  - name: Payment links
+  - name: Checkout
+  - name: Refunds
+  - name: Dashboard
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        '200': { description: Healthy }
+        '503': { $ref: '#/components/responses/Error' }
+  /auth/register:
+    post:
+      tags: [Authentication]
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Accepted' } } } }
+        '422': { $ref: '#/components/responses/Error' }
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { description: Authenticated; sets an HttpOnly session cookie }
+        '401': { $ref: '#/components/responses/Error' }
+        '423': { $ref: '#/components/responses/Error' }
+  /auth/session:
+    get:
+      tags: [Authentication]
+      security: [{ cookieSession: [] }]
+      operationId: getSession
+      responses:
+        '200': { description: Current session }
+        '401': { $ref: '#/components/responses/Error' }
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      security: [{ cookieSession: [] }]
+      operationId: logout
+      responses:
+        '204': { description: Logged out }
+  /auth/email/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyEmail
+      requestBody: { $ref: '#/components/requestBodies/Token' }
+      responses:
+        '200': { description: Verified }
+        '400': { $ref: '#/components/responses/Error' }
+  /auth/password/forgot:
+    post:
+      tags: [Authentication]
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email } } } } }
+      responses:
+        '202': { description: Accepted regardless of account existence }
+  /auth/password/reset:
+    post:
+      tags: [Authentication]
+      operationId: resetPassword
+      responses:
+        '200': { description: Password reset and prior sessions revoked }
+        '400': { $ref: '#/components/responses/Error' }
+  /merchants/onboarding:
+    get:
+      tags: [Merchants]
+      security: [{ cookieSession: [] }]
+      operationId: getOnboarding
+      responses:
+        '200': { description: Onboarding draft }
+    patch:
+      tags: [Merchants]
+      security: [{ cookieSession: [] }]
+      operationId: updateOnboarding
+      responses:
+        '200': { description: Updated onboarding draft }
+        '409': { $ref: '#/components/responses/Error' }
+  /merchants/onboarding/submit:
+    post:
+      tags: [Merchants]
+      security: [{ cookieSession: [] }]
+      operationId: submitOnboarding
+      responses:
+        '200': { description: Submitted onboarding application }
+        '422': { $ref: '#/components/responses/Error' }
+  /payments:
+    get:
+      tags: [Payments]
+      security: [{ cookieSession: [] }]
+      operationId: listPayments
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, description: Comma-separated statuses, schema: { type: string } }
+        - { name: channel, in: query, description: Comma-separated channels, schema: { type: string } }
+      responses:
+        '200': { description: Paginated payments }
+  /payments/{id}:
+    get:
+      tags: [Payments]
+      security: [{ cookieSession: [] }]
+      operationId: getPayment
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Payment detail, content: { application/json: { schema: { $ref: '#/components/schemas/Payment' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+  /payments/{id}/events:
+    get:
+      tags: [Payments]
+      security: [{ cookieSession: [] }]
+      operationId: getPaymentEvents
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Ordered payment event history }
+  /payment-links:
+    get:
+      tags: [Payment links]
+      security: [{ cookieSession: [] }]
+      operationId: listPaymentLinks
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses:
+        '200': { description: Paginated payment links }
+    post:
+      tags: [Payment links]
+      security: [{ cookieSession: [] }]
+      operationId: createPaymentLink
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreatePaymentLink' } } }
+      responses:
+        '201': { description: Created payment link }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /payment-links/{id}:
+    get:
+      tags: [Payment links]
+      security: [{ cookieSession: [] }]
+      operationId: getPaymentLink
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Payment link }
+    patch:
+      tags: [Payment links]
+      security: [{ cookieSession: [] }]
+      operationId: disablePaymentLink
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Disabled payment link }
+  /checkout/{token}:
+    get:
+      tags: [Checkout]
+      operationId: getCheckout
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Public checkout session }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkout/{token}/submit:
+    post:
+      tags: [Checkout]
+      operationId: submitCheckout
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CheckoutSubmit' } } }
+      responses:
+        '202': { description: Accepted by configured provider }
+        '410': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /payment-status/{reference}:
+    get:
+      tags: [Checkout]
+      operationId: getTrustedPaymentStatus
+      parameters: [{ name: reference, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Backend-trusted payment status }
+        '404': { $ref: '#/components/responses/Error' }
+  /refunds:
+    get:
+      tags: [Refunds]
+      security: [{ cookieSession: [] }]
+      operationId: listRefunds
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses:
+        '200': { description: Paginated refunds }
+    post:
+      tags: [Refunds]
+      security: [{ cookieSession: [] }]
+      operationId: requestRefund
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateRefund' } } }
+      responses:
+        '201': { description: Refund pending independent approval }
+        '422': { $ref: '#/components/responses/Error' }
+  /refunds/{id}:
+    get:
+      tags: [Refunds]
+      security: [{ cookieSession: [] }]
+      operationId: getRefund
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Refund detail }
+        '404': { $ref: '#/components/responses/Error' }
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      security: [{ cookieSession: [] }]
+      operationId: getDashboardSummary
+      parameters: [{ $ref: '#/components/parameters/From' }, { $ref: '#/components/parameters/To' }]
+      responses: { '200': { description: Merchant summary } }
+  /dashboard/volume:
+    get:
+      tags: [Dashboard]
+      security: [{ cookieSession: [] }]
+      operationId: getDashboardVolume
+      parameters: [{ $ref: '#/components/parameters/From' }, { $ref: '#/components/parameters/To' }]
+      responses: { '200': { description: Daily volume series } }
+components:
+  securitySchemes:
+    cookieSession: { type: apiKey, in: cookie, name: giantpay_session }
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: string } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8, maxLength: 128 } }
+    From: { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+    To: { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+  requestBodies:
+    Token:
+      required: true
+      content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } }
+  responses:
+    Error:
+      description: Normalized error response
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  schemas:
+    Accepted: { type: object, required: [accepted], properties: { accepted: { const: true } } }
+    Money: { type: object, required: [amountMinor, currency], properties: { amountMinor: { type: integer }, currency: { type: string, pattern: '^[A-Z]{3}$' } } }
+    RegisterRequest:
+      type: object
+      required: [businessName, email, password, phone]
+      properties: { businessName: { type: string }, email: { type: string, format: email }, password: { type: string, minLength: 12 }, phone: { type: string, pattern: '^\\+265[0-9]{9}$' } }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties: { email: { type: string, format: email }, password: { type: string }, remember: { type: boolean } }
+    CreatePaymentLink:
+      type: object
+      required: [name, mode, currency, reusable]
+      properties: { name: { type: string }, mode: { enum: [FIXED, CUSTOMER_ENTERED] }, amountMinor: { type: integer, minimum: 1 }, currency: { type: string }, description: { type: string }, customerReference: { type: string }, expiresAt: { type: string, format: date-time }, reusable: { type: boolean }, maxSuccessfulPayments: { type: integer, minimum: 1 }, redirectUrl: { type: string, format: uri } }
+    CheckoutSubmit:
+      type: object
+      required: [channel, customer]
+      properties:
+        channel: { enum: [MOBILE_MONEY, CARD, BANK_TRANSFER] }
+        customer:
+          type: object
+          required: [name, phone]
+          properties: { name: { type: string }, email: { type: string, format: email }, phone: { type: string, pattern: '^\\+265[0-9]{9}$' } }
+    CreateRefund:
+      type: object
+      required: [paymentId, amountMinor, reason]
+      properties: { paymentId: { type: string }, amountMinor: { type: integer, minimum: 1 }, reason: { type: string } }
+    Payment:
+      type: object
+      required: [id, reference, status, gross, fee, tax, net, customer, createdAt, updatedAt]
+      properties: { id: { type: string }, reference: { type: string }, status: { type: string }, gross: { $ref: '#/components/schemas/Money' }, fee: { $ref: '#/components/schemas/Money' }, tax: { $ref: '#/components/schemas/Money' }, net: { $ref: '#/components/schemas/Money' }, customer: { type: object }, createdAt: { type: string, format: date-time }, updatedAt: { type: string, format: date-time } }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties: { code: { type: string }, message: { type: string }, requestId: { type: string }, fields: { type: object, additionalProperties: { type: string } } }
