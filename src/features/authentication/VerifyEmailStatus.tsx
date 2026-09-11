@@ -52,7 +52,7 @@ export function VerifyEmailStatus() {
     <div className="relative overflow-hidden rounded-2xl shadow-2xl" style={cardStyle}>
       {wavingMark}
       {accentBar}
-      <div className="relative z-10 px-8 py-10 text-center">
+      <div className="relative z-10 px-5 py-8 sm:px-8 sm:py-10 text-center">
         <div className="mb-4 flex justify-center">
           <img src={LOGO_SRC} alt="GiantPay" className="h-16 w-auto object-contain drop-shadow-md" />
         </div>

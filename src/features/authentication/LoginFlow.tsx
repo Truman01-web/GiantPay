@@ -115,7 +115,7 @@ export function LoginFlow() {
         <img
           src={MARK_SRC}
           alt=""
-          className="animate-flag-wave w-[360px] sm:w-[420px] max-w-none opacity-[0.16] select-none object-contain"
+          className="animate-flag-wave w-[280px] sm:w-[380px] md:w-[420px] max-w-none opacity-[0.16] select-none object-contain"
           style={{
             filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.3))',
           }}
@@ -128,18 +128,18 @@ export function LoginFlow() {
         style={{ background: 'linear-gradient(90deg, #1a6dcc 0%, #c9a227 50%, #c01c28 100%)' }}
       />
 
-      <div className="relative z-10 px-8 py-9">
-        {/* Logo — full lockup PNG centred (increased size) */}
-        <div className="mb-6 flex justify-center">
+      <div className="relative z-10 px-5 py-7 sm:px-8 sm:py-9">
+        {/* Logo — full lockup PNG centred (responsive size) */}
+        <div className="mb-5 sm:mb-6 flex justify-center">
           <img
             src={LOGO_SRC}
             alt="GiantPay"
-            className="h-20 w-auto object-contain drop-shadow-md"
+            className="h-16 sm:h-20 w-auto object-contain drop-shadow-md"
           />
         </div>
 
-        <h1 className="text-[23px] font-bold text-white tracking-tight text-center sm:text-left">Welcome back</h1>
-        <p className="mt-1 text-sm text-white/60 text-center sm:text-left">Sign in to your GiantPay merchant account.</p>
+        <h1 className="text-xl sm:text-[23px] font-bold text-white tracking-tight text-center sm:text-left">Welcome back</h1>
+        <p className="mt-1 text-xs sm:text-sm text-white/60 text-center sm:text-left">Sign in to your GiantPay merchant account.</p>
 
         {errorMessage && (
           <div className="mt-4"><Alert variant="danger">{errorMessage}</Alert></div>
@@ -222,7 +222,7 @@ export function LoginFlow() {
                   onClick={() => { setValue('email', a.email); setValue('password', a.password); }}
                   className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left hover:bg-white/08 transition-colors"
                 >
-                  <span className="text-xs text-white/60">{a.email}</span>
+                  <span className="text-xs text-white/60 truncate max-w-[200px] sm:max-w-none">{a.email}</span>
                   <span
                     className="ml-2 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
                     style={{ background: 'rgba(201,162,39,0.15)', color: '#c9a227' }}

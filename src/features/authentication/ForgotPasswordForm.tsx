@@ -87,12 +87,12 @@ export function ForgotPasswordForm() {
       {wavingMark}
       {accentBar}
 
-      <div className="relative z-10 px-8 py-9">
-        <div className="mb-6 flex justify-center">
-          <img src={LOGO_SRC} alt="GiantPay" className="h-20 w-auto object-contain drop-shadow-md" />
+      <div className="relative z-10 px-5 py-7 sm:px-8 sm:py-9">
+        <div className="mb-5 sm:mb-6 flex justify-center">
+          <img src={LOGO_SRC} alt="GiantPay" className="h-16 sm:h-20 w-auto object-contain drop-shadow-md" />
         </div>
 
-        <h1 className="text-[22px] font-bold text-white tracking-tight text-center sm:text-left">Reset your password</h1>
+        <h1 className="text-xl sm:text-[22px] font-bold text-white tracking-tight text-center sm:text-left">Reset your password</h1>
         <p className="mt-1 text-sm text-white/60 text-center sm:text-left">
           Enter your email and we&apos;ll send you a reset link.
         </p>

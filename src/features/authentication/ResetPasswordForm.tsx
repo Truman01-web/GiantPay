@@ -99,9 +99,9 @@ export function ResetPasswordForm() {
       {wavingMark}
       {accentBar}
 
-      <div className="relative z-10 px-8 py-9">
-        <div className="mb-6 flex justify-center">
-          <img src={LOGO_SRC} alt="GiantPay" className="h-20 w-auto object-contain drop-shadow-md" />
+      <div className="relative z-10 px-5 py-7 sm:px-8 sm:py-9">
+        <div className="mb-5 sm:mb-6 flex justify-center">
+          <img src={LOGO_SRC} alt="GiantPay" className="h-16 sm:h-20 w-auto object-contain drop-shadow-md" />
         </div>
 
         <div className="mb-5 flex items-center gap-3">
@@ -112,7 +112,7 @@ export function ResetPasswordForm() {
             </svg>
           </div>
           <div>
-            <h1 className="text-[22px] font-bold text-white tracking-tight">Set a new password</h1>
+            <h1 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Set a new password</h1>
             <p className="text-xs text-white/50">Choose a strong password to protect your account.</p>
           </div>
         </div>

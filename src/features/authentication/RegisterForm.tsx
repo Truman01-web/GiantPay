@@ -67,7 +67,17 @@ export function RegisterForm() {
     handleSubmit,
     control,
     formState: { errors },
-  } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      businessName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      acceptTerms: false,
+    },
+  });
 
   async function onSubmit(values: RegisterFormValues) {
     try {
@@ -118,21 +128,21 @@ export function RegisterForm() {
         <img
           src={MARK_SRC}
           alt=""
-          className="animate-flag-wave w-[360px] sm:w-[420px] max-w-none opacity-[0.14] select-none object-contain"
+          className="animate-flag-wave w-[280px] sm:w-[380px] md:w-[420px] max-w-none opacity-[0.14] select-none object-contain"
           style={{ filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.3))' }}
         />
       </div>
 
       {accentBar}
 
-      <div className="relative z-10 px-8 py-9">
-        {/* Logo — centered, larger */}
-        <div className="mb-6 flex justify-center">
-          <img src={LOGO_SRC} alt="GiantPay" className="h-20 w-auto object-contain drop-shadow-md" />
+      <div className="relative z-10 px-5 py-7 sm:px-8 sm:py-9">
+        {/* Logo — centered, responsive */}
+        <div className="mb-5 sm:mb-6 flex justify-center">
+          <img src={LOGO_SRC} alt="GiantPay" className="h-16 sm:h-20 w-auto object-contain drop-shadow-md" />
         </div>
 
-        <h1 className="text-[22px] font-bold text-white tracking-tight text-center sm:text-left">Create your account</h1>
-        <p className="mt-1 text-sm text-white/60 text-center sm:text-left">Start with sandbox access — production activates after review.</p>
+        <h1 className="text-xl sm:text-[22px] font-bold text-white tracking-tight text-center sm:text-left">Create your account</h1>
+        <p className="mt-1 text-xs sm:text-sm text-white/60 text-center sm:text-left">Start with sandbox access — production activates after review.</p>
 
         {errorMessage && (
           <div className="mt-4"><Alert variant="danger">{errorMessage}</Alert></div>
@@ -188,7 +198,7 @@ export function RegisterForm() {
             <Controller
               control={control}
               name="acceptTerms"
-              render={({ field }) => <Checkbox className="mt-0.5" checked={field.value} onCheckedChange={field.onChange} />}
+              render={({ field }) => <Checkbox className="mt-0.5" checked={Boolean(field.value)} onCheckedChange={field.onChange} />}
             />
             <span>
               I agree to the{' '}

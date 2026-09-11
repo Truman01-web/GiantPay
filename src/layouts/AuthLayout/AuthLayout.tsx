@@ -61,22 +61,22 @@ export function AuthLayout() {
       </a>
 
       {/* ── Top navbar ── */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-10">
+      <header className="relative z-10 flex items-center justify-between px-4 py-4 sm:px-10 sm:py-5">
         <Link to="/" aria-label="GiantPay home">
           <LogoWhite />
         </Link>
-        {/* Thin separator line */}
-        <div className="h-px flex-1 mx-8 bg-white/10" />
-        <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-white/50 uppercase hidden sm:flex">
+        {/* Thin separator line — visible on sm+ screens */}
+        <div className="hidden sm:block h-px flex-1 mx-8 bg-white/10" />
+        <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-white/60 uppercase">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          Secure Portal
+          <span className="hidden xs:inline sm:inline">Secure Portal</span>
         </div>
       </header>
 
       {/* ── Centred form area ── */}
       <main
         id="auth-form"
-        className="relative z-10 flex flex-1 items-center justify-center px-4 py-8 sm:py-12"
+        className="relative z-10 flex flex-1 items-center justify-center px-3.5 py-6 sm:px-6 sm:py-12"
       >
         <div className="w-full max-w-[480px]">
           <ErrorBoundary boundaryName="this page">
@@ -88,21 +88,21 @@ export function AuthLayout() {
       </main>
 
       {/* ── Professional Fintech Footer ── */}
-      <footer className="relative z-10 border-t border-white/10 bg-black/25 backdrop-blur-md px-6 py-6 mt-auto">
+      <footer className="relative z-10 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 py-6 sm:px-6 mt-auto">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center">
           {/* Security & compliance indicators */}
-          <div className="flex flex-wrap items-center justify-center gap-5 text-xs text-white/70">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-white/70">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               256-Bit SSL Encrypted
             </span>
-            <span className="text-white/25">•</span>
+            <span className="hidden sm:inline text-white/25">•</span>
             <span className="inline-flex items-center gap-1.5">
               {/* Shield icon */}
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-[#c9a227]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
               PCI-DSS Level 1 Compliant
             </span>
-            <span className="text-white/25">•</span>
+            <span className="hidden sm:inline text-white/25">•</span>
             <span className="inline-flex items-center gap-1.5">
               {/* Lock icon */}
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -111,7 +111,7 @@ export function AuthLayout() {
           </div>
 
           {/* Quick links */}
-          <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-6 text-xs text-white/50">
+          <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-white/55">
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             <Link to="/status" className="hover:text-white transition-colors">System Status</Link>
