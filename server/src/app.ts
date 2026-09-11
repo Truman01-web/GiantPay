@@ -4,12 +4,23 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import argon2 from 'argon2';
+import { Readable } from 'node:stream';
 import { z, ZodError } from 'zod';
 import type { Db } from './db.js';
 import { transaction } from './db.js';
 import type { Config } from './config.js';
 import { apiError, authenticate, newId, newToken, requirePermission, SESSION_COOKIE, tokenHash } from './security.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
+import { createPaymentProvider } from './providers/index.js';
+import type { PaymentProvider } from './providers/types.js';
+import { WebhookVerificationError } from './providers/sandboxProvider.js';
+import { processPaymentWebhook } from './payments/webhookProcessor.js';
+
+declare module 'fastify' {
+  interface FastifyRequest { rawWebhookBody?: Buffer }
+}
+
+class WebhookBodyTooLargeError extends Error {}
 
 const pageSchema = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20) });
 const idempotencySchema = z.string().min(8).max(128);
@@ -40,14 +51,31 @@ function refund(row: any) {
     createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
-export async function buildApp(config: Config, db: Db) {
-  const app = Fastify({ logger: config.NODE_ENV !== 'test', trustProxy: true, genReqId: (req) => String(req.headers['x-request-id'] ?? newId('req')) });
+export async function buildApp(config: Config, db: Db, provider: PaymentProvider = createPaymentProvider(config)) {
+  const app = Fastify({ logger: config.NODE_ENV !== 'test', trustProxy: true, bodyLimit: 1024 * 1024, genReqId: (req) => String(req.headers['x-request-id'] ?? newId('req')) });
   await app.register(cookie, { secret: config.COOKIE_SECRET });
   await app.register(cors, { origin: config.FRONTEND_ORIGIN, credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'] });
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
   app.decorateRequest('actor', null);
+  app.decorateRequest('rawWebhookBody', undefined);
+  app.addHook('preParsing', async (request, _reply, payload) => {
+    if (request.url.split('?')[0] !== '/v1/webhooks/providers/sandbox') return payload;
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of payload) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += buffer.length;
+      if (size > 64 * 1024) throw new WebhookBodyTooLargeError();
+      chunks.push(buffer);
+    }
+    request.rawWebhookBody = Buffer.concat(chunks);
+    return Readable.from(request.rawWebhookBody);
+  });
   app.setErrorHandler((error, request, reply) => {
+    if (error instanceof WebhookBodyTooLargeError) {
+      return reply.code(413).send(apiError(request, 'PAYLOAD_TOO_LARGE', 'Webhook payload is too large.'));
+    }
     if (error instanceof ZodError) {
       const fields = Object.fromEntries(error.issues.map((i) => [i.path.join('.') || 'request', i.message]));
       return reply.code(422).send(apiError(request, 'VALIDATION_ERROR', 'Check the highlighted fields.', fields));
@@ -132,8 +160,50 @@ export async function buildApp(config: Config, db: Db) {
   app.patch('/v1/payment-links/:id',{preHandler:[auth,requirePermission('payments.links:manage')]},async(request,reply)=>{z.object({status:z.literal('DISABLED')}).parse(request.body);const {id}=z.object({id:z.string()}).parse(request.params);const r=await db.query(`UPDATE payment_links SET status='DISABLED' WHERE id=$1 AND merchant_id=$2 RETURNING *`,[id,request.actor!.merchantId]);return r.rowCount?link(r.rows[0],config.FRONTEND_ORIGIN):reply.code(404).send(apiError(request,'NOT_FOUND','Payment link not found.'));});
 
   app.get('/v1/checkout/:token',async(request,reply)=>{const {token}=z.object({token:z.string()}).parse(request.params);const r=await db.query(`SELECT l.*,m.name merchant_name FROM payment_links l JOIN merchants m ON m.id=l.merchant_id WHERE token=$1`,[token]);if(!r.rowCount)return reply.code(404).send(apiError(request,'NOT_FOUND','This checkout link is invalid.'));const x=r.rows[0];const expired=x.status!=='ACTIVE'||(x.expires_at&&new Date(x.expires_at)<new Date());return {token:x.token,reference:`LINK-${x.id}`,merchantDisplayName:x.merchant_name,description:x.description,merchantReference:x.customer_reference,amount:money(x.amount_minor,x.currency),availableChannels:['MOBILE_MONEY','CARD','BANK_TRANSFER'],requiredCustomerFields:['name','phone'],status:expired?'EXPIRED':'READY',expiresAt:x.expires_at??new Date(Date.now()+900000).toISOString()};});
-  app.post('/v1/checkout/:token/submit',async(request,reply)=>{const key=idempotencySchema.parse(request.headers['idempotency-key']);const {token}=z.object({token:z.string()}).parse(request.params);const b=z.object({channel:z.enum(['MOBILE_MONEY','CARD','BANK_TRANSFER']),customer:customerSchema.refine(x=>x.name&&x.phone,{message:'Name and phone are required.'})}).parse(request.body);const l=await db.query(`SELECT * FROM payment_links WHERE token=$1 AND status='ACTIVE' AND (expires_at IS NULL OR expires_at>now())`,[token]);if(!l.rowCount)return reply.code(410).send(apiError(request,'EXPIRED','This payment session has expired.'));const x=l.rows[0];const prior=await db.query(`SELECT response_status,response_body FROM idempotency_keys WHERE merchant_id=$1 AND operation='checkout' AND key=$2`,[x.merchant_id,key]);if(prior.rowCount)return reply.code(prior.rows[0].response_status).send(prior.rows[0].response_body);const id=newId('pay'),reference=`GP-${Date.now()}-${Math.floor(Math.random()*1000)}`,fee=Math.round(Number(x.amount_minor)*0.018);await db.query(`INSERT INTO payments(id,merchant_id,payment_link_id,reference,merchant_reference,description,status,channel,provider_name,gross_minor,fee_minor,currency,customer,provider_submitted_at) VALUES($1,$2,$3,$4,$5,$6,'PROCESSING',$7,'GiantPay Sandbox',$8,$9,$10,$11,now())`,[id,x.merchant_id,x.id,reference,x.customer_reference,x.description,b.channel,x.amount_minor,fee,x.currency,b.customer]);await db.query(`INSERT INTO payment_events(id,payment_id,type,label) VALUES($1,$2,'PAYMENT_CREATED','Payment created'),($3,$2,'PROVIDER_REQUEST_ACCEPTED','Sandbox provider accepted request')`,[newId('evt'),id,newId('evt')]);const body={reference};await db.query(`INSERT INTO idempotency_keys VALUES($1,'checkout',$2,202,$3)`,[x.merchant_id,key,body]);return reply.code(202).send(body);});
-  app.get('/v1/payment-status/:reference',async(request,reply)=>{const {reference}=z.object({reference:z.string()}).parse(request.params);let r=await db.query(`SELECT p.*,m.name merchant_name FROM payments p JOIN merchants m ON m.id=p.merchant_id WHERE reference=$1`,[reference]);if(!r.rowCount)return reply.code(404).send(apiError(request,'NOT_FOUND','Unknown payment reference.'));let x=r.rows[0];if(x.status==='PROCESSING'&&Date.now()-new Date(x.provider_submitted_at).getTime()>3000){r=await db.query(`UPDATE payments SET status='SUCCEEDED',updated_at=now() WHERE id=$1 RETURNING *`,[x.id]);x={...r.rows[0],merchant_name:x.merchant_name};await db.query(`INSERT INTO payment_events(id,payment_id,type,label) VALUES($1,$2,'STATUS_VERIFIED','Backend verified sandbox status')`,[newId('evt'),x.id]);}return {reference:x.reference,status:x.status==='SUCCEEDED'?'SUCCESS':x.status,amount:money(x.gross_minor,x.currency),merchantDisplayName:x.merchant_name,merchantReference:x.merchant_reference,confirmedAt:x.status==='SUCCEEDED'?x.updated_at:null};});
+  app.post('/v1/checkout/:token/submit', async (request, reply) => {
+    const key = idempotencySchema.parse(request.headers['idempotency-key']);
+    const { token } = z.object({ token: z.string() }).parse(request.params);
+    const body = z.object({ channel: z.enum(['MOBILE_MONEY','CARD','BANK_TRANSFER']), customer: customerSchema.refine((x) => x.name && x.phone, { message: 'Name and phone are required.' }) }).parse(request.body);
+    const linkResult = await db.query(`SELECT * FROM payment_links WHERE token=$1 AND status='ACTIVE' AND (expires_at IS NULL OR expires_at>now())`, [token]);
+    if (!linkResult.rowCount) return reply.code(410).send(apiError(request, 'EXPIRED', 'This payment session has expired.'));
+    const paymentLink = linkResult.rows[0];
+    const response = await transaction(db, async (client) => {
+      const prior = await client.query(`SELECT response_body FROM idempotency_keys WHERE merchant_id=$1 AND operation='checkout' AND key=$2 FOR UPDATE`, [paymentLink.merchant_id, key]);
+      if (prior.rowCount) return prior.rows[0].response_body as { reference: string };
+      const id = newId('pay');
+      const reference = `GP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const fee = Math.round(Number(paymentLink.amount_minor) * 0.018);
+      const initiated = await provider.initiatePayment({ paymentReference: reference, amountMinor: Number(paymentLink.amount_minor), currency: paymentLink.currency, channel: body.channel, customer: body.customer });
+      await client.query(`INSERT INTO payments(id,merchant_id,payment_link_id,reference,merchant_reference,description,status,channel,provider_name,gross_minor,fee_minor,currency,customer,provider_submitted_at) VALUES($1,$2,$3,$4,$5,$6,'CREATED',$7,$8,$9,$10,$11,$12,now())`, [id,paymentLink.merchant_id,paymentLink.id,reference,paymentLink.customer_reference,paymentLink.description,body.channel,provider.name,paymentLink.amount_minor,fee,paymentLink.currency,body.customer]);
+      await client.query(`INSERT INTO payment_attempts(id,payment_id,provider,provider_payment_id,status) VALUES($1,$2,$3,$4,$5)`, [newId('pat'),id,provider.name,initiated.providerPaymentId,initiated.status]);
+      await client.query(`UPDATE payments SET status=$1,updated_at=now() WHERE id=$2`, [initiated.status,id]);
+      await client.query(`INSERT INTO payment_events(id,payment_id,type,label) VALUES($1,$2,'PAYMENT_CREATED','Payment created'),($3,$2,'PROVIDER_REQUEST_ACCEPTED','Provider accepted request')`, [newId('evt'),id,newId('evt')]);
+      const result = { reference };
+      await client.query(`INSERT INTO idempotency_keys VALUES($1,'checkout',$2,202,$3)`, [paymentLink.merchant_id,key,result]);
+      return result;
+    });
+    return reply.code(202).send(response);
+  });
+  app.get('/v1/payment-status/:reference',async(request,reply)=>{const {reference}=z.object({reference:z.string()}).parse(request.params);const r=await db.query(`SELECT p.*,m.name merchant_name FROM payments p JOIN merchants m ON m.id=p.merchant_id WHERE reference=$1`,[reference]);if(!r.rowCount)return reply.code(404).send(apiError(request,'NOT_FOUND','Unknown payment reference.'));const x=r.rows[0];return {reference:x.reference,status:x.status==='SUCCEEDED'?'SUCCESS':x.status,amount:money(x.gross_minor,x.currency),merchantDisplayName:x.merchant_name,merchantReference:x.merchant_reference,confirmedAt:x.status==='SUCCEEDED'?x.updated_at:null};});
+
+  app.post('/v1/webhooks/providers/sandbox', { bodyLimit: 64 * 1024 }, async (request, reply) => {
+    const rawBody = request.rawWebhookBody ?? Buffer.alloc(0);
+    let event;
+    try {
+      event = provider.parseAndVerifyWebhook(rawBody, {
+        signature: typeof request.headers['x-giantpay-signature'] === 'string' ? request.headers['x-giantpay-signature'] : undefined,
+        timestamp: typeof request.headers['x-giantpay-timestamp'] === 'string' ? request.headers['x-giantpay-timestamp'] : undefined,
+      });
+    } catch (error) {
+      if (error instanceof WebhookVerificationError) return reply.code(error.statusCode).send(apiError(request, error.code, error.message));
+      throw error;
+    }
+    const result = await processPaymentWebhook(db, provider.name, event, rawBody);
+    if (result.outcome === 'PAYLOAD_CONFLICT') return reply.code(409).send(apiError(request, 'WEBHOOK_REPLAY_CONFLICT', 'Webhook event conflicts with a previous delivery.'));
+    if (result.outcome === 'UNKNOWN_PAYMENT') return reply.code(404).send(apiError(request, 'UNKNOWN_PAYMENT', 'Payment reference was not found.'));
+    if (result.outcome === 'INVALID_TRANSITION') return reply.code(409).send(apiError(request, 'INVALID_PAYMENT_TRANSITION', 'Payment status transition was rejected.'));
+    return reply.code(202).send({ accepted: true, duplicate: result.outcome === 'DUPLICATE' });
+  });
 
   const refundJoin=`SELECT r.*,p.reference payment_reference,p.currency,ru.name requested_by_name,au.name approved_by_name,du.name decided_by_name FROM refunds r JOIN payments p ON p.id=r.payment_id JOIN users ru ON ru.id=r.requested_by LEFT JOIN users au ON au.id=r.approved_by LEFT JOIN users du ON du.id=r.decided_by`;
   app.get('/v1/refunds',{preHandler:[auth,requirePermission('payments.refunds:request')]},async(request)=>{const q=pageSchema.extend({status:z.string().optional()}).parse(request.query);const vals:any[]=[request.actor!.merchantId];let clause='r.merchant_id=$1';if(q.status){vals.push(q.status.split(','));clause+=` AND r.status=ANY($2)`;}const total=await db.query(`SELECT count(*) FROM refunds r WHERE ${clause}`,vals);vals.push(q.pageSize,(q.page-1)*q.pageSize);const rows=await db.query(`${refundJoin} WHERE ${clause} ORDER BY r.created_at DESC LIMIT $${vals.length-1} OFFSET $${vals.length}`,vals);return {data:rows.rows.map(refund),page:q.page,pageSize:q.pageSize,total:Number(total.rows[0].count)};});

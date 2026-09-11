@@ -10,6 +10,8 @@ const schema = z.object({
   COOKIE_SECRET: z.string().min(32),
   FRONTEND_ORIGIN: z.string().url(),
   PAYMENT_PROVIDER: z.enum(['sandbox']).default('sandbox'),
+  SANDBOX_WEBHOOK_SECRET: z.string().min(32),
+  WEBHOOK_TOLERANCE_SECONDS: z.coerce.number().int().positive().max(900).default(300),
   SESSION_TTL_HOURS: z.coerce.number().int().positive().max(720).default(12),
 });
 

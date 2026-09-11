@@ -16,6 +16,18 @@ flowchart TD
 
 The current adapter is a local sandbox simulator. Configuration prevents it from being enabled when `NODE_ENV=production`.
 
+Provider-specific formats are isolated in `src/providers/`. Checkout uses the
+provider-neutral `PaymentProvider` interface and persists a payment attempt.
+Provider callbacks enter through a raw-body HMAC verification boundary, then
+the transactional webhook processor applies the explicit payment state
+machine. The trusted status endpoint is read-only and never promotes state on
+a timer.
+
+Webhook receipts provide replay protection. A unique `(provider,
+provider_event_id)` key and row locks ensure concurrent duplicate delivery does
+not repeat payment events or audit records. Reusing an event ID with another
+payload hash is recorded as suspicious and rejected.
+
 ## Security invariants
 
 - Passwords use Argon2id plus an application pepper.

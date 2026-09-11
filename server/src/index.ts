@@ -2,6 +2,7 @@ import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDb } from './db.js';
 
+// Configuration is reloaded whenever the development watcher restarts.
 const config = loadConfig();
 const db = createDb(config.DATABASE_URL);
 const app = await buildApp(config, db);

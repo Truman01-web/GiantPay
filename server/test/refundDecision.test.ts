@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { decideRefundState } from './refundDecision.js';
+import { decideRefundState } from '../src/refundDecision.js';
 
 describe('maker-checker refund decisions', () => {
   const pending = { status: 'PENDING_APPROVAL', requested_by: 'maker' };
 
-  it('records an independent approver', () => {
+  it('records an independent approver without executing a refund', () => {
     expect(decideRefundState(pending, 'checker', 'APPROVE')).toEqual({ status: 'APPROVED', approvedBy: 'checker', decidedBy: 'checker' });
   });
 
