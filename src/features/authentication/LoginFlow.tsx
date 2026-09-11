@@ -100,36 +100,46 @@ export function LoginFlow() {
     <div
       className="relative overflow-hidden rounded-2xl shadow-2xl"
       style={{
-        background: 'rgba(255,255,255,0.055)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        border: '1px solid rgba(255,255,255,0.10)',
-        boxShadow: '0 32px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
+        background: 'rgba(10, 28, 62, 0.58)',
+        backdropFilter: 'blur(28px)',
+        WebkitBackdropFilter: 'blur(28px)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        boxShadow: '0 32px 64px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.22)',
       }}
     >
-      {/* GP mark — bottom-right corner watermark inside card */}
-      <div className="pointer-events-none absolute -bottom-6 -right-6 opacity-[0.07]" aria-hidden="true">
-        <img src={MARK_SRC} alt="" className="w-40" />
+      {/* GP mark — centered watermark background image moving like a flag with rich colors */}
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
+        aria-hidden="true"
+      >
+        <img
+          src={MARK_SRC}
+          alt=""
+          className="animate-flag-wave w-[360px] sm:w-[420px] max-w-none opacity-[0.16] select-none object-contain"
+          style={{
+            filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.3))',
+          }}
+        />
       </div>
 
       {/* Coloured top accent bar */}
       <div
-        className="h-1 w-full rounded-t-2xl"
+        className="h-1.5 w-full rounded-t-2xl"
         style={{ background: 'linear-gradient(90deg, #1a6dcc 0%, #c9a227 50%, #c01c28 100%)' }}
       />
 
-      <div className="px-8 py-8">
-        {/* Logo — full lockup PNG centred */}
+      <div className="relative z-10 px-8 py-9">
+        {/* Logo — full lockup PNG centred (increased size) */}
         <div className="mb-6 flex justify-center">
           <img
             src={LOGO_SRC}
             alt="GiantPay"
-            className="h-16 w-auto object-contain"
+            className="h-20 w-auto object-contain drop-shadow-md"
           />
         </div>
 
-        <h1 className="text-[22px] font-bold text-white tracking-tight">Welcome back</h1>
-        <p className="mt-1 text-sm text-white/50">Sign in to your GiantPay merchant account.</p>
+        <h1 className="text-[23px] font-bold text-white tracking-tight text-center sm:text-left">Welcome back</h1>
+        <p className="mt-1 text-sm text-white/60 text-center sm:text-left">Sign in to your GiantPay merchant account.</p>
 
         {errorMessage && (
           <div className="mt-4"><Alert variant="danger">{errorMessage}</Alert></div>

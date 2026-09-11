@@ -1,14 +1,27 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/Card';
+import { KeyRound, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PasswordInput } from '@/components/ui/Input';
-import { FormField } from '@/components/forms/FormField';
 import { Alert } from '@/components/feedback/Alert';
 import { ApiError } from '@/services/api/errors';
+import { LOGO_SRC, MARK_SRC } from '@/assets/brand';
 import { resetPasswordSchema, type ResetPasswordFormValues } from './schemas';
 import { useResetPasswordMutation } from './useAuthMutations';
+
+const inputCls =
+  'h-10 w-full rounded-lg border border-white/15 bg-white/8 px-3 text-sm text-white ' +
+  'placeholder:text-white/25 focus:border-white/40 focus:bg-white/12 focus:outline-none ' +
+  'transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
+
+const cardStyle: React.CSSProperties = {
+  background: 'rgba(10, 28, 62, 0.58)',
+  backdropFilter: 'blur(28px)',
+  WebkitBackdropFilter: 'blur(28px)',
+  border: '1px solid rgba(255,255,255,0.18)',
+  boxShadow: '0 32px 64px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.22)',
+};
 
 export function ResetPasswordForm() {
   const [searchParams] = useSearchParams();
@@ -22,18 +35,46 @@ export function ResetPasswordForm() {
     formState: { errors },
   } = useForm<ResetPasswordFormValues>({ resolver: zodResolver(resetPasswordSchema) });
 
+  const accentBar = (
+    <div
+      className="h-1.5 w-full rounded-t-2xl"
+      style={{ background: 'linear-gradient(90deg, #1a6dcc 0%, #c9a227 50%, #c01c28 100%)' }}
+    />
+  );
+
+  const wavingMark = (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden="true">
+      <img
+        src={MARK_SRC}
+        alt=""
+        className="animate-flag-wave-slow w-[320px] max-w-none opacity-[0.12] select-none object-contain"
+        style={{ filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.25))' }}
+      />
+    </div>
+  );
+
   if (!token) {
     return (
-      <Card>
-        <CardContent>
-          <Alert variant="danger" title="This reset link is invalid">
+      <div className="relative overflow-hidden rounded-2xl shadow-2xl" style={cardStyle}>
+        {wavingMark}
+        {accentBar}
+        <div className="relative z-10 px-8 py-10 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ background: 'rgba(192,28,40,0.2)' }}>
+            <AlertTriangle className="h-8 w-8 text-red-400" aria-hidden="true" />
+          </div>
+          <h1 className="mt-4 text-2xl font-bold text-white">Invalid reset link</h1>
+          <p className="mt-2 text-sm text-white/60">
             Request a new password reset link and try again.
-          </Alert>
-          <Link to="/forgot-password" className="mt-4 inline-block text-[length:var(--text-label)] font-medium text-[var(--color-blue-600)] hover:underline">
+          </p>
+          <Link
+            to="/forgot-password"
+            className="mt-6 inline-block rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
+            style={{ background: 'linear-gradient(135deg, #1a6dcc 0%, #0e4da6 100%)', boxShadow: '0 4px 18px rgba(26,109,204,0.35)' }}
+          >
             Request a new link
           </Link>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -50,32 +91,76 @@ export function ResetPasswordForm() {
     resetPassword.error instanceof ApiError
       ? resetPassword.error.message
       : resetPassword.error
-        ? 'We could not reset your password. Please request a new link.'
-        : null;
+      ? 'We could not reset your password. Please request a new link.'
+      : null;
 
   return (
-    <Card>
-      <CardContent>
-        <h1 className="text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Set a new password</h1>
+    <div className="relative overflow-hidden rounded-2xl shadow-2xl" style={cardStyle}>
+      {wavingMark}
+      {accentBar}
+
+      <div className="relative z-10 px-8 py-9">
+        <div className="mb-6 flex justify-center">
+          <img src={LOGO_SRC} alt="GiantPay" className="h-20 w-auto object-contain drop-shadow-md" />
+        </div>
+
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(26,109,204,0.2)' }}>
+            <KeyRound className="h-5 w-5 text-blue-400" aria-hidden="true" />
+          </div>
+          <div>
+            <h1 className="text-[22px] font-bold text-white tracking-tight">Set a new password</h1>
+            <p className="text-xs text-white/50">Choose a strong password to protect your account.</p>
+          </div>
+        </div>
 
         {errorMessage && (
-          <div className="mt-4">
-            <Alert variant="danger">{errorMessage}</Alert>
-          </div>
+          <div className="mb-4"><Alert variant="danger">{errorMessage}</Alert></div>
         )}
 
-        <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <FormField label="New password" required help="At least 10 characters" error={errors.password?.message}>
-            {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.password)} {...fp} {...register('password')} />}
-          </FormField>
-          <FormField label="Confirm new password" required error={errors.confirmPassword?.message}>
-            {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.confirmPassword)} {...fp} {...register('confirmPassword')} />}
-          </FormField>
-          <Button type="submit" loading={resetPassword.isPending}>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-white/75">
+              New password <span className="text-red-400" aria-hidden="true">*</span>
+            </label>
+            <PasswordInput
+              autoComplete="new-password"
+              placeholder="At least 10 characters"
+              invalid={Boolean(errors.password)}
+              className={inputCls}
+              {...register('password')}
+            />
+            {errors.password && <p role="alert" className="text-xs text-red-400">{errors.password.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-white/75">
+              Confirm new password <span className="text-red-400" aria-hidden="true">*</span>
+            </label>
+            <PasswordInput
+              autoComplete="new-password"
+              placeholder="••••••••••"
+              invalid={Boolean(errors.confirmPassword)}
+              className={inputCls}
+              {...register('confirmPassword')}
+            />
+            {errors.confirmPassword && <p role="alert" className="text-xs text-red-400">{errors.confirmPassword.message}</p>}
+          </div>
+
+          <Button
+            type="submit"
+            loading={resetPassword.isPending}
+            className="mt-1 w-full rounded-xl py-2.5 text-sm font-semibold"
+            style={{
+              background: 'linear-gradient(135deg, #1a6dcc 0%, #0e4da6 100%)',
+              boxShadow: '0 4px 18px rgba(26,109,204,0.35)',
+              border: 'none',
+            }}
+          >
             Update password
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

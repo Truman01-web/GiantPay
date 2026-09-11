@@ -18,13 +18,18 @@ import { cn } from '@/lib/cn';
  */
 export function Logo({
   variant = 'full',
-  inverted: _inverted,
+  inverted,
   className,
 }: {
   variant?: 'full' | 'mark' | 'lockup';
   inverted?: boolean;
   className?: string;
 }) {
+  /* ── When inverted on dark background, render LogoWhite ── */
+  if (inverted && variant === 'full') {
+    return <LogoWhite className={className} />;
+  }
+
   /* ── Standalone icon only ── */
   if (variant === 'mark') {
     return (
@@ -32,7 +37,7 @@ export function Logo({
         src={MARK_SRC}
         alt=""
         aria-hidden="true"
-        className={cn('h-9 w-auto object-contain', className)}
+        className={cn('h-10 w-auto object-contain', className)}
       />
     );
   }
@@ -43,7 +48,7 @@ export function Logo({
       <img
         src={LOGO_SRC}
         alt="GiantPay"
-        className={cn('h-16 w-auto object-contain', className)}
+        className={cn('h-20 w-auto object-contain', className)}
       />
     );
   }
@@ -51,7 +56,7 @@ export function Logo({
   /* ── Default: GP mark icon + "GiantPay" wordmark in a row ── */
   return (
     <span
-      className={cn('inline-flex items-center gap-2.5', className)}
+      className={cn('inline-flex items-center gap-3', className)}
       aria-label="GiantPay"
     >
       {/* GP mark icon — square crop of the PNG */}
@@ -59,12 +64,12 @@ export function Logo({
         src={MARK_SRC}
         alt=""
         aria-hidden="true"
-        className="h-8 w-8 object-contain flex-shrink-0"
+        className="h-10 w-10 object-contain flex-shrink-0"
       />
       {/* Wordmark */}
       <span className="flex flex-col leading-none">
         <span
-          className="text-[17px] font-bold tracking-tight"
+          className="text-[19px] sm:text-[20px] font-bold tracking-tight"
           style={{
             background: 'linear-gradient(135deg, #1a6dcc 0%, #0d3e8a 100%)',
             WebkitBackgroundClip: 'text',
@@ -84,7 +89,7 @@ export function Logo({
             Pay
           </span>
         </span>
-        <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-neutral-400 mt-0.5">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-neutral-400 mt-0.5">
           Global Finance
         </span>
       </span>
@@ -99,20 +104,20 @@ export function Logo({
 export function LogoWhite({ className }: { className?: string }) {
   return (
     <span
-      className={cn('inline-flex items-center gap-2.5', className)}
+      className={cn('inline-flex items-center gap-3', className)}
       aria-label="GiantPay"
     >
       <img
         src={MARK_SRC}
         alt=""
         aria-hidden="true"
-        className="h-8 w-8 object-contain flex-shrink-0"
+        className="h-10 w-10 object-contain flex-shrink-0"
       />
       <span className="flex flex-col leading-none">
-        <span className="text-[17px] font-bold tracking-tight text-white">
+        <span className="text-[19px] sm:text-[20px] font-bold tracking-tight text-white">
           Giant<span className="text-[#c9a227]">Pay</span>
         </span>
-        <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40 mt-0.5">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/45 mt-0.5">
           Global Finance
         </span>
       </span>
