@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { requireSafeTestDatabase } from './integrationGuard.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { processPaymentWebhook } from '../src/payments/webhookProcessor.js';
 import type { ProviderWebhookEvent } from '../src/providers/types.js';
@@ -10,7 +11,7 @@ import { buildApp } from '../src/app.js';
 import { SandboxPaymentProvider } from '../src/providers/sandboxProvider.js';
 import type { Config } from '../src/config.js';
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
+const databaseUrl = process.env.TEST_DATABASE_URL ? requireSafeTestDatabase(process.env.TEST_DATABASE_URL, process.env.ALLOW_REMOTE_TEST_DATABASE === 'true').toString() : undefined;
 const suite = databaseUrl ? describe : describe.skip;
 const schema = `webhook_test_${randomUUID().replaceAll('-', '')}`;
 let admin: pg.Pool;
