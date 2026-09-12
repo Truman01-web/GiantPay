@@ -35,3 +35,10 @@ postings use the same amounts and accounts with opposite directions.
 from `PENDING` to `PROCESSING`, then `PUBLISHED`, or back to `PENDING` with
 bounded exponential delay. Once attempts reach `max_attempts`, status becomes
 `FAILED`. Published records are immutable.
+## Developer platform tables
+
+Migration `006_developer_platform.sql` adds merchant-owned `api_keys` (keyed
+verifiers only), encrypted `merchant_webhook_endpoints`, stable per-endpoint
+`webhook_deliveries`, and immutable-numbered `webhook_delivery_attempts`.
+Foreign keys, scope/event allowlists, state checks, and unique event/endpoint
+pairs enforce tenant ownership and duplicate-delivery safety.

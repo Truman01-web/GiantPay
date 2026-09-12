@@ -42,3 +42,17 @@ accounts. See `docs/database.md` and `docs/operations.md`.
 The internal outbox publisher is deliberately not an external broker. Enable
 it locally with `OUTBOX_WORKER_ENABLED=true`; production must supply an
 approved publisher implementation before enabling delivery.
+
+## Sandbox developer platform
+
+Merchant owners with `developer.apiKeys:manage` can create, list, inspect and
+revoke sandbox keys under `/v1/developer/api-keys`. Creation is the only
+response containing the complete `gp_test_...` bearer credential. The database
+contains a keyed HMAC verifier and masked fingerprint, never the credential.
+Send it as `Authorization: Bearer gp_test_...`; its explicit scopes are checked
+by the same route permission guards without inheriting browser-session access.
+
+Outbound endpoints and delivery history are under `/v1/developer/webhooks`.
+See [docs/merchant-webhook-verification.md](docs/merchant-webhook-verification.md).
+This remains a sandbox foundation: it does not execute real payments or refunds
+and is not production ready.

@@ -15,7 +15,74 @@ tags:
   - name: Refunds
   - name: Dashboard
   - name: Ledger
+  - name: Developer API keys
+  - name: Merchant webhooks
 paths:
+  /developer/api-keys:
+    get:
+      tags: [Developer API keys]
+      security: [{ cookieSession: [] }]
+      operationId: listApiKeys
+      responses: { '200': { description: Safe key metadata; never includes secrets } }
+    post:
+      tags: [Developer API keys]
+      security: [{ cookieSession: [] }]
+      operationId: createApiKey
+      description: Creates a sandbox key. The complete secret appears in this response only.
+      responses: { '201': { description: Created key and one-time secret }, '422': { $ref: '#/components/responses/Error' } }
+  /developer/api-keys/{id}:
+    get:
+      tags: [Developer API keys]
+      security: [{ cookieSession: [] }]
+      operationId: getApiKey
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Safe key metadata }, '404': { $ref: '#/components/responses/Error' } }
+    delete:
+      tags: [Developer API keys]
+      security: [{ cookieSession: [] }]
+      operationId: revokeApiKey
+      description: Revokes rather than deletes the credential.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Revoked key metadata }, '404': { $ref: '#/components/responses/Error' } }
+  /developer/webhooks:
+    get:
+      tags: [Merchant webhooks]
+      security: [{ cookieSession: [] }]
+      operationId: listMerchantWebhooks
+      responses: { '200': { description: Merchant webhook endpoints with masked secrets } }
+    post:
+      tags: [Merchant webhooks]
+      security: [{ cookieSession: [] }]
+      operationId: createMerchantWebhook
+      description: Creates an HTTPS endpoint and returns its signing secret once.
+      responses: { '201': { description: Created endpoint and one-time signing secret }, '422': { $ref: '#/components/responses/Error' } }
+  /developer/webhooks/{id}:
+    get:
+      tags: [Merchant webhooks]
+      security: [{ cookieSession: [] }]
+      operationId: getMerchantWebhook
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Endpoint and recent delivery history }, '404': { $ref: '#/components/responses/Error' } }
+    patch:
+      tags: [Merchant webhooks]
+      security: [{ cookieSession: [] }]
+      operationId: updateMerchantWebhook
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Updated endpoint }, '404': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /developer/webhooks/{id}/rotate-secret:
+    post:
+      tags: [Merchant webhooks]
+      security: [{ cookieSession: [] }]
+      operationId: rotateMerchantWebhookSecret
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Rotated one-time signing secret }, '404': { $ref: '#/components/responses/Error' } }
+  /developer/webhook-deliveries/{id}/retry:
+    post:
+      tags: [Merchant webhooks]
+      security: [{ cookieSession: [] }]
+      operationId: retryMerchantWebhookDelivery
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Terminal failure requeued }, '404': { $ref: '#/components/responses/Error' } }
   /health:
     get:
       operationId: getHealth
@@ -387,6 +454,7 @@ paths:
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }
+    sandboxApiKey: { type: http, scheme: bearer, bearerFormat: gp_test_<identifier>_<secret> }
   parameters:
     Id: { name: id, in: path, required: true, schema: { type: string } }
     Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }

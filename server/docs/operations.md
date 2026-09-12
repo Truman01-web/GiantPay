@@ -37,3 +37,12 @@ Payment success, ledger posting, reconciliation, and settlement are distinct.
 The sandbox can demonstrate payment and accounting state only. It does not
 reconcile provider files, move funds, execute settlements, or prove that money
 was received.
+## Outbound webhook worker
+
+Set `OUTBOX_WORKER_ENABLED=true` to fan committed outbox events into endpoint
+deliveries and process them. Tune `WEBHOOK_DELIVERY_TIMEOUT_MS`,
+`WEBHOOK_MAX_RESPONSE_BYTES`, and `WEBHOOK_MAX_ATTEMPTS`. Production requires a
+dedicated `WEBHOOK_SECRET_KEY`, HTTPS-only mode, and network egress controls.
+Workers claim rows with `FOR UPDATE SKIP LOCKED`; stale five-minute claims are
+recoverable. Operators can inspect attempts without secrets or authorization
+headers, and authorized merchants can manually requeue terminal failures.

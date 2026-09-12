@@ -74,3 +74,10 @@ Truman can continue working in `src/` while George works in `server/`. Merge the
 ## Current state and next boundary
 
 This is a working backend foundation, not a licensed production payment gateway. The next implementation boundary is a provider interface backed by documented, approved integrations from commercial banks, mobile-money operators or an authorized switch. Regulatory reporting interfaces must be confirmed with the Reserve Bank of Malawi; they must not be inferred from public web pages.
+## Developer event delivery
+
+Business transactions write stable, deduplicated events to the existing
+PostgreSQL outbox. One worker fans each committed event out to matching active
+merchant endpoints; another claims deliveries safely and sends signed exact
+bytes. This separation preserves transaction consistency while allowing
+at-least-once retries, concurrency, and endpoint-specific history.

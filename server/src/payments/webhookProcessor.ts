@@ -106,6 +106,12 @@ export async function processPaymentWebhook(
          VALUES($1,NULL,$2,'PAYMENT_STATUS_CHANGED','payment',$3,$4)`,
         [newId('aud'), payment.merchant_id, payment.id, { provider, eventId: event.eventId, from: payment.status, to: event.status, journalEntryId: ledger?.entryId }],
       );
+      const outboundType = event.status === 'PROCESSING' ? 'payment.processing' : event.status === 'FAILED' ? 'payment.failed' : null;
+      if (outboundType) await client.query(
+        `INSERT INTO outbox_events(id,event_type,aggregate_type,aggregate_id,payload,deduplication_key)
+         VALUES($1,$2,'payment',$3,$4,$5) ON CONFLICT(deduplication_key) DO NOTHING`,
+        [newId('obx'),outboundType,payment.id,{merchantId:payment.merchant_id,paymentId:payment.id,paymentReference:payment.reference,status:event.status},`${outboundType}:${payment.id}:${event.eventId}`],
+      );
     }
 
     await client.query(
