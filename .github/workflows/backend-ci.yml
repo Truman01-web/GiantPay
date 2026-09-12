@@ -24,6 +24,12 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U giantpay_ci_test -d giantpay_ci_test"
           --health-interval 2s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 2s
+          --health-timeout 3s --health-retries 20
     env:
       TEST_DATABASE_URL: postgresql://giantpay_ci_test:ci_only_password@127.0.0.1:5432/giantpay_ci_test
       DATABASE_URL: postgresql://giantpay_ci_test:ci_only_password@127.0.0.1:5432/giantpay_ci_test
@@ -33,6 +39,8 @@ jobs:
       FRONTEND_ORIGIN: http://127.0.0.1:5173
       PAYMENT_PROVIDER: sandbox
       SANDBOX_WEBHOOK_SECRET: ci-test-webhook-secret-32-characters
+      TEST_REDIS_URL: redis://127.0.0.1:6379
+      REDIS_URL: redis://127.0.0.1:6379
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

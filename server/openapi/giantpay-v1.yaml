@@ -2,7 +2,11 @@ openapi: 3.1.0
 info:
   title: GiantPay API
   version: 0.1.0
-  description: Contract for the GiantPay backend foundation. Amounts are integer minor units. Sandbox only.
+  description: |
+    Contract for the GiantPay backend foundation. Amounts are integer minor units. Sandbox only.
+    Cookie-authenticated mutations require X-CSRF-Token; bearer API-key requests do not.
+    Credentialed browser requests are accepted only from the configured CORS origin.
+    Rate-limited responses include Retry-After, RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset.
 servers:
   - url: http://127.0.0.1:4000/v1
 tags:
@@ -29,7 +33,7 @@ paths:
       security: [{ cookieSession: [] }]
       operationId: createApiKey
       description: Creates a sandbox key. The complete secret appears in this response only.
-      responses: { '201': { description: Created key and one-time secret }, '422': { $ref: '#/components/responses/Error' } }
+      responses: { '201': { description: Created key and one-time secret }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /developer/api-keys/{id}:
     get:
       tags: [Developer API keys]
@@ -43,7 +47,7 @@ paths:
       operationId: revokeApiKey
       description: Revokes rather than deletes the credential.
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Revoked key metadata }, '404': { $ref: '#/components/responses/Error' } }
+      responses: { '200': { description: Revoked key metadata }, '404': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /developer/webhooks:
     get:
       tags: [Merchant webhooks]
@@ -55,7 +59,7 @@ paths:
       security: [{ cookieSession: [] }]
       operationId: createMerchantWebhook
       description: Creates an HTTPS endpoint and returns its signing secret once.
-      responses: { '201': { description: Created endpoint and one-time signing secret }, '422': { $ref: '#/components/responses/Error' } }
+      responses: { '201': { description: Created endpoint and one-time signing secret }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /developer/webhooks/{id}:
     get:
       tags: [Merchant webhooks]
@@ -115,6 +119,7 @@ paths:
             content: { application/json: { schema: { $ref: '#/components/schemas/Accepted' } } },
           }
         '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/login:
     post:
       tags: [Authentication]
@@ -128,6 +133,7 @@ paths:
         '200': { description: Authenticated; sets an HttpOnly session cookie }
         '401': { $ref: '#/components/responses/Error' }
         '423': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/session:
     get:
       tags: [Authentication]
@@ -143,6 +149,7 @@ paths:
       operationId: logout
       responses:
         '204': { description: Logged out }
+        '403': { $ref: '#/components/responses/Error' }
   /auth/email/verify:
     post:
       tags: [Authentication]
@@ -151,6 +158,22 @@ paths:
       responses:
         '200': { description: Verified }
         '400': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/email/verification-request:
+    post:
+      tags: [Authentication]
+      operationId: requestEmailVerification
+      responses:
+        '202': { description: Accepted without disclosing account state }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/mfa/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyMfa
+      description: Generic failure is returned until the production MFA provider is implemented.
+      responses:
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/password/forgot:
     post:
       tags: [Authentication]
@@ -494,6 +517,14 @@ components:
             },
         }
   responses:
+    TooManyRequests:
+      description: The applicable IP, identity, user, merchant, or API-key bucket is exhausted
+      headers:
+        Retry-After: { schema: { type: integer, minimum: 1 } }
+        RateLimit-Limit: { schema: { type: integer, minimum: 1 } }
+        RateLimit-Remaining: { schema: { type: integer, minimum: 0 } }
+        RateLimit-Reset: { schema: { type: integer, minimum: 1 } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     Error:
       description: Normalized error response
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }

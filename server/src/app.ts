@@ -4,12 +4,14 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import argon2 from 'argon2';
+import { timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { z, ZodError } from 'zod';
 import type { Db } from './db.js';
 import { transaction } from './db.js';
 import type { Config } from './config.js';
 import { apiError, authenticate, authenticateSessionOrApiKey, newId, newToken, requirePermission, SESSION_COOKIE, tokenHash } from './security.js';
+import { MemoryRateLimitStore, rateLimit, type RateLimitStore } from './rateLimit.js';
 import { registerDeveloperRoutes } from './developer/routes.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
 import { createPaymentProvider } from './providers/index.js';
@@ -23,6 +25,7 @@ declare module 'fastify' {
 }
 
 class WebhookBodyTooLargeError extends Error {}
+const DUMMY_PASSWORD_HASH='$argon2id$v=19$m=65536,t=3,p=4$QA+ranBBtfurTEAhsgAHlw$ZTuNYj8EHUqIg6tnC8L8ciedsOGjeBTM5gakEiJNUE8';
 
 const pageSchema = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(20) });
 const idempotencySchema = z.string().min(8).max(128);
@@ -53,14 +56,31 @@ function refund(row: any) {
     createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
-export async function buildApp(config: Config, db: Db, provider: PaymentProvider = createPaymentProvider(config), workersReady:()=>boolean=()=>true) {
-  const app = Fastify({ logger: config.NODE_ENV !== 'test', trustProxy: true, bodyLimit: 1024 * 1024, genReqId: (req) => String(req.headers['x-request-id'] ?? newId('req')) });
+export async function buildApp(config: Config, db: Db, provider: PaymentProvider = createPaymentProvider(config), workersReady:()=>boolean=()=>true, suppliedRateLimits?:RateLimitStore) {
+  if(config.NODE_ENV==='production'&&!suppliedRateLimits)throw new Error('A distributed rate-limit store is required in production');
+  const rateLimits=suppliedRateLimits??new MemoryRateLimitStore();
+  const trustedProxies=config.TRUSTED_PROXIES.split(',').map(v=>v.trim()).filter(Boolean);
+  const app = Fastify({
+    logger: config.NODE_ENV === 'test' ? false : {redact:{paths:['req.headers.authorization','req.headers.cookie','res.headers.set-cookie','password','*.password','*.token','*.secret','*.code','config.DATABASE_URL','config.REDIS_URL'],censor:'[REDACTED]'}},
+    trustProxy: trustedProxies.length?trustedProxies:false, bodyLimit: 1024 * 1024,
+    genReqId: (req) => {const value=req.headers['x-request-id'];return typeof value==='string'&&/^[A-Za-z0-9._-]{1,100}$/.test(value)?value:newId('req');},
+  });
   await app.register(cookie, { secret: config.COOKIE_SECRET });
   await app.register(cors, { origin: config.FRONTEND_ORIGIN, credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'] });
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, { contentSecurityPolicy:{directives:{defaultSrc:["'none'"],frameAncestors:["'none'"]}},hsts:config.NODE_ENV==='production'?{maxAge:31536000,includeSubDomains:true}:false,referrerPolicy:{policy:'no-referrer'} });
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
   app.decorateRequest('actor', null);
   app.decorateRequest('rawWebhookBody', undefined);
+  app.addHook('onClose',async()=>{await rateLimits.close();});
+  const clientIp=(request:import('fastify').FastifyRequest)=>request.ip;
+  app.addHook('onRequest',async(request,reply)=>{if(['POST','PUT','PATCH'].includes(request.method)&&(request.headers['content-length']||request.headers['transfer-encoding'])){const type=String(request.headers['content-type']??'').split(';')[0]??'';if(type!=='application/json'&&!type.startsWith('multipart/form-data'))return reply.code(415).send(apiError(request,'UNSUPPORTED_MEDIA_TYPE','Use a supported request content type.'));}});
+  app.addHook('onRequest',async(request,reply)=>rateLimit(rateLimits,config,request.url.startsWith('/v1/health')?'health':'general',request.url.startsWith('/v1/health')?120:config.RATE_LIMIT_GENERAL_MAX,config.RATE_LIMIT_GENERAL_WINDOW_SECONDS,clientIp,false)(request,reply));
+  app.addHook('preHandler',async(request,reply)=>{
+    if(!['POST','PUT','PATCH','DELETE'].includes(request.method)||request.headers.authorization||!request.cookies[SESSION_COOKIE])return;
+    const origin=request.headers.origin;if(origin!==config.FRONTEND_ORIGIN)return reply.code(403).send(apiError(request,'ORIGIN_REJECTED','Request origin is not allowed.'));
+    const cookie=request.cookies.giantpay_csrf,header=request.headers['x-csrf-token'];
+    if(!cookie||typeof header!=='string'||cookie.length!==header.length||!timingSafeEqual(Buffer.from(cookie),Buffer.from(header)))return reply.code(403).send(apiError(request,'CSRF_REJECTED','A valid CSRF token is required.'));
+  });
   app.addHook('preParsing', async (request, _reply, payload) => {
     if (request.url.split('?')[0] !== '/v1/webhooks/providers/sandbox') return payload;
     const chunks: Buffer[] = [];
@@ -92,16 +112,17 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
 
   app.get('/v1/health/live', async () => ({ status: 'alive' }));
   app.get('/v1/health/ready', async (_request, reply) => {
-    try { await db.query('SELECT 1'); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ready' }; }
+    try { await Promise.all([db.query('SELECT 1'),rateLimits.ping()]); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ready' }; }
     catch { return reply.code(503).send({ status: 'unavailable' }); }
   });
   app.get('/v1/health', async (_request, reply) => {
-    try { await db.query('SELECT 1'); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ok' }; }
+    try { await Promise.all([db.query('SELECT 1'),rateLimits.ping()]); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ok' }; }
     catch { return reply.code(503).send({ status: 'unavailable' }); }
   });
 
   const registerSchema = z.object({ businessName: z.string().trim().min(2), email: z.email(), password: z.string().min(12), phone: z.string().regex(/^\+265[0-9]{9}$/) });
-  app.post('/v1/auth/register', async (request, reply) => {
+  const registrationLimits=[rateLimit(rateLimits,config,'registration:ip',5,3600,clientIp)];
+  app.post('/v1/auth/register', {preHandler:registrationLimits}, async (request, reply) => {
     const body = registerSchema.parse(request.body);
     const exists = await db.query('SELECT 1 FROM users WHERE lower(email)=lower($1)', [body.email]);
     if (exists.rowCount) return reply.code(202).send({ accepted: true });
@@ -113,32 +134,38 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
     });
     return reply.code(202).send({ accepted: true });
   });
-  app.post('/v1/auth/login', async (request, reply) => {
+  const loginIp=rateLimit(rateLimits,config,'login:ip',10,900,clientIp),loginIdentity=rateLimit(rateLimits,config,'login:identity',5,900,r=>String((r.body as any)?.email??''));
+  app.post('/v1/auth/login',{preHandler:[loginIp,loginIdentity]}, async (request, reply) => {
     const body = z.object({ email: z.email(), password: z.string().min(1), remember: z.boolean().optional() }).parse(request.body);
     const found = await db.query(`SELECT u.*,m.name merchant_name,m.environment FROM users u LEFT JOIN merchants m ON m.id=u.merchant_id WHERE lower(email)=lower($1)`, [body.email]);
     const user = found.rows[0];
-    if (!user || (user.locked_until && new Date(user.locked_until) > new Date()) || !(await argon2.verify(user.password_hash, body.password + config.PASSWORD_PEPPER))) {
-      if (user) await db.query(`UPDATE users SET failed_logins=failed_logins+1, locked_until=CASE WHEN failed_logins>=4 THEN now()+interval '15 minutes' ELSE locked_until END WHERE id=$1`, [user.id]);
-      return reply.code(user?.locked_until ? 423 : 401).send(apiError(request, 'INVALID_CREDENTIALS', 'That email or password is incorrect.'));
+    const passwordValid=await argon2.verify(user?.password_hash??DUMMY_PASSWORD_HASH,body.password+config.PASSWORD_PEPPER);
+    if (!user || (user.locked_until && new Date(user.locked_until) > new Date()) || !passwordValid) {
+      return reply.code(401).send(apiError(request, 'INVALID_CREDENTIALS', 'That email or password is incorrect.'));
     }
     await db.query('UPDATE users SET failed_logins=0,locked_until=NULL WHERE id=$1', [user.id]);
-    const token = newToken(); const hours = body.remember ? Math.min(config.SESSION_TTL_HOURS * 30, 720) : config.SESSION_TTL_HOURS;
-    await db.query(`INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+($3 || ' hours')::interval)`, [tokenHash(token),user.id,String(hours)]);
-    reply.setCookie(SESSION_COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure: config.NODE_ENV === 'production', maxAge: hours * 3600 });
+    const token = newToken(),csrfToken=newToken(); const hours = body.remember ? Math.min(config.SESSION_TTL_HOURS * 30, config.SESSION_ABSOLUTE_HOURS) : Math.min(config.SESSION_TTL_HOURS,config.SESSION_ABSOLUTE_HOURS);
+    await db.query(`DELETE FROM sessions WHERE user_id=$1`,[user.id]);
+    await db.query(`INSERT INTO sessions(token_hash,user_id,expires_at,absolute_expires_at,last_seen_at) VALUES($1,$2,now()+($3 || ' hours')::interval,now()+($4 || ' hours')::interval,now())`, [tokenHash(token),user.id,String(hours),String(config.SESSION_ABSOLUTE_HOURS)]);
+    const secure=config.NODE_ENV==='production'||config.COOKIE_SECURE===true;
+    reply.setCookie(SESSION_COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure, maxAge: hours * 3600 });
+    reply.setCookie('giantpay_csrf',csrfToken,{path:'/',httpOnly:false,sameSite:'strict',secure,maxAge:hours*3600});
     const actor = { id:user.id,merchantId:user.merchant_id,name:user.name,email:user.email,role:user.role,permissions:user.permissions,mfaEnabled:user.mfa_enabled,merchantName:user.merchant_name,environment:user.environment ?? 'production' } as const;
-    return { status: 'AUTHENTICATED', session: session(actor) };
+    return { status: 'AUTHENTICATED', session: session(actor),csrfToken };
   });
-  app.get('/v1/auth/session', { preHandler: [authenticate.bind(null, db)] }, async (request) => ({ session: session(request.actor!) }));
+  app.get('/v1/auth/session', { preHandler: [authenticate.bind(null, db,config)] }, async (request) => ({ session: session(request.actor!) }));
   app.post('/v1/auth/logout', async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE]; if (token) await db.query('DELETE FROM sessions WHERE token_hash=$1',[tokenHash(token)]);
-    reply.clearCookie(SESSION_COOKIE,{path:'/'}).code(204).send();
+    reply.clearCookie(SESSION_COOKIE,{path:'/'}).clearCookie('giantpay_csrf',{path:'/'}).code(204).send();
   });
-  app.post('/v1/auth/password/forgot', async (_request, reply) => reply.code(202).send({ accepted: true }));
-  app.post('/v1/auth/password/reset', async (request) => { z.object({token:z.string().min(1),password:z.string().min(12)}).parse(request.body); return {accepted:true}; });
-  app.post('/v1/auth/email/verify', async (request) => { z.object({token:z.string().min(1)}).parse(request.body); return {verified:true}; });
+  app.post('/v1/auth/password/forgot',{preHandler:[rateLimit(rateLimits,config,'password-forgot:ip',5,3600,clientIp),rateLimit(rateLimits,config,'password-forgot:identity',3,3600,r=>String((r.body as any)?.email??''))]}, async (_request, reply) => reply.code(202).send({ accepted: true }));
+  app.post('/v1/auth/password/reset',{preHandler:[rateLimit(rateLimits,config,'password-reset:ip',5,3600,clientIp)]}, async (request) => { z.object({token:z.string().min(1),password:z.string().min(12)}).parse(request.body); return {accepted:true}; });
+  app.post('/v1/auth/mfa/verify',{preHandler:[rateLimit(rateLimits,config,'mfa:ip',10,900,clientIp),rateLimit(rateLimits,config,'mfa:challenge',5,900,r=>String((r.body as any)?.challengeId??''))]},async(request,reply)=>{z.object({challengeId:z.string().min(1),code:z.string().min(1)}).parse(request.body);return reply.code(401).send(apiError(request,'INVALID_CHALLENGE','Verification failed.'));});
+  app.post('/v1/auth/email/verification-request',{preHandler:[rateLimit(rateLimits,config,'email-verification-request:ip',5,3600,clientIp)]},async(_request,reply)=>reply.code(202).send({accepted:true}));
+  app.post('/v1/auth/email/verify',{preHandler:[rateLimit(rateLimits,config,'email-verify:ip',10,3600,clientIp)]}, async (request) => { z.object({token:z.string().min(1)}).parse(request.body); return {verified:true}; });
 
-  const auth = authenticateSessionOrApiKey(db, config.PASSWORD_PEPPER);
-  await registerDeveloperRoutes(app,config,db);
+  const auth = authenticateSessionOrApiKey(db, config.PASSWORD_PEPPER,rateLimits,config);
+  await registerDeveloperRoutes(app,config,db,rateLimits);
   app.get('/v1/merchants/onboarding', { preHandler: [auth] }, async (request) => (await db.query('SELECT onboarding FROM merchants WHERE id=$1',[request.actor!.merchantId])).rows[0]?.onboarding);
   app.patch('/v1/merchants/onboarding', { preHandler: [auth] }, async (request, reply) => {
     const current = await db.query('SELECT onboarding FROM merchants WHERE id=$1 FOR UPDATE',[request.actor!.merchantId]);

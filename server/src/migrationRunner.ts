@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import type { Db } from './db.js';
 import { transaction } from './db.js';
 
-export const EXPECTED_MIGRATIONS=['001_initial.sql','002_refund_decisions.sql','003_refund_decider.sql','004_provider_webhooks.sql','005_ledger_outbox.sql','006_developer_platform.sql'] as const;
+export const EXPECTED_MIGRATIONS=['001_initial.sql','002_refund_decisions.sql','003_refund_decider.sql','004_provider_webhooks.sql','005_ledger_outbox.sql','006_developer_platform.sql','007_security_hardening.sql'] as const;
 
 export async function applyMigrations(db:Db,directory=resolve('migrations')) {
   const names=(await readdir(directory)).filter(x=>x.endsWith('.sql')).sort();

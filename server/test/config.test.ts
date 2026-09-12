@@ -16,6 +16,6 @@ describe('configuration safety', () => {
   });
 
   it('blocks sandbox in production', () => {
-    expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/forbidden/i);
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', WEBHOOK_SECRET_KEY:'k'.repeat(32), REDIS_URL:'rediss://cache.invalid', TRUSTED_PROXIES:'10.0.0.1', FRONTEND_ORIGIN:'https://app.invalid', COOKIE_SECURE:'true' })).toThrow(/forbidden/i);
   });
 });

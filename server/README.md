@@ -15,6 +15,10 @@ npm run dev
 Real-money execution, reconciliation, settlement, MFA and regulatory reporting
 remain production stop conditions.
 
+Security, Redis, trusted-proxy, CSRF, cookie, and browser integration requirements are
+documented in [docs/security-hardening.md](docs/security-hardening.md). Production uses
+Redis as the distributed rate-limit authority and will not fall back to process memory.
+
 ## Toolchain and verification
 
 Use Node 22.19.0 (Node 20.19+ is also supported) and pnpm 10.17.1. The root
