@@ -53,7 +53,7 @@ function refund(row: any) {
     createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
-export async function buildApp(config: Config, db: Db, provider: PaymentProvider = createPaymentProvider(config)) {
+export async function buildApp(config: Config, db: Db, provider: PaymentProvider = createPaymentProvider(config), workersReady:()=>boolean=()=>true) {
   const app = Fastify({ logger: config.NODE_ENV !== 'test', trustProxy: true, bodyLimit: 1024 * 1024, genReqId: (req) => String(req.headers['x-request-id'] ?? newId('req')) });
   await app.register(cookie, { secret: config.COOKIE_SECRET });
   await app.register(cors, { origin: config.FRONTEND_ORIGIN, credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'] });
@@ -90,8 +90,13 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
     return reply.code(500).send(apiError(request, 'INTERNAL_ERROR', 'Something went wrong.'));
   });
 
+  app.get('/v1/health/live', async () => ({ status: 'alive' }));
+  app.get('/v1/health/ready', async (_request, reply) => {
+    try { await db.query('SELECT 1'); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ready' }; }
+    catch { return reply.code(503).send({ status: 'unavailable' }); }
+  });
   app.get('/v1/health', async (_request, reply) => {
-    try { await db.query('SELECT 1'); return { status: 'ok' }; }
+    try { await db.query('SELECT 1'); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ok' }; }
     catch { return reply.code(503).send({ status: 'unavailable' }); }
   });
 

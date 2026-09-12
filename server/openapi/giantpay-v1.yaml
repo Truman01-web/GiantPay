@@ -89,6 +89,16 @@ paths:
       responses:
         '200': { description: Healthy }
         '503': { $ref: '#/components/responses/Error' }
+  /health/live:
+    get:
+      operationId: getLiveness
+      responses: { '200': { description: Process is alive } }
+  /health/ready:
+    get:
+      operationId: getReadiness
+      responses:
+        '200': { description: Database and essential workers are ready }
+        '503': { description: A required dependency is unavailable }
   /auth/register:
     post:
       tags: [Authentication]
