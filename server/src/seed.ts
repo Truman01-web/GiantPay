@@ -7,6 +7,7 @@ const db = createDb(config.DATABASE_URL);
 const permissions = [
   'payments:read', 'payments.links:manage', 'payments.refunds:request', 'payments.refunds:approve',
   'settlements:read', 'reconciliation:read', 'reconciliation:manage', 'reports:read',
+  'ledger:read',
   'developer.apiKeys:manage', 'developer.webhooks:manage', 'team:manage', 'roles:manage',
   'settings:manage', 'support:read', 'support:manage', 'compliance:read',
 ];
@@ -28,6 +29,12 @@ try {
      VALUES('usr_owner_01','mch_kambaza','Chikondi Banda','chikondi.banda@kambazapay.mw',$1,'OWNER',$2,false)
      ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, permissions=excluded.permissions`,
     [passwordHash, permissions],
+  );
+  await db.query(
+    `INSERT INTO users(id,merchant_id,name,email,password_hash,role,permissions,mfa_enabled)
+     VALUES('usr_platform_admin_01',NULL,'Esther Kaunda','admin@giantpay.mw',$1,'PLATFORM_ADMIN',$2,false)
+     ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, permissions=excluded.permissions`,
+    [passwordHash, ['admin.merchants:review', 'admin.refunds:approve', 'admin.platform:manage']],
   );
   await db.query(
     `INSERT INTO payment_links(id,merchant_id,token,name,mode,amount_minor,currency,description,customer_reference,status,reusable,max_successful_payments,expires_at)
