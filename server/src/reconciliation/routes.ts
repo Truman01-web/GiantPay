@@ -424,7 +424,7 @@ export async function registerReconciliationRoutes(
   app.post('/v1/settlements', { preHandler: settleWrite }, async (r, p) => {
     const b = period.pick({ currency: true, periodStart: true, periodEnd: true }).parse(r.body),
       key = z.string().min(8).max(128).parse(r.headers['idempotency-key']);
-    return transaction(db, async (c) => {
+    const response = await transaction(db, async (c) => {
       await c.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
         `${r.actor!.merchantId}:${b.currency}:${b.periodStart}:${b.periodEnd}`,
       ]);
@@ -433,8 +433,10 @@ export async function registerReconciliationRoutes(
         [r.actor!.merchantId, b.currency, b.periodStart, b.periodEnd],
       );
       if (!reconciliation.rowCount) {
-        p.code(422);
-        return apiError(r, 'NOT_RECONCILED', 'The period is not fully reconciled.');
+        return {
+          statusCode: 422,
+          body: apiError(r, 'NOT_RECONCILED', 'The period is not fully reconciled.'),
+        };
       }
       const totals = (
           await c.query(
@@ -473,20 +475,23 @@ export async function registerReconciliationRoutes(
           `INSERT INTO settlement_batches(id,merchant_id,currency,period_start,period_end,gross_minor,refunds_minor,fees_minor,net_minor,input_snapshot,input_sha256,created_by,idempotency_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(merchant_id,idempotency_key) DO UPDATE SET idempotency_key=excluded.idempotency_key RETURNING *`,
           values,
         );
-        p.code(201);
-        return viewBatch(created.rows[0]);
+        return { statusCode: 201, body: viewBatch(created.rows[0]) };
       } catch (e: any) {
         if (e.code === '23505') {
-          p.code(409);
-          return apiError(
-            r,
-            'DUPLICATE_SETTLEMENT',
-            'This merchant period and currency already has a settlement.',
-          );
+          return {
+            statusCode: 409,
+            body: apiError(
+              r,
+              'DUPLICATE_SETTLEMENT',
+              'This merchant period and currency already has a settlement.',
+            ),
+          };
         }
         throw e;
       }
     });
+    p.code(response.statusCode);
+    return response.body;
   });
   app.get('/v1/settlements', { preHandler: settleRead }, async (r) => {
     const q = page.parse(r.query),
