@@ -24,6 +24,8 @@ tags:
   - name: Reconciliation
   - name: Ledger integrity
   - name: Sandbox settlements
+  - name: Operational reports
+  - name: Audit evidence
 paths:
   /developer/api-keys:
     get:
@@ -611,6 +613,82 @@ paths:
       description: Produces a formula-safe sandbox CSV and audit record. It does not execute a transfer.
       parameters: [{ $ref: '#/components/parameters/Id' }]
       responses: { '200': { description: Deterministic sandbox CSV }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reports/summary:
+    get:
+      tags: [Operational reports]
+      operationId: getOperationalReportSummary
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      description: Tenant- and currency-scoped sandbox operational totals. Periods are UTC, must be positive, and cannot exceed 93 days. Amounts are integer minor-unit strings. These records are not bank, provider, tax, or regulatory statements.
+      parameters:
+        - { name: reportType, in: query, required: true, schema: { $ref: '#/components/schemas/ReportType' } }
+        - { name: currency, in: query, required: true, schema: { type: string, enum: [MWK, USD] } }
+        - { name: periodStart, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: periodEnd, in: query, required: true, schema: { type: string, format: date-time } }
+      responses: { '200': { description: Sandbox operational summary }, '403': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /report-exports:
+    get:
+      tags: [Operational reports]
+      operationId: listOperationalReportExports
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      description: Lists only the authenticated merchant's exports with bounded pagination.
+      responses: { '200': { description: Tenant-scoped export page } }
+    post:
+      tags: [Operational reports]
+      operationId: createOperationalReportExport
+      security: [{ cookieSession: [] }]
+      description: Creates a completed deterministic CSV sandbox record. Browser-session actors with reports:export only. Idempotency-Key is required; identical retries return the durable export, changed payloads conflict. Maximum 93 days and 10000 rows; results are never truncated. Stable errors include UNSUPPORTED_REPORT_TYPE, UNSUPPORTED_CURRENCY, INVALID_REPORTING_PERIOD, REPORTING_RANGE_EXCEEDED, REPORT_ROW_LIMIT_EXCEEDED, REPORT_IDEMPOTENCY_CONFLICT, and REPORT_EXPORT_GENERATION_FAILED.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportType, currency, periodStart, periodEnd]
+              properties:
+                reportType: { $ref: '#/components/schemas/ReportType' }
+                currency: { type: string, enum: [MWK, USD] }
+                periodStart: { type: string, format: date-time }
+                periodEnd: { type: string, format: date-time }
+      responses: { '201': { description: Durable immutable sandbox export }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /report-exports/{id}:
+    get:
+      tags: [Operational reports]
+      operationId: getOperationalReportExport
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Export metadata and SHA-256 hashes }, '404': { $ref: '#/components/responses/Error' } }
+  /report-exports/{id}/download:
+    get:
+      tags: [Operational reports]
+      operationId: downloadOperationalReportExport
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      description: Downloads deterministic formula-neutralized CSV and records one audit event per successful download. Cross-merchant requests return 404.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: GiantPay sandbox operational CSV; not a bank, provider, tax, or regulatory statement
+          headers:
+            Content-Disposition: { schema: { type: string }, description: Sanitized report-type and opaque-export-ID filename }
+            X-Content-Type-Options: { schema: { type: string, const: nosniff } }
+          content: { text/csv: { schema: { type: string } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /audit-events:
+    get:
+      tags: [Audit evidence]
+      operationId: listMerchantAuditEvents
+      security: [{ cookieSession: [] }]
+      description: Browser-session-only, tenant-scoped append-only operational evidence. Metadata is recursively stripped of credentials, secrets, authorization data, and internal errors.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: resourceType, in: query, schema: { type: string } }
+        - { name: actorId, in: query, schema: { type: string } }
+        - { name: periodStart, in: query, schema: { type: string, format: date-time } }
+        - { name: periodEnd, in: query, schema: { type: string, format: date-time } }
+      responses: { '200': { description: Tenant-scoped audit page }, '403': { $ref: '#/components/responses/Error' } }
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }
@@ -656,6 +734,9 @@ components:
       description: Normalized error response
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   schemas:
+    ReportType:
+      type: string
+      enum: [TRANSACTION_ACTIVITY, REFUND_ACTIVITY, PLATFORM_FEES, MERCHANT_LEDGER, RECONCILIATION_RESULTS, SANDBOX_SETTLEMENT_SUMMARIES]
     Accepted: { type: object, required: [accepted], properties: { accepted: { const: true } } }
     Money:
       {

@@ -14,6 +14,7 @@ import { apiError, authenticate, authenticateSessionOrApiKey, newId, newToken, r
 import { MemoryRateLimitStore, rateLimit, type RateLimitStore } from './rateLimit.js';
 import { registerReconciliationRoutes } from './reconciliation/routes.js';
 import { registerDeveloperRoutes } from './developer/routes.js';
+import { registerReportingRoutes } from './reporting/routes.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
 import { createPaymentProvider } from './providers/index.js';
 import type { PaymentProvider } from './providers/types.js';
@@ -171,6 +172,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   const auth = authenticateSessionOrApiKey(db, config.PASSWORD_PEPPER,rateLimits,config);
   await registerDeveloperRoutes(app,config,db,rateLimits);
   await registerReconciliationRoutes(app,config,db,rateLimits);
+  await registerReportingRoutes(app,config,db,rateLimits);
   app.get('/v1/merchants/onboarding', { preHandler: [auth] }, async (request) => (await db.query('SELECT onboarding FROM merchants WHERE id=$1',[request.actor!.merchantId])).rows[0]?.onboarding);
   app.patch('/v1/merchants/onboarding', { preHandler: [auth] }, async (request, reply) => {
     const current = await db.query('SELECT onboarding FROM merchants WHERE id=$1 FOR UPDATE',[request.actor!.merchantId]);

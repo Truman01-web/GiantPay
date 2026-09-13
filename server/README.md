@@ -24,6 +24,10 @@ adjustments, and maker-checker settlement exports are documented in
 [docs/reconciliation-settlement.md](docs/reconciliation-settlement.md). Exports never
 execute or represent an external payout.
 
+Tenant-isolated merchant summaries, immutable operational CSV exports, and redacted
+audit evidence are documented in [docs/reporting-operations.md](docs/reporting-operations.md).
+They are sandbox operational records, not bank, provider, tax, or regulatory statements.
+
 ## Toolchain and verification
 
 Use Node 22.19.0 (Node 20.19+ is also supported) and pnpm 10.17.1. The root
