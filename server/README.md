@@ -28,6 +28,9 @@ Tenant-isolated merchant summaries, immutable operational CSV exports, and redac
 audit evidence are documented in [docs/reporting-operations.md](docs/reporting-operations.md).
 They are sandbox operational records, not bank, provider, tax, or regulatory statements.
 
+Merchant teams, database-backed roles, invitations, authenticator-app MFA, recovery,
+and session controls are documented in [docs/team-access-security.md](docs/team-access-security.md).
+
 ## Toolchain and verification
 
 Use Node 22.19.0 (Node 20.19+ is also supported) and pnpm 10.17.1. The root

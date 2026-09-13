@@ -24,11 +24,12 @@ export async function authenticate(db: Db, config:Config, request: FastifyReques
   const token = request.cookies[SESSION_COOKIE];
   if (!token) return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Sign in is required.'));
   const result = await db.query(
-    `SELECT u.id, u.merchant_id, u.name, u.email, u.role, u.permissions, u.mfa_enabled,
+    `SELECT u.id, u.merchant_id, u.name, u.email,coalesce(mr.name,u.role) role,coalesce(mr.permissions,u.permissions) permissions, u.mfa_enabled,
             m.name merchant_name, coalesce(m.environment,'production') environment
        FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN merchants m ON m.id=u.merchant_id
+       LEFT JOIN user_role_assignments ura ON ura.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=ura.role_id AND mr.merchant_id=u.merchant_id
       WHERE s.token_hash=$1 AND s.expires_at > now() AND s.absolute_expires_at > now()
-        AND s.last_seen_at > now()-($2 || ' minutes')::interval`, [tokenHash(token),String(config.SESSION_IDLE_MINUTES)],
+        AND s.revoked_at IS NULL AND u.status='ACTIVE' AND s.last_seen_at > now()-($2 || ' minutes')::interval`, [tokenHash(token),String(config.SESSION_IDLE_MINUTES)],
   );
   if (!result.rowCount) return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Your session has expired.'));
   await db.query('UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1',[tokenHash(token)]);
@@ -59,6 +60,7 @@ export function requireSession(request: FastifyRequest, reply: FastifyReply) {
 
 export function requirePermission(permission: string) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
+    if (reply.sent) return;
     if (!request.actor?.permissions.includes(permission)) {
       return reply.code(403).send(apiError(request, 'FORBIDDEN', 'You do not have permission to perform this action.'));
     }

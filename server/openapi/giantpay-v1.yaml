@@ -26,6 +26,8 @@ tags:
   - name: Sandbox settlements
   - name: Operational reports
   - name: Audit evidence
+  - name: Team access
+  - name: Account security
 paths:
   /developer/api-keys:
     get:
@@ -689,6 +691,52 @@ paths:
         - { name: periodStart, in: query, schema: { type: string, format: date-time } }
         - { name: periodEnd, in: query, schema: { type: string, format: date-time } }
       responses: { '200': { description: Tenant-scoped audit page }, '403': { $ref: '#/components/responses/Error' } }
+  /team/members:
+    get: { tags: [Team access], operationId: listTeamMembers, security: [{ cookieSession: [] }], description: Tenant-scoped members; requires team:read and rejects API keys., responses: { '200': { description: Bounded member page }, '403': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}:
+    get: { tags: [Team access], operationId: getTeamMember, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Safe member metadata }, '404': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/role:
+    patch: { tags: [Team access], operationId: changeTeamMemberRole, security: [{ cookieSession: [] }], description: Requires team:manage; final-owner protection is transactional., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Role changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/suspend:
+    post: { tags: [Team access], operationId: suspendTeamMember, security: [{ cookieSession: [] }], description: Revokes all sessions and protects the final owner., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Suspended }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/reactivate:
+    post: { tags: [Team access], operationId: reactivateTeamMember, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Reactivated }, '404': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/remove:
+    post: { tags: [Team access], operationId: removeTeamMember, security: [{ cookieSession: [] }], description: Removes merchant access without deleting financial or audit records., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Removed }, '409': { $ref: '#/components/responses/Error' } } }
+  /team/invitations:
+    get: { tags: [Team access], operationId: listTeamInvitations, security: [{ cookieSession: [] }], responses: { '200': { description: Pending tenant invitations without token hashes } } }
+    post: { tags: [Team access], operationId: createTeamInvitation, security: [{ cookieSession: [] }], description: Creates a 72-hour hashed invitation and encrypted sandbox outbox delivery. Full delivery material is returned once., responses: { '201': { description: Invitation and one-time delivery token }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /team/invitations/{id}/cancel:
+    post: { tags: [Team access], operationId: cancelTeamInvitation, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Durably cancelled }, '404': { $ref: '#/components/responses/Error' } } }
+  /team/invitations/{id}/resend:
+    post: { tags: [Team access], operationId: resendTeamInvitation, security: [{ cookieSession: [] }], description: "Rotates the token hash, refreshes the 72-hour expiry, and queues one encrypted delivery.", parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Rotated invitation and one-time delivery token }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /team/invitations/accept:
+    post: { tags: [Team access], operationId: acceptTeamInvitation, description: "Atomically validates a hashed single-use token and normalized email identity, activates membership, and assigns the role.", responses: { '200': { description: Invitation accepted }, '403': { $ref: '#/components/responses/Error' }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' }, '410': { $ref: '#/components/responses/Error' } } }
+  /roles:
+    get: { tags: [Team access], operationId: listMerchantRoles, security: [{ cookieSession: [] }], responses: { '200': { description: Current database-backed roles and explicit permissions } } }
+    post: { tags: [Team access], operationId: createMerchantRole, security: [{ cookieSession: [] }], description: Unknown permissions and permission escalation are rejected., responses: { '201': { description: Custom role }, '422': { $ref: '#/components/responses/Error' } } }
+  /roles/{id}:
+    patch: { tags: [Team access], operationId: updateMerchantRole, security: [{ cookieSession: [] }], description: Updates a locked custom role; system roles are protected., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Updated role }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /roles/{id}/archive:
+    post: { tags: [Team access], operationId: archiveMerchantRole, security: [{ cookieSession: [] }], description: Archives an unassigned custom role; system and assigned roles are protected., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Archived }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/enrollment:
+    post: { tags: [Account security], operationId: beginMfaEnrollment, security: [{ cookieSession: [] }], description: Returns an authenticator secret once; only encrypted secret material is stored., responses: { '200': { description: Controlled enrollment material }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /auth/mfa/recovery:
+    post: { tags: [Account security], operationId: completeMfaWithRecoveryCode, description: Consumes one hashed recovery code under a row lock and completes one valid login challenge., responses: { '200': { description: Authenticated session }, '401': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /security/mfa/enrollment/verify:
+    post: { tags: [Account security], operationId: verifyMfaEnrollment, security: [{ cookieSession: [] }], description: Activates TOTP and returns recovery codes once., responses: { '200': { description: One-time recovery codes }, '401': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/recovery-codes/regenerate:
+    post: { tags: [Account security], operationId: regenerateRecoveryCodes, security: [{ cookieSession: [] }], description: Invalidates all prior codes and requires MFA within ten minutes., responses: { '200': { description: New one-time codes }, '403': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/disable:
+    post: { tags: [Account security], operationId: disableMfa, security: [{ cookieSession: [] }], description: Requires MFA verification within ten minutes., responses: { '200': { description: MFA disabled }, '403': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/step-up:
+    post: { tags: [Account security], operationId: verifyMfaStepUp, security: [{ cookieSession: [] }], description: Verifies TOTP or a recovery factor for only the current human session; success is valid for ten minutes., responses: { '200': { description: Recent MFA recorded }, '401': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /sessions:
+    get: { tags: [Account security], operationId: listOwnSessions, security: [{ cookieSession: [] }], description: Returns opaque IDs and safe timestamps only., responses: { '200': { description: Active sessions } } }
+  /sessions/{id}:
+    delete: { tags: [Account security], operationId: revokeOwnSession, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Session revoked }, '404': { $ref: '#/components/responses/Error' } } }
+  /sessions/revoke-others:
+    post: { tags: [Account security], operationId: revokeOtherSessions, security: [{ cookieSession: [] }], responses: { '200': { description: All sessions except current revoked } } }
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }

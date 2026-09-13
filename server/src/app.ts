@@ -15,12 +15,15 @@ import { MemoryRateLimitStore, rateLimit, type RateLimitStore } from './rateLimi
 import { registerReconciliationRoutes } from './reconciliation/routes.js';
 import { registerDeveloperRoutes } from './developer/routes.js';
 import { registerReportingRoutes } from './reporting/routes.js';
+import { registerTeamRoutes } from './team/routes.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
 import { createPaymentProvider } from './providers/index.js';
 import type { PaymentProvider } from './providers/types.js';
 import { WebhookVerificationError } from './providers/sandboxProvider.js';
 import { processPaymentWebhook } from './payments/webhookProcessor.js';
 import { LedgerError } from './ledger/ledgerService.js';
+import { decryptSecret,encryptSecret } from './developer/webhookSecurity.js';
+import { PERMISSIONS,verifyTotp } from './team/security.js';
 
 declare module 'fastify' {
   interface FastifyRequest { rawWebhookBody?: Buffer }
@@ -135,27 +138,29 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
     const passwordHash = await argon2.hash(body.password + config.PASSWORD_PEPPER, { type: argon2.argon2id });
     await transaction(db, async (client) => {
       await client.query('INSERT INTO merchants(id,name) VALUES($1,$2)', [merchantId, body.businessName]);
-      await client.query(`INSERT INTO users(id,merchant_id,name,email,password_hash,role,permissions) VALUES($1,$2,$3,$4,$5,'OWNER',$6)`, [userId,merchantId,body.businessName,body.email,passwordHash,['payments:read','payments.links:manage','payments.refunds:request','ledger:read','developer.apiKeys:manage','developer.webhooks:manage','settings:manage']]);
+      await client.query(`INSERT INTO users(id,merchant_id,name,email,normalized_email,password_hash,role,permissions) VALUES($1,$2,$3,$4,lower(trim($4)),$5,'OWNER',$6)`, [userId,merchantId,body.businessName,body.email,passwordHash,[...PERMISSIONS]]);
+      const roleId=newId('role');await client.query(`INSERT INTO merchant_roles(id,merchant_id,name,normalized_name,description,permissions,system_role,created_by) VALUES($1,$2,'Owner','owner','Full merchant-level control',$3,true,$4)`,[roleId,merchantId,[...PERMISSIONS],userId]);await client.query(`INSERT INTO user_role_assignments(user_id,merchant_id,role_id,assigned_by) VALUES($1,$2,$3,$1)`,[userId,merchantId,roleId]);
     });
     return reply.code(202).send({ accepted: true });
   });
   const loginIp=rateLimit(rateLimits,config,'login:ip',10,900,clientIp),loginIdentity=rateLimit(rateLimits,config,'login:identity',5,900,r=>String((r.body as any)?.email??''));
   app.post('/v1/auth/login',{preHandler:[loginIp,loginIdentity]}, async (request, reply) => {
     const body = z.object({ email: z.email(), password: z.string().min(1), remember: z.boolean().optional() }).parse(request.body);
-    const found = await db.query(`SELECT u.*,m.name merchant_name,m.environment FROM users u LEFT JOIN merchants m ON m.id=u.merchant_id WHERE lower(email)=lower($1)`, [body.email]);
+    const found = await db.query(`SELECT u.*,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions,m.name merchant_name,m.environment FROM users u LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE u.normalized_email=lower(trim($1))`, [body.email]);
     const user = found.rows[0];
     const passwordValid=await argon2.verify(user?.password_hash??DUMMY_PASSWORD_HASH,body.password+config.PASSWORD_PEPPER);
-    if (!user || (user.locked_until && new Date(user.locked_until) > new Date()) || !passwordValid) {
+    if (!user || user.status!=='ACTIVE' || (user.locked_until && new Date(user.locked_until) > new Date()) || !passwordValid) {
       return reply.code(401).send(apiError(request, 'INVALID_CREDENTIALS', 'That email or password is incorrect.'));
     }
     await db.query('UPDATE users SET failed_logins=0,locked_until=NULL WHERE id=$1', [user.id]);
+    if(user.mfa_enabled){const challenge=newToken();await db.query(`INSERT INTO authentication_challenges(id,user_id,purpose,expires_at) VALUES($1,$2,'LOGIN',now()+interval '5 minutes')`,[tokenHash(challenge),user.id]);return {status:'MFA_REQUIRED',mfaChallenge:{challengeId:challenge,method:'TOTP',codeLength:6,expiresAt:new Date(Date.now()+300000).toISOString(),resendAvailableAt:new Date(Date.now()+300000).toISOString()}};}
     const token = newToken(),csrfToken=newToken(); const hours = body.remember ? Math.min(config.SESSION_TTL_HOURS * 30, config.SESSION_ABSOLUTE_HOURS) : Math.min(config.SESSION_TTL_HOURS,config.SESSION_ABSOLUTE_HOURS);
     await db.query(`DELETE FROM sessions WHERE user_id=$1`,[user.id]);
     await db.query(`INSERT INTO sessions(token_hash,user_id,expires_at,absolute_expires_at,last_seen_at) VALUES($1,$2,now()+($3 || ' hours')::interval,now()+($4 || ' hours')::interval,now())`, [tokenHash(token),user.id,String(hours),String(config.SESSION_ABSOLUTE_HOURS)]);
     const secure=config.NODE_ENV==='production'||config.COOKIE_SECURE===true;
     reply.setCookie(SESSION_COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', secure, maxAge: hours * 3600 });
     reply.setCookie('giantpay_csrf',csrfToken,{path:'/',httpOnly:false,sameSite:'strict',secure,maxAge:hours*3600});
-    const actor = { id:user.id,merchantId:user.merchant_id,name:user.name,email:user.email,role:user.role,permissions:user.permissions,mfaEnabled:user.mfa_enabled,merchantName:user.merchant_name,environment:user.environment ?? 'production' } as const;
+    const actor = { id:user.id,merchantId:user.merchant_id,name:user.name,email:user.email,role:user.effective_role,permissions:user.effective_permissions,mfaEnabled:user.mfa_enabled,merchantName:user.merchant_name,environment:user.environment ?? 'production' } as const;
     return { status: 'AUTHENTICATED', session: session(actor),csrfToken };
   });
   app.get('/v1/auth/session', { preHandler: [authenticate.bind(null, db,config)] }, async (request) => ({ session: session(request.actor!) }));
@@ -163,9 +168,9 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
     const token = request.cookies[SESSION_COOKIE]; if (token) await db.query('DELETE FROM sessions WHERE token_hash=$1',[tokenHash(token)]);
     reply.clearCookie(SESSION_COOKIE,{path:'/'}).clearCookie('giantpay_csrf',{path:'/'}).code(204).send();
   });
-  app.post('/v1/auth/password/forgot',{preHandler:[rateLimit(rateLimits,config,'password-forgot:ip',5,3600,clientIp),rateLimit(rateLimits,config,'password-forgot:identity',3,3600,r=>String((r.body as any)?.email??''))]}, async (_request, reply) => reply.code(202).send({ accepted: true }));
-  app.post('/v1/auth/password/reset',{preHandler:[rateLimit(rateLimits,config,'password-reset:ip',5,3600,clientIp)]}, async (request) => { z.object({token:z.string().min(1),password:z.string().min(12)}).parse(request.body); return {accepted:true}; });
-  app.post('/v1/auth/mfa/verify',{preHandler:[rateLimit(rateLimits,config,'mfa:ip',10,900,clientIp),rateLimit(rateLimits,config,'mfa:challenge',5,900,r=>String((r.body as any)?.challengeId??''))]},async(request,reply)=>{z.object({challengeId:z.string().min(1),code:z.string().min(1)}).parse(request.body);return reply.code(401).send(apiError(request,'INVALID_CHALLENGE','Verification failed.'));});
+  app.post('/v1/auth/password/forgot',{preHandler:[rateLimit(rateLimits,config,'password-forgot:ip',5,3600,clientIp),rateLimit(rateLimits,config,'password-forgot:identity',3,3600,r=>String((r.body as any)?.email??''))]}, async (request, reply) => {const {email}=z.object({email:z.email()}).parse(request.body),user=(await db.query(`SELECT id,merchant_id FROM users WHERE normalized_email=lower(trim($1)) AND status='ACTIVE'`,[email])).rows[0];if(user){const token=newToken();await transaction(db,async c=>{await c.query('UPDATE password_reset_requests SET used_at=now() WHERE user_id=$1 AND used_at IS NULL',[user.id]);const id=newId('rst');await c.query(`INSERT INTO password_reset_requests(id,user_id,token_hash,expires_at) VALUES($1,$2,$3,now()+interval '30 minutes')`,[id,user.id,tokenHash(token)]);await c.query(`INSERT INTO outbox_events(id,event_type,aggregate_type,aggregate_id,payload,deduplication_key) VALUES($1,'security.password_reset.requested','password_reset',$2,$3,$4)`,[newId('obx'),id,{userId:user.id,tokenCiphertext:encryptSecret(token,config.WEBHOOK_SECRET_KEY??config.COOKIE_SECRET)},`password-reset:${id}`]);});}return reply.code(202).send({ accepted: true });});
+  app.post('/v1/auth/password/reset',{preHandler:[rateLimit(rateLimits,config,'password-reset:ip',5,3600,clientIp)]}, async (request,reply) => {const b=z.object({token:z.string().min(32),password:z.string().min(12)}).parse(request.body),passwordHash=await argon2.hash(b.password+config.PASSWORD_PEPPER,{type:argon2.argon2id});const changed=await transaction(db,async c=>{const x=await c.query(`SELECT * FROM password_reset_requests WHERE token_hash=$1 AND used_at IS NULL AND expires_at>now() FOR UPDATE`,[tokenHash(b.token)]);if(!x.rowCount)return null;await c.query('UPDATE password_reset_requests SET used_at=now() WHERE id=$1',[x.rows[0].id]);await c.query('UPDATE users SET password_hash=$1 WHERE id=$2',[passwordHash,x.rows[0].user_id]);await c.query('UPDATE sessions SET revoked_at=coalesce(revoked_at,now()) WHERE user_id=$1',[x.rows[0].user_id]);await c.query(`INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) SELECT $1,u.id,u.merchant_id,'PASSWORD_RESET_COMPLETED','user',u.id FROM users u WHERE u.id=$2`,[newId('aud'),x.rows[0].user_id]);return x.rows[0];});return changed?{accepted:true}:reply.code(401).send(apiError(request,'PASSWORD_RESET_INVALID','Reset token is invalid or expired.'));});
+  app.post('/v1/auth/mfa/verify',{preHandler:[rateLimit(rateLimits,config,'mfa:ip',10,900,clientIp),rateLimit(rateLimits,config,'mfa:challenge',5,900,r=>String((r.body as any)?.challengeId??''))]},async(request,reply)=>{const b=z.object({challengeId:z.string().min(32),code:z.string().regex(/^\d{6}$/)}).parse(request.body);const result=await transaction(db,async c=>{const x=await c.query(`SELECT ch.id challenge_id,ch.user_id,e.secret_ciphertext,e.last_counter,u.*,m.name merchant_name,m.environment,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions FROM authentication_challenges ch JOIN users u ON u.id=ch.user_id JOIN mfa_enrollments e ON e.user_id=u.id LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE ch.id=$1 AND ch.purpose='LOGIN' AND ch.used_at IS NULL AND ch.expires_at>now() AND u.status='ACTIVE' FOR UPDATE`,[tokenHash(b.challengeId)]);if(!x.rowCount)return null;const u=x.rows[0],counter=verifyTotp(decryptSecret(u.secret_ciphertext,config.WEBHOOK_SECRET_KEY??config.COOKIE_SECRET),b.code,u.last_counter===null?null:Number(u.last_counter));if(counter===null)return null;await c.query('UPDATE authentication_challenges SET used_at=now() WHERE id=$1',[u.challenge_id]);await c.query('UPDATE mfa_enrollments SET last_counter=$1 WHERE user_id=$2',[counter,u.user_id]);const token=newToken(),csrf=newToken();await c.query(`INSERT INTO sessions(token_hash,public_id,user_id,expires_at,absolute_expires_at,last_seen_at,mfa_verified_at) VALUES($1,$2,$3,now()+interval '12 hours',now()+interval '24 hours',now(),now())`,[tokenHash(token),newId('ses'),u.user_id]);return {u,token,csrf};});if(!result)return reply.code(401).send(apiError(request,'INVALID_MFA_CODE','Verification failed.'));const secure=config.NODE_ENV==='production'||config.COOKIE_SECURE===true;reply.setCookie(SESSION_COOKIE,result.token,{path:'/',httpOnly:true,sameSite:'lax',secure,maxAge:43200});reply.setCookie('giantpay_csrf',result.csrf,{path:'/',httpOnly:false,sameSite:'strict',secure,maxAge:43200});const u=result.u,actor={id:u.user_id,merchantId:u.merchant_id,name:u.name,email:u.email,role:u.effective_role,permissions:u.effective_permissions,mfaEnabled:true,merchantName:u.merchant_name,environment:u.environment??'production'} as const;return {session:session(actor),csrfToken:result.csrf};});
   app.post('/v1/auth/email/verification-request',{preHandler:[rateLimit(rateLimits,config,'email-verification-request:ip',5,3600,clientIp)]},async(_request,reply)=>reply.code(202).send({accepted:true}));
   app.post('/v1/auth/email/verify',{preHandler:[rateLimit(rateLimits,config,'email-verify:ip',10,3600,clientIp)]}, async (request) => { z.object({token:z.string().min(1)}).parse(request.body); return {verified:true}; });
 
@@ -173,6 +178,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   await registerDeveloperRoutes(app,config,db,rateLimits);
   await registerReconciliationRoutes(app,config,db,rateLimits);
   await registerReportingRoutes(app,config,db,rateLimits);
+  await registerTeamRoutes(app,config,db,rateLimits);
   app.get('/v1/merchants/onboarding', { preHandler: [auth] }, async (request) => (await db.query('SELECT onboarding FROM merchants WHERE id=$1',[request.actor!.merchantId])).rows[0]?.onboarding);
   app.patch('/v1/merchants/onboarding', { preHandler: [auth] }, async (request, reply) => {
     const current = await db.query('SELECT onboarding FROM merchants WHERE id=$1 FOR UPDATE',[request.actor!.merchantId]);
