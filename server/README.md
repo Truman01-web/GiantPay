@@ -19,6 +19,11 @@ Security, Redis, trusted-proxy, CSRF, cookie, and browser integration requiremen
 documented in [docs/security-hardening.md](docs/security-hardening.md). Production uses
 Redis as the distributed rate-limit authority and will not fall back to process memory.
 
+Sandbox reconciliation, ledger-integrity checks, exception review, compensating
+adjustments, and maker-checker settlement exports are documented in
+[docs/reconciliation-settlement.md](docs/reconciliation-settlement.md). Exports never
+execute or represent an external payout.
+
 ## Toolchain and verification
 
 Use Node 22.19.0 (Node 20.19+ is also supported) and pnpm 10.17.1. The root

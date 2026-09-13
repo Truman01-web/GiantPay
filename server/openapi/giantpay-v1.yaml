@@ -21,6 +21,9 @@ tags:
   - name: Ledger
   - name: Developer API keys
   - name: Merchant webhooks
+  - name: Reconciliation
+  - name: Ledger integrity
+  - name: Sandbox settlements
 paths:
   /developer/api-keys:
     get:
@@ -484,6 +487,130 @@ paths:
       operationId: getDashboardVolume
       parameters: [{ $ref: '#/components/parameters/From' }, { $ref: '#/components/parameters/To' }]
       responses: { '200': { description: Daily volume series } }
+  /reconciliation/runs:
+    get:
+      operationId: listReconciliationRuns
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      description: Requires `reconciliation:read`; results are merchant-scoped and paginated.
+      responses: { '200': { description: Reconciliation runs }, '403': { $ref: '#/components/responses/Error' } }
+    post:
+      operationId: startReconciliationRun
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      description: Starts deterministic sandbox reconciliation. Requires `reconciliation:manage` and Idempotency-Key.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Completed or existing restart-safe run }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/runs/{id}:
+    get:
+      operationId: getReconciliationRun
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Merchant-owned reconciliation run }, '404': { $ref: '#/components/responses/Error' } }
+  /reconciliation/exceptions:
+    get:
+      operationId: listReconciliationExceptions
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Lists merchant-scoped classified evidence using bounded pagination.
+      responses: { '200': { description: Reconciliation exceptions } }
+  /reconciliation/exceptions/{id}:
+    get:
+      operationId: getReconciliationException
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Exception and immutable evidence }, '404': { $ref: '#/components/responses/Error' } }
+  /reconciliation/exceptions/{id}/review:
+    post:
+      operationId: reviewReconciliationException
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Valid transitions are OPEN, UNDER_REVIEW, RESOLVED and DISMISSED; terminal transitions require reason and evidence.
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Idempotent transition accepted }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/exceptions/{id}/adjustments:
+    post:
+      operationId: submitCompensatingAdjustment
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Submits an append-only compensating adjustment for independent approval.
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Adjustment awaiting approval }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/adjustments/{id}/approve:
+    post:
+      operationId: approveCompensatingAdjustment
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Requires a checker different from the creator and posts a compensating reversal.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Approved append-only adjustment }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/adjustments/{id}/reject:
+    post:
+      operationId: rejectCompensatingAdjustment
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: An independent checker rejects the proposal without changing the ledger.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Rejected adjustment }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /ledger/integrity:
+    get:
+      operationId: verifyLedgerIntegrity
+      tags: [Ledger integrity]
+      security: [{ cookieSession: [] }]
+      description: Read-only merchant-scoped verification; never modifies ledger history.
+      responses: { '200': { description: Integrity result and evidence }, '403': { $ref: '#/components/responses/Error' } }
+  /settlements:
+    get:
+      operationId: listSandboxSettlements
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      responses: { '200': { description: Paginated merchant sandbox settlements } }
+    post:
+      operationId: createSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      description: Creates a sandbox-only calculation for an exception-free reconciliation; no payout occurs.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Draft sandbox settlement }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /settlements/{id}:
+    get:
+      operationId: getSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Sandbox settlement with externalTransferExecuted false }, '404': { $ref: '#/components/responses/Error' } }
+  /settlements/{id}/submit:
+    post:
+      operationId: submitSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Awaiting independent approval }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /settlements/{id}/approve:
+    post:
+      operationId: approveSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      description: Maker-checker approval; creator cannot approve.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Approved sandbox calculation }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /settlements/{id}/cancel:
+    post:
+      operationId: cancelSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Cancelled without deleting history }, '409': { $ref: '#/components/responses/Error' } }
+  /settlements/{id}/export:
+    post:
+      operationId: exportSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      description: Produces a formula-safe sandbox CSV and audit record. It does not execute a transfer.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Deterministic sandbox CSV }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }

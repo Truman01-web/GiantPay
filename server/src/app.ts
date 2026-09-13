@@ -12,6 +12,7 @@ import { transaction } from './db.js';
 import type { Config } from './config.js';
 import { apiError, authenticate, authenticateSessionOrApiKey, newId, newToken, requirePermission, SESSION_COOKIE, tokenHash } from './security.js';
 import { MemoryRateLimitStore, rateLimit, type RateLimitStore } from './rateLimit.js';
+import { registerReconciliationRoutes } from './reconciliation/routes.js';
 import { registerDeveloperRoutes } from './developer/routes.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
 import { createPaymentProvider } from './providers/index.js';
@@ -106,6 +107,9 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
       const status = error.code === 'LEDGER_ENTRY_NOT_FOUND' ? 404 : error.code === 'LEDGER_REVERSAL_CONFLICT' ? 409 : 422;
       return reply.code(status).send(apiError(request, error.code, error.message));
     }
+    if ((error as any)?.code === '23514' && /reconciliation exception transition/i.test((error as Error).message)) {
+      return reply.code(409).send(apiError(request, 'STATE_CONFLICT', 'The requested state transition is not allowed.'));
+    }
     request.log.error(error);
     return reply.code(500).send(apiError(request, 'INTERNAL_ERROR', 'Something went wrong.'));
   });
@@ -166,6 +170,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
 
   const auth = authenticateSessionOrApiKey(db, config.PASSWORD_PEPPER,rateLimits,config);
   await registerDeveloperRoutes(app,config,db,rateLimits);
+  await registerReconciliationRoutes(app,config,db,rateLimits);
   app.get('/v1/merchants/onboarding', { preHandler: [auth] }, async (request) => (await db.query('SELECT onboarding FROM merchants WHERE id=$1',[request.actor!.merchantId])).rows[0]?.onboarding);
   app.patch('/v1/merchants/onboarding', { preHandler: [auth] }, async (request, reply) => {
     const current = await db.query('SELECT onboarding FROM merchants WHERE id=$1 FOR UPDATE',[request.actor!.merchantId]);
