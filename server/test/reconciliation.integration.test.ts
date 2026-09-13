@@ -42,6 +42,8 @@ const json = (token: string, key: string, payload: any) => ({
   headers: { ...session(token), 'content-type': 'application/json', 'idempotency-key': key },
   payload,
 });
+const responseDiagnostic = (response: { statusCode: number; body: string }) =>
+  `Unexpected HTTP ${response.statusCode}: ${response.body}`;
 const insertRun = async (id: string, merchant = 'm1', unmatched = 0, status = 'COMPLETED') =>
   db.query(
     `INSERT INTO reconciliation_runs(id,merchant_id,reconciliation_type,provider,environment,currency,period_start,period_end,status,source_count,matched_count,unmatched_count,config_snapshot,source_sha256,initiated_by,completed_at) VALUES($1,$2,'PAYMENTS','sandbox','sandbox','MWK',$3,$4,$5,1,$6,$7,'{}',$8,$9,CASE WHEN $5='COMPLETED' THEN now() END)`,
@@ -165,8 +167,15 @@ suite('reconciliation and sandbox settlement database controls', () => {
     await insertRun('run2', 'm2');
     await insertException('ex2', 'run2', 'm2');
     await db.query(
-      `INSERT INTO reconciliation_exception_events(id,exception_id,merchant_id,actor_id,to_status,idempotency_key) VALUES('evt2','ex2','m2','other','UNDER_REVIEW','other-event');INSERT INTO settlement_batches(id,merchant_id,currency,period_start,period_end,gross_minor,refunds_minor,fees_minor,net_minor,input_snapshot,input_sha256,created_by,idempotency_key) VALUES('set2','m2','MWK',$1,$2,100,0,0,100,'{}',$3,'other','other-settlement');INSERT INTO settlement_exports(id,batch_id,merchant_id,filename,content_sha256,created_by) VALUES('export2','set2','m2','sandbox.csv',$4,'other')`,
-      [start, end, 'c'.repeat(64), 'd'.repeat(64)],
+      `INSERT INTO reconciliation_exception_events(id,exception_id,merchant_id,actor_id,to_status,idempotency_key) VALUES('evt2','ex2','m2','other','UNDER_REVIEW','other-event')`,
+    );
+    await db.query(
+      `INSERT INTO settlement_batches(id,merchant_id,currency,period_start,period_end,gross_minor,refunds_minor,fees_minor,net_minor,input_snapshot,input_sha256,created_by,idempotency_key) VALUES('set2','m2','MWK',$1,$2,100,0,0,100,'{}',$3,'other','other-settlement')`,
+      [start, end, 'c'.repeat(64)],
+    );
+    await db.query(
+      `INSERT INTO settlement_exports(id,batch_id,merchant_id,filename,content_sha256,created_by) VALUES('export2','set2','m2','sandbox.csv',$1,'other')`,
+      ['d'.repeat(64)],
     );
     const runs = await app.inject({
         url: '/v1/reconciliation/runs',
@@ -487,18 +496,16 @@ suite('reconciliation and sandbox settlement database controls', () => {
   });
 
   it('calculates authoritative integer settlement totals and rejects ineligible or cross-merchant runs', async () => {
-    expect(
-      (
-        await app.inject({
-          ...json('maker-token', 'no-recon', {
-            currency: 'MWK',
-            periodStart: start,
-            periodEnd: end,
-          }),
-          url: '/v1/settlements',
-        })
-      ).statusCode,
-    ).toBe(422);
+    const ineligible = await app.inject({
+      ...json('maker-token', 'no-recon', {
+        currency: 'MWK',
+        periodStart: start,
+        periodEnd: end,
+      }),
+      url: '/v1/settlements',
+    });
+    expect(ineligible.statusCode, responseDiagnostic(ineligible)).toBe(422);
+    expect(ineligible.json()).toMatchObject({ error: { code: 'NOT_RECONCILED' } });
     await insertRun('run1');
     await insertPayment('pay1', 1000, 20);
     await insertPayment('pay2', 500, 0);
@@ -514,7 +521,7 @@ suite('reconciliation and sandbox settlement database controls', () => {
       }),
       url: '/v1/settlements',
     });
-    expect(response.statusCode).toBe(201);
+    expect(response.statusCode, responseDiagnostic(response)).toBe(201);
     expect(response.json()).toMatchObject({
       grossMinor: '1500',
       refundsMinor: '100',
@@ -548,7 +555,9 @@ suite('reconciliation and sandbox settlement database controls', () => {
       ...json('maker-token', 'cancel-create', { currency: 'MWK', periodStart: start, periodEnd: end }),
       url: '/v1/settlements',
     });
+    expect(created.statusCode, responseDiagnostic(created)).toBe(201);
     const id = created.json().id;
+    expect(id, responseDiagnostic(created)).toEqual(expect.any(String));
     const beforeLedger = Number((await db.query('SELECT count(*) FROM journal_entries')).rows[0].count);
     const cancelRequest = { ...json('maker-token', 'cancel-stable', {}), url: `/v1/settlements/${id}/cancel` };
     const first = await app.inject(cancelRequest);
@@ -577,9 +586,23 @@ suite('reconciliation and sandbox settlement database controls', () => {
           app.inject({ ...json('maker-token', key, body), url: '/v1/settlements' }),
         ),
       );
-    expect(created.filter((x) => x.statusCode === 201)).toHaveLength(1);
-    expect(created.filter((x) => x.statusCode === 409)).toHaveLength(1);
+    const concurrentDiagnostic = created.map(responseDiagnostic).join('\n');
+    for (const response of created)
+      expect([201, 409], concurrentDiagnostic).toContain(response.statusCode);
+    expect(created.filter((x) => x.statusCode === 201), concurrentDiagnostic).toHaveLength(1);
+    expect(created.filter((x) => x.statusCode === 409), concurrentDiagnostic).toHaveLength(1);
     const id = created.find((x) => x.statusCode === 201)!.json().id;
+    expect(id, concurrentDiagnostic).toEqual(expect.any(String));
+    expect(
+      Number(
+        (
+          await db.query(
+            `SELECT count(*) FROM settlement_batches WHERE merchant_id=$1 AND currency=$2 AND period_start=$3 AND period_end=$4 AND input_snapshot->>'reconciliationId'=$5`,
+            ['m1', 'MWK', start, end, 'run1'],
+          )
+        ).rows[0].count,
+      ),
+    ).toBe(1);
     expect(
       (
         await app.inject({

@@ -405,10 +405,10 @@ export async function registerReconciliationRoutes(
         `SELECT id FROM reconciliation_runs WHERE merchant_id=$1 AND reconciliation_type='PAYMENTS' AND currency=$2 AND period_start=$3 AND period_end=$4 AND status='COMPLETED' AND unmatched_count=0`,
         [r.actor!.merchantId, b.currency, b.periodStart, b.periodEnd],
       );
-      if (!reconciliation.rowCount)
-        return p
-          .code(422)
-          .send(apiError(r, 'NOT_RECONCILED', 'The period is not fully reconciled.'));
+      if (!reconciliation.rowCount) {
+        p.code(422);
+        return apiError(r, 'NOT_RECONCILED', 'The period is not fully reconciled.');
+      }
       const totals = (
           await c.query(
             `SELECT coalesce(sum(gross_minor),0) gross,coalesce(sum(fee_minor),0) fees FROM payments WHERE merchant_id=$1 AND currency=$2 AND status IN ('SUCCEEDED','PARTIALLY_REFUNDED','REFUNDED') AND updated_at >= $3 AND updated_at < $4`,
@@ -446,18 +446,17 @@ export async function registerReconciliationRoutes(
           `INSERT INTO settlement_batches(id,merchant_id,currency,period_start,period_end,gross_minor,refunds_minor,fees_minor,net_minor,input_snapshot,input_sha256,created_by,idempotency_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(merchant_id,idempotency_key) DO UPDATE SET idempotency_key=excluded.idempotency_key RETURNING *`,
           values,
         );
-        return p.code(201).send(viewBatch(created.rows[0]));
+        p.code(201);
+        return viewBatch(created.rows[0]);
       } catch (e: any) {
-        if (e.code === '23505')
-          return p
-            .code(409)
-            .send(
-              apiError(
-                r,
-                'DUPLICATE_SETTLEMENT',
-                'This merchant period and currency already has a settlement.',
-              ),
-            );
+        if (e.code === '23505') {
+          p.code(409);
+          return apiError(
+            r,
+            'DUPLICATE_SETTLEMENT',
+            'This merchant period and currency already has a settlement.',
+          );
+        }
         throw e;
       }
     });
