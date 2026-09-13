@@ -14,17 +14,22 @@ const page = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
+const periodFields = {
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  periodStart: z.iso.datetime(),
+  periodEnd: z.iso.datetime(),
+};
+const validPeriodOrder = (v: { periodStart: string; periodEnd: string }) =>
+  new Date(v.periodEnd) > new Date(v.periodStart);
+const periodOrderError = { message: 'periodEnd must follow periodStart' };
+const settlementPeriod = z.object(periodFields).refine(validPeriodOrder, periodOrderError);
 const period = z
   .object({
-    currency: z.string().regex(/^[A-Z]{3}$/),
-    periodStart: z.iso.datetime(),
-    periodEnd: z.iso.datetime(),
+    ...periodFields,
     businessDate: z.iso.date().optional(),
     type: z.enum(['PAYMENTS', 'REFUNDS', 'LEDGER_INTEGRITY', 'OUTBOX']).default('PAYMENTS'),
   })
-  .refine((v) => new Date(v.periodEnd) > new Date(v.periodStart), {
-    message: 'periodEnd must follow periodStart',
-  });
+  .refine(validPeriodOrder, periodOrderError);
 const viewRun = (r: any) => ({
   id: r.id,
   type: r.reconciliation_type,
@@ -422,7 +427,7 @@ export async function registerReconciliationRoutes(
     },
   );
   app.post('/v1/settlements', { preHandler: settleWrite }, async (r, p) => {
-    const b = period.pick({ currency: true, periodStart: true, periodEnd: true }).parse(r.body),
+    const b = settlementPeriod.parse(r.body),
       key = z.string().min(8).max(128).parse(r.headers['idempotency-key']);
     const response = await transaction(db, async (c) => {
       await c.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
