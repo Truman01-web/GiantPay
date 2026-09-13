@@ -1,6 +1,98 @@
-import { Landmark } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MARK_SRC } from '@/assets/brand';
+
+// ── Cycling watermark slides ──────────────────────────────────────────────────
+const WATERMARKS = [
+  // Slide 1 — GP brand mark
+  {
+    key: 'mark',
+    render: () => (
+      <img
+        src={MARK_SRC}
+        alt=""
+        className="wm-float w-[70vw] max-w-[560px] select-none"
+        style={{ opacity: 0.14, filter: 'drop-shadow(0 20px 60px rgba(26,109,204,0.35))' }}
+      />
+    ),
+  },
+  // Slide 2 — Laptop / code scene
+  {
+    key: 'laptop',
+    render: () => (
+      <div className="wm-float flex flex-col items-center gap-4 select-none" style={{ opacity: 0.14 }}>
+        <div
+          className="rounded-2xl border border-white/30"
+          style={{
+            width: 'min(520px, 68vw)',
+            background: 'rgba(255,255,255,0.06)',
+            padding: '28px 32px',
+          }}
+        >
+          {/* Fake window chrome */}
+          <div className="flex gap-2 mb-4">
+            <span className="h-3 w-3 rounded-full bg-red-400/60" />
+            <span className="h-3 w-3 rounded-full bg-amber-400/60" />
+            <span className="h-3 w-3 rounded-full bg-emerald-400/60" />
+          </div>
+          <pre className="font-mono text-white leading-relaxed" style={{ fontSize: 'clamp(9px,1.4vw,13px)' }}>
+{`POST /v1/checkout/sessions
+{
+  "amount": 2500000,
+  "currency": "MWK",
+  "channels": [
+    "AIRTEL_MONEY",
+    "TNM_MPAMBA",
+    "CARD"
+  ]
+}
+
+→ 201 Created
+{ "status": "INITIATED",
+  "checkout_url": "https://pay.giantpay.mw/..." }`}
+          </pre>
+        </div>
+        <span className="text-white text-5xl">💻</span>
+      </div>
+    ),
+  },
+  // Slide 3 — Phone / payment loading
+  {
+    key: 'phone',
+    render: () => (
+      <div className="wm-float flex flex-col items-center gap-4 select-none" style={{ opacity: 0.14 }}>
+        {/* Phone shell */}
+        <div
+          className="relative rounded-[36px] border-4 border-white/30 overflow-hidden"
+          style={{ width: 'min(220px,38vw)', height: 'min(400px,65vw)', background: 'rgba(255,255,255,0.05)' }}
+        >
+          {/* Status bar */}
+          <div className="flex justify-between items-center px-5 pt-3 pb-1 text-white/80" style={{ fontSize: 9 }}>
+            <span>9:41</span><span>●●●</span>
+          </div>
+          {/* Screen content */}
+          <div className="flex flex-col items-center px-4 pt-6 gap-3">
+            <div className="text-white font-bold" style={{ fontSize: 'clamp(11px,2.2vw,16px)' }}>GiantPay</div>
+            <div className="text-white/70" style={{ fontSize: 'clamp(9px,1.6vw,12px)' }}>Processing payment…</div>
+            {/* Spinner ring */}
+            <div
+              className="rounded-full border-4 border-t-transparent border-white/60"
+              style={{ width: 'clamp(32px,6vw,48px)', height: 'clamp(32px,6vw,48px)', animation: 'spin 1.2s linear infinite' }}
+            />
+            <div className="mt-2 rounded-xl bg-white/10 w-full px-3 py-2 text-center text-white/80" style={{ fontSize: 'clamp(8px,1.4vw,11px)' }}>
+              MWK 25,000.00
+            </div>
+            <div className="flex gap-2 mt-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-400/70 animate-pulse" />
+              <span className="text-white/60" style={{ fontSize: 8 }}>Airtel Money</span>
+            </div>
+          </div>
+        </div>
+        <span className="text-white text-5xl">📱</span>
+      </div>
+    ),
+  },
+];
 
 const BENEFITS = [
   {
@@ -61,6 +153,15 @@ const FAQS = [
 ];
 
 export default function LandingPage() {
+  const [wmIndex, setWmIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setWmIndex((i) => (i + 1) % WATERMARKS.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <>
       {/* ── Rich Fintech Hero Section ── */}
@@ -93,29 +194,20 @@ export default function LandingPage() {
           }}
         />
 
-        {/* Waving GP watermark flag */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
-        >
-          <img
-            src={MARK_SRC}
-            alt=""
-            className="animate-flag-wave-slow w-[85vw] max-w-[620px] opacity-[0.08] select-none"
-            style={{
-              filter: 'drop-shadow(0 20px 60px rgba(26,109,204,0.35))',
-            }}
-          />
+        {/* Cycling watermark backgrounds */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          {WATERMARKS.map((wm, i) => (
+            <div
+              key={wm.key}
+              className="hero-watermark"
+              style={{ opacity: i === wmIndex ? 1 : 0 }}
+            >
+              {wm.render()}
+            </div>
+          ))}
         </div>
 
         <div className="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6 sm:pt-36 sm:pb-24 text-center">
-          {/* Trust / Regulatory Context Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/80 backdrop-blur-md mb-6">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Malawi Digital Payments Foundation</span>
-            <span className="hidden sm:inline text-white/30">•</span>
-            <span className="hidden sm:inline text-white/60">Developer Sandbox Live</span>
-          </div>
 
           {/* Required Heading */}
           <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl leading-[1.15]">
