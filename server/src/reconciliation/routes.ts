@@ -169,11 +169,10 @@ export async function registerReconciliationRoutes(
         { reconciliationId: id, matched: result.matched, exceptions: result.exceptions.length },
         'reconciliation completed',
       );
-      return reply
-        .code(201)
-        .send(
-          viewRun((await c.query('SELECT * FROM reconciliation_runs WHERE id=$1', [id])).rows[0]),
-        );
+      reply.code(201);
+      return viewRun(
+        (await c.query('SELECT * FROM reconciliation_runs WHERE id=$1', [id])).rows[0],
+      );
     });
   });
   app.get('/v1/reconciliation/runs', { preHandler: reconRead }, async (r) => {
@@ -242,16 +241,18 @@ export async function registerReconciliationRoutes(
         'SELECT * FROM reconciliation_exceptions WHERE id=$1 AND merchant_id=$2 FOR UPDATE',
         [(r.params as any).id, r.actor!.merchantId],
       );
-      if (!x.rowCount)
-        return p.code(404).send(apiError(r, 'NOT_FOUND', 'Reconciliation exception not found.'));
-      if (['RESOLVED', 'DISMISSED'].includes(x.rows[0].status))
-        return p
-          .code(409)
-          .send(apiError(r, 'STATE_CONFLICT', 'Resolved exceptions are immutable.'));
-      if (['RESOLVED', 'DISMISSED'].includes(b.status) && (!b.reason || !b.evidenceRef))
-        return p
-          .code(422)
-          .send(apiError(r, 'VALIDATION_ERROR', 'Resolution reason and evidence are required.'));
+      if (!x.rowCount) {
+        p.code(404);
+        return apiError(r, 'NOT_FOUND', 'Reconciliation exception not found.');
+      }
+      if (['RESOLVED', 'DISMISSED'].includes(x.rows[0].status)) {
+        p.code(409);
+        return apiError(r, 'STATE_CONFLICT', 'Resolved exceptions are immutable.');
+      }
+      if (['RESOLVED', 'DISMISSED'].includes(b.status) && (!b.reason || !b.evidenceRef)) {
+        p.code(422);
+        return apiError(r, 'VALIDATION_ERROR', 'Resolution reason and evidence are required.');
+      }
       await c.query(
         `UPDATE reconciliation_exceptions SET status=$1,claimed_by=coalesce(claimed_by,$2),resolution_reason=$3,resolution_evidence_ref=$4,resolved_at=CASE WHEN $1 IN ('RESOLVED','DISMISSED') THEN now() ELSE NULL END WHERE id=$5`,
         [b.status, r.actor!.id, b.reason ?? null, b.evidenceRef ?? null, x.rows[0].id],
@@ -287,7 +288,13 @@ export async function registerReconciliationRoutes(
         key = z.string().min(8).max(128).parse(r.headers['idempotency-key']);
       try {
         const x = await db.query(
-          `INSERT INTO compensating_adjustments(id,exception_id,merchant_id,original_entry_id,reason,evidence_ref,created_by,idempotency_key) SELECT $1,e.id,e.merchant_id,$2,$3,$4,$5,$6 FROM reconciliation_exceptions e WHERE e.id=$7 AND e.merchant_id=$8 ON CONFLICT(merchant_id,idempotency_key) DO UPDATE SET idempotency_key=excluded.idempotency_key RETURNING *`,
+          `INSERT INTO compensating_adjustments(id,exception_id,merchant_id,original_entry_id,reason,evidence_ref,created_by,idempotency_key)
+           SELECT $1,e.id,e.merchant_id,j.id,$3,$4,$5,$6
+           FROM reconciliation_exceptions e
+           JOIN journal_entries j ON j.id=$2 AND j.merchant_id=e.merchant_id
+           WHERE e.id=$7 AND e.merchant_id=$8
+           ON CONFLICT(merchant_id,idempotency_key) DO UPDATE SET idempotency_key=excluded.idempotency_key
+           RETURNING *`,
           [
             newId('adj'),
             b.originalEntryId,
@@ -299,8 +306,15 @@ export async function registerReconciliationRoutes(
             r.actor!.merchantId,
           ],
         );
-        return x.rowCount
-          ? p.code(201).send(x.rows[0])
+        if (x.rowCount) return p.code(201).send(x.rows[0]);
+        const exception = await db.query(
+          'SELECT 1 FROM reconciliation_exceptions WHERE id=$1 AND merchant_id=$2',
+          [(r.params as any).id, r.actor!.merchantId],
+        );
+        return exception.rowCount
+          ? p
+              .code(422)
+              .send(apiError(r, 'VALIDATION_ERROR', 'Referenced ledger entry is invalid.'))
           : p.code(404).send(apiError(r, 'NOT_FOUND', 'Reconciliation exception not found.'));
       } catch (e: any) {
         if (e.code === '23503')
@@ -320,13 +334,18 @@ export async function registerReconciliationRoutes(
           `SELECT * FROM compensating_adjustments WHERE id=$1 AND merchant_id=$2 FOR UPDATE`,
           [(r.params as any).id, r.actor!.merchantId],
         );
-        if (!x.rowCount) return p.code(404).send(apiError(r, 'NOT_FOUND', 'Adjustment not found.'));
-        if (x.rows[0].created_by === r.actor!.id)
-          return p
-            .code(409)
-            .send(
-              apiError(r, 'MAKER_CHECKER_REQUIRED', 'The creator cannot approve this adjustment.'),
-            );
+        if (!x.rowCount) {
+          p.code(404);
+          return apiError(r, 'NOT_FOUND', 'Adjustment not found.');
+        }
+        if (x.rows[0].created_by === r.actor!.id) {
+          p.code(409);
+          return apiError(
+            r,
+            'MAKER_CHECKER_REQUIRED',
+            'The creator cannot approve this adjustment.',
+          );
+        }
         if (x.rows[0].status === 'APPROVED') return x.rows[0];
         const entry = await reverseJournalEntry(
           c,
@@ -358,15 +377,23 @@ export async function registerReconciliationRoutes(
           `SELECT * FROM compensating_adjustments WHERE id=$1 AND merchant_id=$2 FOR UPDATE`,
           [(r.params as any).id, r.actor!.merchantId],
         );
-        if (!current.rowCount)
-          return p.code(404).send(apiError(r, 'NOT_FOUND', 'Adjustment not found.'));
-        if (current.rows[0].created_by === r.actor!.id)
-          return p
-            .code(409)
-            .send(apiError(r, 'MAKER_CHECKER_REQUIRED', 'The creator cannot reject this adjustment.'));
+        if (!current.rowCount) {
+          p.code(404);
+          return apiError(r, 'NOT_FOUND', 'Adjustment not found.');
+        }
+        if (current.rows[0].created_by === r.actor!.id) {
+          p.code(409);
+          return apiError(
+            r,
+            'MAKER_CHECKER_REQUIRED',
+            'The creator cannot reject this adjustment.',
+          );
+        }
         if (current.rows[0].status === 'REJECTED') return current.rows[0];
-        if (current.rows[0].status !== 'AWAITING_APPROVAL')
-          return p.code(409).send(apiError(r, 'STATE_CONFLICT', 'Adjustment is not awaiting review.'));
+        if (current.rows[0].status !== 'AWAITING_APPROVAL') {
+          p.code(409);
+          return apiError(r, 'STATE_CONFLICT', 'Adjustment is not awaiting review.');
+        }
         const rejected = (
           await c.query(
             `UPDATE compensating_adjustments SET status='REJECTED',approved_by=$1,decided_at=now() WHERE id=$2 RETURNING *`,
@@ -501,18 +528,23 @@ export async function registerReconciliationRoutes(
           'SELECT * FROM settlement_batches WHERE id=$1 AND merchant_id=$2 FOR UPDATE',
           [(r.params as any).id, r.actor!.merchantId],
         );
-        if (!x.rowCount) return p.code(404).send(apiError(r, 'NOT_FOUND', 'Settlement not found.'));
-        if (x.rows[0].created_by === r.actor!.id)
-          return p
-            .code(409)
-            .send(
-              apiError(r, 'MAKER_CHECKER_REQUIRED', 'The creator cannot approve this settlement.'),
-            );
+        if (!x.rowCount) {
+          p.code(404);
+          return apiError(r, 'NOT_FOUND', 'Settlement not found.');
+        }
+        if (x.rows[0].created_by === r.actor!.id) {
+          p.code(409);
+          return apiError(
+            r,
+            'MAKER_CHECKER_REQUIRED',
+            'The creator cannot approve this settlement.',
+          );
+        }
         if (['APPROVED', 'EXPORTED'].includes(x.rows[0].status)) return viewBatch(x.rows[0]);
-        if (x.rows[0].status !== 'AWAITING_APPROVAL')
-          return p
-            .code(409)
-            .send(apiError(r, 'STATE_CONFLICT', 'Settlement is not awaiting approval.'));
+        if (x.rows[0].status !== 'AWAITING_APPROVAL') {
+          p.code(409);
+          return apiError(r, 'STATE_CONFLICT', 'Settlement is not awaiting approval.');
+        }
         const approved = (
           await c.query(
             `UPDATE settlement_batches SET status='APPROVED',approved_by=$1,approved_at=now() WHERE id=$2 RETURNING *`,
@@ -529,16 +561,23 @@ export async function registerReconciliationRoutes(
         `SELECT * FROM settlement_batches WHERE id=$1 AND merchant_id=$2 FOR UPDATE`,
         [(r.params as any).id, r.actor!.merchantId],
       );
-      if (!current.rowCount)
-        return p.code(404).send(apiError(r, 'NOT_FOUND', 'Settlement not found.'));
+      if (!current.rowCount) {
+        p.code(404);
+        return apiError(r, 'NOT_FOUND', 'Settlement not found.');
+      }
       if (current.rows[0].status === 'CANCELLED') {
         if (current.rows[0].cancellation_idempotency_key === key) return viewBatch(current.rows[0]);
-        return p.code(409).send(apiError(r, 'STATE_CONFLICT', 'Settlement is already cancelled.'));
+        p.code(409);
+        return apiError(r, 'STATE_CONFLICT', 'Settlement is already cancelled.');
       }
-      if (!['DRAFT', 'AWAITING_APPROVAL'].includes(current.rows[0].status))
-        return p
-          .code(409)
-          .send(apiError(r, 'STATE_CONFLICT', 'Approved or exported settlements cannot be cancelled.'));
+      if (!['DRAFT', 'AWAITING_APPROVAL'].includes(current.rows[0].status)) {
+        p.code(409);
+        return apiError(
+          r,
+          'STATE_CONFLICT',
+          'Approved or exported settlements cannot be cancelled.',
+        );
+      }
       const cancelled = (
         await c.query(
           `UPDATE settlement_batches SET status='CANCELLED',cancelled_at=now(),cancelled_by=$1,cancellation_idempotency_key=$2 WHERE id=$3 RETURNING *`,
@@ -558,11 +597,14 @@ export async function registerReconciliationRoutes(
         'SELECT * FROM settlement_batches WHERE id=$1 AND merchant_id=$2 FOR UPDATE',
         [(r.params as any).id, r.actor!.merchantId],
       );
-      if (!x.rowCount) return p.code(404).send(apiError(r, 'NOT_FOUND', 'Settlement not found.'));
-      if (!['APPROVED', 'EXPORTED'].includes(x.rows[0].status))
-        return p
-          .code(409)
-          .send(apiError(r, 'STATE_CONFLICT', 'Only approved settlements can be exported.'));
+      if (!x.rowCount) {
+        p.code(404);
+        return apiError(r, 'NOT_FOUND', 'Settlement not found.');
+      }
+      if (!['APPROVED', 'EXPORTED'].includes(x.rows[0].status)) {
+        p.code(409);
+        return apiError(r, 'STATE_CONFLICT', 'Only approved settlements can be exported.');
+      }
       const csv = settlementCsv({
           settlementId: x.rows[0].id,
           reconciliationId: x.rows[0].input_snapshot.reconciliationId,
@@ -576,7 +618,7 @@ export async function registerReconciliationRoutes(
         }),
         filename = `giantpay-sandbox-settlement-${x.rows[0].id}.csv`,
         hash = createHash('sha256').update(csv).digest('hex');
-      await c.query(
+      const createdExport = await c.query(
         `INSERT INTO settlement_exports(id,batch_id,merchant_id,filename,content_sha256,created_by) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(batch_id) DO NOTHING`,
         [newId('sex'), x.rows[0].id, r.actor!.merchantId, filename, hash, r.actor!.id],
       );
@@ -584,14 +626,16 @@ export async function registerReconciliationRoutes(
         `UPDATE settlement_batches SET status='EXPORTED',exported_at=coalesce(exported_at,now()) WHERE id=$1`,
         [x.rows[0].id],
       );
-      await c.query(
-        `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,'SANDBOX_SETTLEMENT_EXPORTED','settlement',$4,$5)`,
-        [newId('aud'), r.actor!.id, r.actor!.merchantId, x.rows[0].id, { contentSha256: hash }],
+      if (createdExport.rowCount)
+        await c.query(
+          `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,'SANDBOX_SETTLEMENT_EXPORTED','settlement',$4,$5)`,
+          [newId('aud'), r.actor!.id, r.actor!.merchantId, x.rows[0].id, { contentSha256: hash }],
+        );
+      p.header('Content-Type', 'text/csv; charset=utf-8').header(
+        'Content-Disposition',
+        `attachment; filename="${filename}"`,
       );
-      return p
-        .header('Content-Type', 'text/csv; charset=utf-8')
-        .header('Content-Disposition', `attachment; filename="${filename}"`)
-        .send(csv);
+      return csv;
     }),
   );
 }

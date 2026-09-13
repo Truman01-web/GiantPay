@@ -9,6 +9,7 @@ import { loadConfig } from '../src/config.js';
 import { transaction } from '../src/db.js';
 import { apiKeyVerifier, generateApiKey } from '../src/developer/apiKeys.js';
 import { postSuccessfulPayment } from '../src/ledger/ledgerService.js';
+import { MemoryRateLimitStore } from '../src/rateLimit.js';
 import { tokenHash } from '../src/security.js';
 import { requireSafeTestDatabase } from './integrationGuard.js';
 
@@ -31,7 +32,10 @@ const start = '2026-09-01T00:00:00.000Z',
     'settlements:manage',
     'settlements:approve',
   ];
-let admin: pg.Pool, db: pg.Pool, app: Awaited<ReturnType<typeof buildApp>>;
+let admin: pg.Pool,
+  db: pg.Pool,
+  app: Awaited<ReturnType<typeof buildApp>>,
+  rateLimitNow = 0;
 const session = (token: string, csrf = 'csrf') => ({
   cookie: `giantpay_session=${token}; giantpay_csrf=${csrf}`,
   origin: 'http://127.0.0.1:5173',
@@ -107,7 +111,13 @@ suite('reconciliation and sandbox settlement database controls', () => {
       PAYMENT_PROVIDER: 'sandbox',
       SANDBOX_WEBHOOK_SECRET: 'w'.repeat(32),
     });
-    app = await buildApp(config, db);
+    app = await buildApp(
+      config,
+      db,
+      undefined,
+      undefined,
+      new MemoryRateLimitStore(() => rateLimitNow),
+    );
   });
   afterAll(async () => {
     await app?.close();
@@ -116,6 +126,7 @@ suite('reconciliation and sandbox settlement database controls', () => {
     await admin?.end();
   });
   beforeEach(async () => {
+    rateLimitNow += 61_000;
     await db.query(
       'TRUNCATE settlement_exports,settlement_batches,compensating_adjustments,reconciliation_exception_events,reconciliation_exceptions,reconciliation_runs,outbox_events,journal_postings,journal_entries,ledger_accounts,refunds,payment_attempts,payments CASCADE',
     );
@@ -218,6 +229,45 @@ suite('reconciliation and sandbox settlement database controls', () => {
         (
           await db.query(
             `SELECT count(*) FROM reconciliation_exception_events WHERE merchant_id='m1' OR exception_id='ex2' AND merchant_id='m1'`,
+          )
+        ).rows[0].count,
+      ),
+    ).toBe(0);
+
+    await insertRun('run1');
+    await insertException('ex1');
+    await insertPayment('pay2', 1000, 20, 'm2');
+    const foreignEntry = await transaction(db, (client) =>
+      postSuccessfulPayment(
+        client,
+        {
+          id: 'pay2',
+          merchant_id: 'm2',
+          reference: 'REF-pay2',
+          gross_minor: 1000,
+          fee_minor: 20,
+          tax_minor: 0,
+          currency: 'MWK',
+        },
+        'foreign-provider-event',
+      ),
+    );
+    const foreignAdjustment = await app.inject({
+      ...json('maker-token', 'foreign-ledger-adjustment', {
+        originalEntryId: foreignEntry.entryId,
+        reason: 'Must remain tenant scoped',
+        evidenceRef: 'case-foreign-ledger',
+      }),
+      url: '/v1/reconciliation/exceptions/ex1/adjustments',
+    });
+    expect(foreignAdjustment.statusCode, responseDiagnostic(foreignAdjustment)).toBe(422);
+    expect(foreignAdjustment.json()).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+    expect(
+      Number(
+        (
+          await db.query(
+            `SELECT count(*) FROM compensating_adjustments WHERE merchant_id='m1' AND original_entry_id=$1`,
+            [foreignEntry.entryId],
           )
         ).rows[0].count,
       ),
@@ -657,6 +707,16 @@ suite('reconciliation and sandbox settlement database controls', () => {
       Number(
         (await db.query(`SELECT count(*) FROM settlement_exports WHERE batch_id=$1`, [id])).rows[0]
           .count,
+      ),
+    ).toBe(1);
+    expect(
+      Number(
+        (
+          await db.query(
+            `SELECT count(*) FROM audit_events WHERE action='SANDBOX_SETTLEMENT_EXPORTED' AND resource_id=$1`,
+            [id],
+          )
+        ).rows[0].count,
       ),
     ).toBe(1);
     expect(
