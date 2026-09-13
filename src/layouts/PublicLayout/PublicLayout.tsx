@@ -44,6 +44,13 @@ const SOCIAL_LINKS = [
   },
 ];
 
+const FOOTER_LINKS = [
+  { label: 'Privacy Policy', to: '/privacy' },
+  { label: 'Terms of Service', to: '/terms' },
+  { label: 'System Status', to: '/status' },
+  { label: 'Developer Docs', to: '/developers' },
+];
+
 export function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -62,85 +69,110 @@ export function PublicLayout() {
       {/* ── Professional Footer ── */}
       <footer
         style={{
-          background: 'linear-gradient(160deg, #06111f 0%, #0b1e38 60%, #071628 100%)',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          background: 'linear-gradient(160deg, #050e1d 0%, #0a1a30 60%, #060f1f 100%)',
+          borderTop: '1px solid rgba(255,255,255,0.07)',
         }}
       >
-        {/* Main footer grid */}
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
 
-            {/* Column 1 — Brand + Support */}
-            <div className="flex flex-col gap-4">
+          {/* Top row: brand left, links right */}
+          <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
+
+            {/* Brand block */}
+            <div className="flex flex-col gap-4 max-w-sm">
               <Logo inverted />
-              <p className="text-sm leading-relaxed text-white/50 max-w-xs">
-                Unified digital payments for businesses and platforms in Malawi. Secure. Fast. Reliable.
+              <p className="text-sm leading-relaxed text-white/45">
+                Unified digital payments for businesses and platforms in Malawi.
+                Secure, fast, and developer-friendly.
               </p>
-              <div className="mt-1">
-                <p className="text-[11px] uppercase tracking-widest font-semibold text-white/30 mb-1">Support</p>
+              {/* Support phone */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-1.5">
+                  Support
+                </p>
                 <a
                   href="tel:+265885362150"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-white/80 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-white/75 hover:text-white transition-colors"
                 >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current text-emerald-400 shrink-0" aria-hidden="true">
-                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-                  </svg>
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-lg"
+                    style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.2)' }}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current text-emerald-400" aria-hidden="true">
+                      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+                    </svg>
+                  </span>
                   0885 362 150
                 </a>
               </div>
             </div>
 
-            {/* Column 2 — Legal Links */}
-            <div className="flex flex-col gap-3">
-              <p className="text-[11px] uppercase tracking-widest font-semibold text-white/30">Legal &amp; Platform</p>
-              <nav aria-label="Footer navigation" className="flex flex-col gap-2.5">
-                {[
-                  { to: '/privacy', label: 'Privacy Policy' },
-                  { to: '/terms', label: 'Terms of Service' },
-                  { to: '/status', label: 'System Status' },
-                  { to: '/developers', label: 'Developer Docs' },
-                ].map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className="text-sm text-white/55 hover:text-white transition-colors w-fit"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+            {/* Links + Socials */}
+            <div className="flex flex-col gap-8 sm:flex-row sm:gap-16">
 
-            {/* Column 3 — Social */}
-            <div className="flex flex-col gap-3">
-              <p className="text-[11px] uppercase tracking-widest font-semibold text-white/30">Follow Us</p>
-              <div className="flex flex-col gap-3">
-                {SOCIAL_LINKS.map((s) => (
-                  <a
-                    key={s.label}
-                    href={s.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={s.label}
-                    className="inline-flex items-center gap-3 text-white/55 hover:text-white transition-colors w-fit group"
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 group-hover:bg-white/10 group-hover:border-white/20 transition-colors">
+              {/* Navigation links */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-4">
+                  Platform
+                </p>
+                <nav aria-label="Footer navigation" className="flex flex-col gap-2.5">
+                  {FOOTER_LINKS.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="text-sm text-white/50 hover:text-white/90 transition-colors w-fit"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Social icons */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-4">
+                  Follow us
+                </p>
+                <div className="flex gap-2.5">
+                  {SOCIAL_LINKS.map((s) => (
+                    <a
+                      key={s.label}
+                      href={s.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={s.label}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 hover:text-white transition-colors"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.09)',
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.1)';
+                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.18)';
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.05)';
+                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.09)';
+                      }}
+                    >
                       {s.icon}
-                    </span>
-                    <span className="text-sm">{s.label}</span>
-                  </a>
-                ))}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
+          {/* Divider */}
+          <div className="mt-12 border-t border-white/[0.07]" />
+
           {/* Bottom bar */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-white/10 pt-6">
-            <p className="text-xs text-white/35">
-              © {new Date().getFullYear()} GiantPlus. All rights reserved.
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-xs text-white/30">
+              © {new Date().getFullYear()} GiantPlus Global Finance Solutions. All rights reserved.
             </p>
-            <p className="text-xs text-white/25">
-              Regulated payment services in Malawi.
+            <p className="text-xs text-white/20">
+              Regulated payment services · Malawi
             </p>
           </div>
         </div>
