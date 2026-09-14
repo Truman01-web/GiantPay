@@ -5,6 +5,7 @@ export const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 export const TermsPage = lazy(() => import('@/pages/TermsPage'));
 export const StatusPage = lazy(() => import('@/pages/StatusPage'));
 export const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+export const PublicFeaturePage = lazy(() => import('@/pages/PublicFeaturePage'));
 
 export const LoginPage = lazy(() => import('@/pages/LoginPage'));
 export const RegisterPage = lazy(() => import('@/pages/RegisterPage'));

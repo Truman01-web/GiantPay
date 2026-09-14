@@ -112,14 +112,7 @@ redesign.
    modeled from the product spec, not a verified contract. This is the
    single biggest integration risk — expect field/enum mismatches on first
    real integration.
-2. **Brand logo in place, but two gaps remain.** The real lockup
-   (`src/assets/brand/giantpay-logo.jpg`) is wired up in `Logo`. Missing: a
-   standalone icon-only export (favicon and the collapsed-sidebar slot still
-   use a typographic "G" placeholder — extracting one from the lockup would
-   mean cropping the source file), and ideally a transparent-background
-   version (the current file's opaque light background is handled with a
-   white backing plate on the dark sidebar rather than altering the asset).
-   See `docs/design-system.md`.
+2. **Brand logo and assets resolved.** Real transparent PNG assets (`giantpay-logo.png` lockup and `giantpay-mark.png` standalone icon) are in place under `src/assets/brand/` and `public/`. The collapsed-sidebar slot and favicon use the real GP mark icon cleanly without backing plates, and the login experience features a modern translucent glassmorphism card on a centered navy gradient layout.
 3. **TypeScript pinned to 6.0.3, not the newly-released 7.x.** `typescript-eslint`
    (8.69.0, latest at build time) does not yet support the TS 7 native
    compiler — installing TS 7 breaks `pnpm lint` entirely. Revisit this pin
