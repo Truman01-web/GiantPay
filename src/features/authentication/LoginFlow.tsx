@@ -9,7 +9,7 @@ import { Alert } from '@/components/feedback/Alert';
 import { ApiError } from '@/services/api/errors';
 import { safeRedirectPath } from '@/lib/safeRedirect';
 import { env } from '@/app/config/env';
-import { LOGO_SRC, MARK_SRC } from '@/assets/brand';
+import { LOGO_SRC } from '@/assets/brand';
 import { loginSchema, type LoginFormValues } from './schemas';
 import { useLoginMutation } from './useAuthMutations';
 import { MfaChallengeForm } from './MfaChallengeForm';
@@ -109,21 +109,6 @@ export function LoginFlow() {
         boxShadow: '0 32px 64px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.22)',
       }}
     >
-      {/* GP mark — centered watermark background image moving like a flag with rich colors */}
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
-        aria-hidden="true"
-      >
-        <img
-          src={MARK_SRC}
-          alt=""
-          className="animate-flag-wave w-[280px] sm:w-[380px] md:w-[420px] max-w-none opacity-[0.24] select-none object-contain"
-          style={{
-            filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.3))',
-          }}
-        />
-      </div>
-
       {/* Coloured top accent bar */}
       <div
         className="h-1.5 w-full rounded-t-2xl"
