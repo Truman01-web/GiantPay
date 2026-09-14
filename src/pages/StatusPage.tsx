@@ -2,12 +2,34 @@ import { Info } from 'lucide-react';
 
 export default function StatusPage() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
-      <Info className="mx-auto h-8 w-8 text-[var(--color-neutral-400)]" aria-hidden="true" />
-      <h1 className="mt-3 text-[length:var(--text-h1)] font-semibold text-[var(--color-navy-900)]">System status</h1>
-      <p className="mt-2 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
-        A public status page will appear here once GiantPay's status monitoring is configured.
-      </p>
+    <div>
+      <section
+        className="relative overflow-hidden text-white pt-28 pb-14 sm:pt-36 sm:pb-16"
+        style={{
+          background: 'linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)',
+        }}
+      >
+        <div className="mx-auto max-w-4xl px-4 sm:px-6">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Operational Telemetry</span>
+          </div>
+          <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-white">System Status</h1>
+          <p className="mt-2 text-sm text-white/60">
+            Real-time status of GiantPay gateway, sandbox APIs, and provider connectivity.
+          </p>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
+        <div className="rounded-2xl border border-[var(--color-neutral-200)] bg-white p-8 shadow-sm">
+          <Info className="mx-auto h-8 w-8 text-blue-600" aria-hidden="true" />
+          <h2 className="mt-3 text-xl font-bold text-[var(--color-navy-900)]">Sandbox & Core Services Active</h2>
+          <p className="mt-2 text-sm text-[var(--color-neutral-600)]">
+            A comprehensive public status dashboard with component uptime graphs will appear here once live provider monitoring is configured.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

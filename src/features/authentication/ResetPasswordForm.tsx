@@ -123,10 +123,11 @@ export function ResetPasswordForm() {
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-white/75">
+            <label htmlFor="reset-password" className="text-sm font-medium text-white/75">
               New password <span className="text-red-400" aria-hidden="true">*</span>
             </label>
             <PasswordInput
+              id="reset-password"
               autoComplete="new-password"
               placeholder="At least 10 characters"
               invalid={Boolean(errors.password)}
@@ -137,10 +138,11 @@ export function ResetPasswordForm() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-white/75">
+            <label htmlFor="reset-confirm-password" className="text-sm font-medium text-white/75">
               Confirm new password <span className="text-red-400" aria-hidden="true">*</span>
             </label>
             <PasswordInput
+              id="reset-confirm-password"
               autoComplete="new-password"
               placeholder="••••••••••"
               invalid={Boolean(errors.confirmPassword)}

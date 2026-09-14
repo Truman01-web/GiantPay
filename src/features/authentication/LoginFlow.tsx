@@ -37,11 +37,13 @@ function useDemoAccounts(): DemoAccountSummary[] {
 
 /** Labelled field block styled for the dark glassmorphism card. */
 function GlassField({
+  id,
   label,
   required,
   error,
   children,
 }: {
+  id?: string;
   label: string;
   required?: boolean;
   error?: string;
@@ -49,7 +51,7 @@ function GlassField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-white/75">
+      <label htmlFor={id} className="text-sm font-medium text-white/75">
         {label}
         {required && <span className="ml-0.5 text-red-400" aria-hidden="true">*</span>}
       </label>
@@ -115,7 +117,7 @@ export function LoginFlow() {
         <img
           src={MARK_SRC}
           alt=""
-          className="animate-flag-wave w-[280px] sm:w-[380px] md:w-[420px] max-w-none opacity-[0.16] select-none object-contain"
+          className="animate-flag-wave w-[280px] sm:w-[380px] md:w-[420px] max-w-none opacity-[0.24] select-none object-contain"
           style={{
             filter: 'drop-shadow(0 15px 35px rgba(201,162,39,0.3))',
           }}
@@ -129,6 +131,24 @@ export function LoginFlow() {
       />
 
       <div className="relative z-10 px-5 py-7 sm:px-8 sm:py-9">
+        {/* ← Back to Home */}
+        <Link
+          to="/"
+          className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-white/50 hover:text-white/90 transition-colors group"
+        >
+          <svg
+            className="h-3.5 w-3.5 transition-transform duration-150 group-hover:-translate-x-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Home
+        </Link>
+
         {/* Logo — full lockup PNG centred (responsive size) */}
         <div className="mb-5 sm:mb-6 flex justify-center">
           <img
@@ -146,8 +166,9 @@ export function LoginFlow() {
         )}
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <GlassField label="Email address" required error={errors.email?.message}>
+          <GlassField id="login-email" label="Email address" required error={errors.email?.message}>
             <Input
+              id="login-email"
               type="email"
               autoComplete="email"
               placeholder="you@company.mw"
@@ -157,8 +178,9 @@ export function LoginFlow() {
             />
           </GlassField>
 
-          <GlassField label="Password" required error={errors.password?.message}>
+          <GlassField id="login-password" label="Password" required error={errors.password?.message}>
             <PasswordInput
+              id="login-password"
               autoComplete="current-password"
               placeholder="••••••••"
               invalid={Boolean(errors.password)}
