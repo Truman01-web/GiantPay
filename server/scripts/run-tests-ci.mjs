@@ -7,7 +7,7 @@ import { formatVitestFailureReport } from './run-tests-report.mjs';
 if(!process.env.TEST_DATABASE_URL)throw new Error('TEST_DATABASE_URL is required by test:ci.');
 const directory=mkdtempSync(join(tmpdir(),'giantpay-tests-')),report=join(directory,'report.json');
 try {
-  const result=spawnSync(process.platform==='win32'?'pnpm.cmd':'pnpm',['exec','vitest','run','--reporter=json',`--outputFile=${report}`],{encoding:'utf8',env:{...process.env,REQUIRE_INTEGRATION_TESTS:'true'},shell:process.platform==='win32'});
+  const result=spawnSync(process.platform==='win32'?'pnpm.cmd':'pnpm',['exec','vitest','run','--reporter=json',`--outputFile=${report}`,'--maxWorkers=1'],{encoding:'utf8',env:{...process.env,REQUIRE_INTEGRATION_TESTS:'true'},shell:process.platform==='win32'});
   const stdout=result.stdout??'',stderr=result.stderr??'';
   if(result.status!==0){
     let summary;

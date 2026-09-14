@@ -214,22 +214,75 @@ paths:
       security: [{ cookieSession: [] }]
       operationId: getOnboarding
       responses:
-        '200': { description: Onboarding draft }
+        '200': { description: Tenant-scoped application with masked draft data }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
     patch:
       tags: [Merchants]
       security: [{ cookieSession: [] }]
       operationId: updateOnboarding
       responses:
-        '200': { description: Updated onboarding draft }
+        '200': { description: Created or updated encrypted onboarding draft }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
   /merchants/onboarding/submit:
     post:
       tags: [Merchants]
       security: [{ cookieSession: [] }]
       operationId: submitOnboarding
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      description: Creates an immutable snapshot for internal sandbox review only; no external approval is implied.
       responses:
         '200': { description: Submitted onboarding application }
+        '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
+  /merchants/onboarding/addresses:
+    post: { tags: [Merchant onboarding], operationId: addOnboardingAddress, security: [{ cookieSession: [] }], responses: { '201': { description: Draft address added }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/addresses/{id}:
+    delete: { tags: [Merchant onboarding], operationId: removeOnboardingAddress, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Draft address removed }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/directors:
+    post: { tags: [Merchant onboarding], operationId: addOnboardingDirector, security: [{ cookieSession: [] }], responses: { '201': { description: Draft director added }, '400': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/directors/{id}:
+    delete: { tags: [Merchant onboarding], operationId: removeOnboardingDirector, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Draft director removed }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/beneficial-owners:
+    post: { tags: [Merchant onboarding], operationId: addBeneficialOwner, security: [{ cookieSession: [] }], description: Ownership is supplied as integer basis points., responses: { '201': { description: Draft beneficial owner added }, '400': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/beneficial-owners/{id}:
+    delete: { tags: [Merchant onboarding], operationId: removeBeneficialOwner, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Draft beneficial owner removed }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/authorized-representatives:
+    post: { tags: [Merchant onboarding], operationId: addAuthorizedRepresentative, security: [{ cookieSession: [] }], responses: { '201': { description: Draft representative added }, '400': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/authorized-representatives/{id}:
+    delete: { tags: [Merchant onboarding], operationId: removeAuthorizedRepresentative, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Draft representative removed }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/questionnaire:
+    put: { tags: [Merchant onboarding], operationId: answerComplianceQuestionnaire, security: [{ cookieSession: [] }], description: Records versioned merchant declarations; answers are not externally verified screening results., responses: { '200': { description: Questionnaire saved }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/evidence:
+    post: { tags: [Merchant onboarding], operationId: registerOnboardingEvidence, security: [{ cookieSession: [] }], description: Registers metadata and an encrypted opaque storage reference; file upload is unavailable., responses: { '201': { description: Evidence metadata registered }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/evidence/{id}:
+    delete: { tags: [Merchant onboarding], operationId: removeOnboardingEvidence, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Replaceable draft evidence removed }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/information-response:
+    post: { tags: [Merchant onboarding], operationId: respondToComplianceInformationRequest, security: [{ cookieSession: [] }], responses: { '200': { description: Merchant response recorded }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/resubmit:
+    post: { tags: [Merchant onboarding], operationId: resubmitOnboarding, security: [{ cookieSession: [] }], responses: { '200': { description: Application resubmitted }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/history:
+    get: { tags: [Merchant onboarding], operationId: getOnboardingHistory, security: [{ cookieSession: [] }], responses: { '200': { description: Append-only status-transition history } } }
+  /compliance/applications:
+    get: { tags: [Compliance review], operationId: listComplianceApplications, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }], responses: { '200': { description: Bounded submitted-application list }, '403': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}:
+    get: { tags: [Compliance review], operationId: getComplianceApplication, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Immutable submitted snapshot with sensitive envelopes omitted }, '404': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}/review:
+    post: { tags: [Compliance review], operationId: beginComplianceReview, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Review started }, '409': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}/information-requests:
+    post: { tags: [Compliance review], operationId: requestComplianceInformation, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '201': { description: Meaningful information request recorded }, '409': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}/risk-classifications:
+    post: { tags: [Compliance review], operationId: classifyComplianceRisk, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '201': { description: Internal sandbox risk classification recorded }, '409': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}/approve:
+    post: { tags: [Compliance review], operationId: approveComplianceApplication, security: [{ cookieSession: [] }], description: Internal sandbox approval requiring a different approver from the reviewer., parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '200': { description: Internal sandbox approval recorded }, '409': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}/reject:
+    post: { tags: [Compliance review], operationId: rejectComplianceApplication, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '200': { description: Rejection with reason and evidence recorded }, '409': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}/suspend:
+    post: { tags: [Compliance review], operationId: suspendComplianceApplication, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '200': { description: Previously approved sandbox application suspended }, '409': { $ref: '#/components/responses/Error' } } }
+  /compliance/applications/{id}/decisions:
+    get: { tags: [Compliance review], operationId: listComplianceDecisions, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Append-only decision history }, '404': { $ref: '#/components/responses/Error' } } }
   /payments:
     get:
       tags: [Payments]
