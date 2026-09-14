@@ -18,7 +18,8 @@ export default mergeConfig(
         reporter: ['text', 'html'],
         exclude: ['src/mocks/**', 'src/pages/**', 'e2e/**', '**/*.d.ts'],
       },
-      exclude: ['e2e/**', 'node_modules/**'],
+      include: ['src/**/*.{test,spec}.{ts,tsx}'],
+      exclude: ['e2e/**', 'node_modules/**', 'server/**'],
     },
   }),
 );

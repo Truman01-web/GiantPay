@@ -8,7 +8,7 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'public/mockServiceWorker.js'],
+    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'public/mockServiceWorker.js', 'server/**'],
   },
   {
     files: ['**/*.{ts,tsx}'],
