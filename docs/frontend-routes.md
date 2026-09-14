@@ -16,21 +16,23 @@
 `COMPLIANCE`, `VIEWER` (merchant-side), `PLATFORM_ADMIN` (GiantPay internal).
 
 The frontend reads an explicit **permission list** returned by the backend
-session (`session.permissions: string[]`) rather than inferring capability
-from role name — role is used only for display and for defaulting an invite
-form, never for authorization decisions. Until the real backend contract
-exists, `mocks/fixtures/permissions.ts` defines the permission strings this
-frontend expects (e.g. `payments:read`, `payments.refunds:request`,
-`payments.refunds:approve`, `developer.apiKeys:manage`,
-`admin.merchants:review`) — **this list must be reconciled against the real
-backend contract before production launch** (tracked in `HANDOVER.md`).
+session (`session.user.permissions: Permission[]`) rather than inferring
+capability from role name — role is used only for display and for
+defaulting an invite form, never for authorization decisions. Until the
+real backend contract exists, the `Permission` union in `types/auth.ts`
+defines the permission strings this frontend expects (e.g. `payments:read`,
+`payments.refunds:request`, `payments.refunds:approve`,
+`developer.apiKeys:manage`, `admin.merchants:review`), and
+`mocks/fixtures/session.ts` assigns them to the demo accounts — **this list
+must be reconciled against the real backend contract before production
+launch** (tracked in `HANDOVER.md`).
 
 ## Guard behavior
 
 - `RequireAuth`: no session → redirect to `/login?returnTo=<path>`, sanitized
   (same-origin, relative-only) to prevent open-redirect.
 - `RequirePermission(permission)`: session present but missing permission →
-  render `<ForbiddenPage />` (a real 403 page) at that route; **never** a
+  render `<PermissionDenied />` (a real 403 page) at that route; **never** a
   silent redirect to `/dashboard`, which would look like the page doesn't
   exist and leak information asymmetrically compared to a real 404.
 - Navigation items are filtered by the same permission list so a user never
@@ -70,8 +72,8 @@ yet routed.
 | `/transactions`, `/transactions/:id` | Full |
 | `/payment-links`, `/payment-links/create`, `/payment-links/:id` | Full |
 | `/refunds`, `/refunds/:id` | Full |
-| `/settlements`, `/settlements/:id` | Stub |
-| `/reconciliation`, `/reconciliation/:id` | Stub |
+| `/settlements`, `/settlements/:id` | Full |
+| `/reconciliation`, `/reconciliation/:id` | Full |
 | `/reports` | Stub |
 | `/developers/*` | Stub |
 | `/team`, `/roles` | Stub |

@@ -27,10 +27,15 @@
    6. A `VIEWER`-role user is blocked from refund-request and payment-link
       creation actions/routes (permission enforcement, not just hidden UI).
 
-   Remaining journeys (maker-checker refund approval, reconciliation
-   exception resolution, full onboarding→approval loop) require the
-   admin/support surfaces from later phases and are listed as pending in
-   `HANDOVER.md`.
+   Reconciliation exception review/update (the merchant-side maker-checker-
+   shaped workflow) is covered separately at the component/integration
+   level in `src/features/reconciliation/Reconciliation.test.tsx` — success,
+   note-required validation, and a failed-update path that confirms the
+   dialog never treats an update as applied until the backend confirms it.
+
+   Remaining journeys (admin-side refund approval, full onboarding→approval
+   loop) require the admin surfaces from later phases and are listed as
+   pending in `HANDOVER.md`.
 
 ## Roles exercised in tests
 
@@ -57,6 +62,6 @@ pnpm lint        # eslint
 pnpm typecheck   # tsc --noEmit
 pnpm test        # vitest run
 pnpm test:watch  # vitest
-pnpm e2e          # playwright test
-pnpm build        # production build
+pnpm e2e         # playwright test
+pnpm build       # production build
 ```

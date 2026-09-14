@@ -21,28 +21,29 @@ best-effort per the spec, not guaranteed to match the backend exactly.
 - Idempotency: `Idempotency-Key` header on POST for financial resources.
 - Errors: `{ error: { code, message, fields?, requestId? } }`.
 
-## Implemented this phase (service module → mocked endpoints)
+## Implemented (service module → mocked endpoints)
 
 | Service module | Endpoints (mocked) |
 |---|---|
-| `services/api/auth.ts` | `POST /auth/login`, `POST /auth/logout`, `POST /auth/mfa/challenge`, `POST /auth/mfa/verify`, `POST /auth/password/forgot`, `POST /auth/password/reset`, `POST /auth/email/verify`, `GET /auth/session` |
-| `services/api/merchants.ts` | `GET /merchants/me`, `POST /merchants/onboarding` (draft save + submit), `GET /merchants/onboarding` |
+| `services/api/auth.ts` | `POST /auth/login`, `POST /auth/logout`, `POST /auth/mfa/verify`, `POST /auth/mfa/resend`, `POST /auth/password/forgot`, `POST /auth/password/reset`, `POST /auth/email/verify`, `POST /auth/register`, `GET /auth/session` |
+| `services/api/merchants.ts` | `GET /merchants/onboarding`, `PATCH /merchants/onboarding` (draft save), `POST /merchants/onboarding/submit`, `POST /merchants/onboarding/documents` (KYC/KYB upload) |
 | `services/api/payments.ts` | `GET /payments`, `GET /payments/:id`, `GET /payments/:id/events` |
 | `services/api/paymentLinks.ts` | `GET /payment-links`, `POST /payment-links`, `GET /payment-links/:id`, `PATCH /payment-links/:id` (disable) |
 | `services/api/refunds.ts` | `GET /refunds`, `POST /refunds`, `GET /refunds/:id` |
 | `services/api/checkout.ts` | `GET /checkout/:token`, `POST /checkout/:token/submit`, `GET /payment-status/:reference` (trusted status source) |
 | `services/api/dashboard.ts` | `GET /dashboard/summary`, `GET /dashboard/volume` |
+| `services/api/settlements.ts` | `GET /settlements`, `GET /settlements/:id` |
+| `services/api/reconciliation.ts` | `GET /reconciliation/runs`, `GET /reconciliation/runs/:id`, `PATCH /reconciliation/runs/:runId/exceptions/:exceptionId` (status/note update) |
 
-## Routed but not yet wired to a service (Phase 4–6)
+## Routed but not yet wired to a service
 
-`services/api/settlements.ts`, `services/api/reconciliation.ts`,
-`services/api/reports.ts`, `services/api/apiKeys.ts`,
-`services/api/webhooks.ts`, `services/api/team.ts`,
-`services/api/support.ts`, `services/api/admin.ts` — files exist as typed
-stubs with documented intended shape (so features can be filled in without
-an API-layer redesign) but have no MSW handler yet; pages that depend on
-them render the "coming in a later phase" stub state rather than calling
-into an unimplemented function.
+`services/api/stubs.ts` documents the intended response shape for reports,
+developer platform (API keys, webhooks), team, support and admin — kept in
+one file until each feature is built (as settlements and reconciliation
+already were, each split into its own `services/api/<domain>.ts` module).
+None are called by any page yet; pages that depend on them render the
+"coming in a later phase" stub state (`FeatureComingSoon`) rather than
+calling into an unimplemented function.
 
 ## Error normalization
 
