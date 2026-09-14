@@ -1,9 +1,18 @@
-import { CheckCircle2, Clock, XCircle, AlertTriangle, RotateCcw, Ban, PauseCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, AlertTriangle, RotateCcw, Ban, PauseCircle, Loader2, Search, ArrowUpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import type { PaymentStatus, RefundStatus, CheckoutStatus } from '@/types/payments';
 import type { MerchantApplicationStatus } from '@/types/onboarding';
+import type { SettlementStatus } from '@/types/settlements';
+import type { ReconciliationExceptionStatus, ReconciliationRunStatus } from '@/types/reconciliation';
 
-type KnownStatus = PaymentStatus | RefundStatus | CheckoutStatus | MerchantApplicationStatus;
+type KnownStatus =
+  | PaymentStatus
+  | RefundStatus
+  | CheckoutStatus
+  | MerchantApplicationStatus
+  | SettlementStatus
+  | ReconciliationExceptionStatus
+  | ReconciliationRunStatus;
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'neutral' | 'blue' | 'success' | 'warning' | 'danger'; icon: typeof CheckCircle2 }> = {
   CREATED: { label: 'Created', variant: 'neutral', icon: Clock },
@@ -32,6 +41,14 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'neutral' | 'blue'
   SUSPENDED: { label: 'Suspended', variant: 'danger', icon: PauseCircle },
   ACTIVE: { label: 'Active', variant: 'success', icon: CheckCircle2 },
   DISABLED: { label: 'Disabled', variant: 'neutral', icon: Ban },
+  AVAILABLE: { label: 'Available', variant: 'success', icon: CheckCircle2 },
+  COMPLETED: { label: 'Completed', variant: 'success', icon: CheckCircle2 },
+  RUNNING: { label: 'Running', variant: 'blue', icon: Loader2 },
+  OPEN: { label: 'Open', variant: 'warning', icon: AlertTriangle },
+  INVESTIGATING: { label: 'Investigating', variant: 'blue', icon: Search },
+  ACTION_REQUIRED: { label: 'Action required', variant: 'danger', icon: AlertTriangle },
+  RESOLVED: { label: 'Resolved', variant: 'success', icon: CheckCircle2 },
+  ESCALATED: { label: 'Escalated', variant: 'danger', icon: ArrowUpCircle },
 };
 
 /**
@@ -41,7 +58,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'neutral' | 'blue'
 export function StatusBadge({ status }: { status: KnownStatus | string }) {
   const config = STATUS_CONFIG[status] ?? { label: status, variant: 'neutral' as const, icon: Clock };
   const Icon = config.icon;
-  const spinning = status === 'PROCESSING' || status === 'SUBMITTING' || status === 'INITIALIZING';
+  const spinning = status === 'PROCESSING' || status === 'SUBMITTING' || status === 'INITIALIZING' || status === 'RUNNING';
   return (
     <Badge variant={config.variant}>
       <Icon className={spinning ? 'h-3 w-3 animate-spin' : 'h-3 w-3'} aria-hidden="true" />

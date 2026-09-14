@@ -4,6 +4,7 @@ import { cleanup } from '@testing-library/react';
 import { server } from '@/mocks/server';
 import { resetAuthMockState } from '@/mocks/handlers/auth';
 import { resetMerchantsMockState } from '@/mocks/handlers/merchants';
+import { resetReconciliationMockState } from '@/mocks/handlers/reconciliation';
 import { submittedReferences } from '@/mocks/fixtures/checkout';
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -19,6 +20,7 @@ afterEach(() => {
   // an unrelated, later test.
   resetAuthMockState();
   resetMerchantsMockState();
+  resetReconciliationMockState();
   submittedReferences.clear();
 });
 afterAll(() => server.close());
