@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { useSessionStore } from '@/services/auth/sessionStore';
 import { RequireAuth, RequirePermission } from './guards';
@@ -37,6 +38,20 @@ describe('RequireAuth', () => {
       </RequireAuth>,
     );
     expect(screen.getByText('Protected content')).toBeInTheDocument();
+  });
+
+  it('offers a retry instead of getting stuck when the session check failed', async () => {
+    useSessionStore.setState({ status: 'error', session: null, sessionError: 'boom' });
+    renderWithRouter(
+      <RequireAuth>
+        <div>Protected content</div>
+      </RequireAuth>,
+    );
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+    expect(screen.getByText(/couldn't check your session/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+    expect(useSessionStore.getState().status).toBe('loading');
   });
 });
 
