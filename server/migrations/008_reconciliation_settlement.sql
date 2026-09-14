@@ -18,7 +18,7 @@ CREATE INDEX reconciliation_runs_merchant_idx ON reconciliation_runs(merchant_id
 
 CREATE TABLE reconciliation_exceptions (
   id text PRIMARY KEY, run_id text NOT NULL REFERENCES reconciliation_runs(id), merchant_id text NOT NULL REFERENCES merchants(id),
-  classification text NOT NULL CHECK(classification IN ('MISSING_INTERNAL_RECORD','MISSING_PROVIDER_RECORD','DUPLICATE_INTERNAL_RECORD','DUPLICATE_PROVIDER_RECORD','AMOUNT_MISMATCH','CURRENCY_MISMATCH','STATUS_MISMATCH')),
+  classification text NOT NULL CHECK(classification IN ('MISSING_INTERNAL_RECORD','MISSING_PROVIDER_RECORD','DUPLICATE_INTERNAL_RECORD','DUPLICATE_PROVIDER_RECORD','AMOUNT_MISMATCH','CURRENCY_MISMATCH','STATUS_MISMATCH','LEDGER_IMBALANCE','MISSING_LEDGER_POSTING','DUPLICATE_LEDGER_POSTING','MISSING_OUTBOX_EVENT','LATE_PROVIDER_EVENT','REFUND_PAYMENT_RELATIONSHIP_MISMATCH')),
   source_reference text NOT NULL, evidence jsonb NOT NULL, evidence_sha256 char(64) NOT NULL,
   status text NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','UNDER_REVIEW','RESOLVED','DISMISSED')),
   claimed_by text REFERENCES users(id), resolution_reason text, resolution_evidence_ref text,
@@ -69,8 +69,7 @@ CREATE TABLE settlement_exports (
 CREATE FUNCTION reject_reconciliation_source_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION 'immutable reconciliation evidence cannot be modified' USING ERRCODE='55000'; END $$;
 CREATE TRIGGER reconciliation_runs_source_immutable BEFORE UPDATE ON reconciliation_runs FOR EACH ROW
-WHEN (OLD.config_snapshot IS DISTINCT FROM NEW.config_snapshot OR OLD.source_sha256 IS DISTINCT FROM NEW.source_sha256 OR OLD.period_start IS DISTINCT FROM NEW.period_start OR OLD.period_end IS DISTINCT FROM NEW.period_end)
-EXECUTE FUNCTION reject_reconciliation_source_mutation();
+WHEN (OLD.config_snapshot IS DISTINCT FROM NEW.config_snapshot OR OLD.source_sha256 IS DISTINCT FROM NEW.source_sha256 OR OLD.period_start IS DISTINCT FROM NEW.period_start OR OLD.period_end IS DISTINCT FROM NEW.period_end) EXECUTE FUNCTION reject_reconciliation_source_mutation();
 CREATE TRIGGER reconciliation_exception_evidence_immutable BEFORE UPDATE ON reconciliation_exceptions FOR EACH ROW
 WHEN (OLD.evidence IS DISTINCT FROM NEW.evidence OR OLD.evidence_sha256 IS DISTINCT FROM NEW.evidence_sha256 OR OLD.classification IS DISTINCT FROM NEW.classification) EXECUTE FUNCTION reject_reconciliation_source_mutation();
 CREATE TRIGGER reconciliation_exception_delete_immutable BEFORE DELETE ON reconciliation_exceptions FOR EACH ROW EXECUTE FUNCTION reject_reconciliation_source_mutation();
@@ -84,7 +83,6 @@ END $$;
 CREATE TRIGGER reconciliation_exception_transition_valid BEFORE UPDATE OF status ON reconciliation_exceptions
 FOR EACH ROW EXECUTE FUNCTION validate_reconciliation_exception_transition();
 CREATE TRIGGER settlement_calculation_immutable BEFORE UPDATE ON settlement_batches FOR EACH ROW
-WHEN (OLD.status IN ('APPROVED','CANCELLED','EXPORTED') AND (OLD.gross_minor IS DISTINCT FROM NEW.gross_minor OR OLD.refunds_minor IS DISTINCT FROM NEW.refunds_minor OR OLD.fees_minor IS DISTINCT FROM NEW.fees_minor OR OLD.net_minor IS DISTINCT FROM NEW.net_minor))
-EXECUTE FUNCTION reject_reconciliation_source_mutation();
+WHEN (OLD.status IN ('APPROVED','CANCELLED','EXPORTED') AND (OLD.gross_minor IS DISTINCT FROM NEW.gross_minor OR OLD.refunds_minor IS DISTINCT FROM NEW.refunds_minor OR OLD.fees_minor IS DISTINCT FROM NEW.fees_minor OR OLD.net_minor IS DISTINCT FROM NEW.net_minor OR OLD.input_snapshot IS DISTINCT FROM NEW.input_snapshot)) EXECUTE FUNCTION reject_reconciliation_source_mutation();
 
-UPDATE users SET permissions=(SELECT array_agg(DISTINCT permission) FROM unnest(permissions || ARRAY['reconciliation:read','reconciliation:manage','reconciliation:approve','ledger:integrity','settlements:read','settlements:manage','settlements:approve']) AS permission) WHERE role='OWNER';
+UPDATE users SET permissions=(SELECT array_agg(DISTINCT permission) FROM unnest(permissions || ARRAY['reconciliation:read','reconciliation:manage','reconciliation:approve','ledger:integrity','settlements:read','settlements:manage','settlements:approve']) permission) WHERE role='OWNER';

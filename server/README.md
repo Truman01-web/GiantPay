@@ -15,6 +15,63 @@ npm run dev
 Real-money execution, reconciliation, settlement, MFA and regulatory reporting
 remain production stop conditions.
 
+Security, Redis, trusted-proxy, CSRF, cookie, and browser integration requirements are
+documented in [docs/security-hardening.md](docs/security-hardening.md). Production uses
+Redis as the distributed rate-limit authority and will not fall back to process memory.
+
+Sandbox reconciliation, ledger-integrity checks, exception review, compensating
+adjustments, and maker-checker settlement exports are documented in
+[docs/reconciliation-settlement.md](docs/reconciliation-settlement.md). Exports never
+execute or represent an external payout.
+
+Tenant-isolated merchant summaries, immutable operational CSV exports, and redacted
+audit evidence are documented in [docs/reporting-operations.md](docs/reporting-operations.md).
+They are sandbox operational records, not bank, provider, tax, or regulatory statements.
+
+Merchant teams, database-backed roles, invitations, authenticator-app MFA, recovery,
+and session controls are documented in [docs/team-access-security.md](docs/team-access-security.md).
+
+## Toolchain and verification
+
+Use Node 22.19.0 (Node 20.19+ is also supported) and pnpm 10.17.1. The root
+`pnpm-lock.yaml` is authoritative for both frontend and server; install from the
+repository root with `pnpm install --frozen-lockfile`. Docker Desktop with WSL 2
+or another working virtualization backend is required on Windows.
+
+Start the disposable database from `server/`:
+
+```powershell
+docker compose -f docker-compose.test.yml up -d --wait
+$env:TEST_DATABASE_URL='postgresql://giantpay_test:giantpay_test_password@127.0.0.1:55432/giantpay_test'
+$env:DATABASE_URL=$env:TEST_DATABASE_URL
+pnpm run db:verify-migrations
+pnpm run test:ci
+pnpm run openapi:validate
+pnpm run typecheck
+pnpm run build
+node scripts/check-dist.mjs
+docker compose -f docker-compose.test.yml down -v
+```
+
+The test guard refuses malformed URLs, databases not ending in `_test`, known
+development/production names, and remote hosts unless
+`ALLOW_REMOTE_TEST_DATABASE=true` is explicitly set. It never prints passwords.
+CI performs the same migration, test, OpenAPI, build, compiled-test and secret
+checks using isolated test-only credentials.
+
+If Docker health checks fail on Windows, confirm Docker Desktop is running,
+WSL 2 virtualization is enabled, and port 55432 is free. Do not substitute the
+development database. `pnpm audit --prod` is reviewed without force upgrades;
+non-breaking remediations are preferred and breaking upgrades are separately
+planned and tested.
+
+As of 2026-09-12, `pnpm audit --prod` reports no production dependency
+advisories. The full audit reports two entries for the same moderate Vitest
+development-server file-read issue (`vitest` and its `@vitest/mocker`
+dependency). The fix requires moving from Vitest 3 to at least 4.1.11, a major
+upgrade, so it is deferred for an isolated compatibility change. CI never
+starts or exposes the Vitest development server.
+
 ## Payment provider boundary
 
 `src/providers/types.ts` defines the provider-neutral interface. The only

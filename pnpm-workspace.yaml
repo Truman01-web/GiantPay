@@ -1,2 +1,8 @@
+packages:
+  - .
+  - server
+
 onlyBuiltDependencies:
   - msw
+  - argon2
+  - esbuild

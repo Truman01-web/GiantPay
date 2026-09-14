@@ -46,3 +46,10 @@ dedicated `WEBHOOK_SECRET_KEY`, HTTPS-only mode, and network egress controls.
 Workers claim rows with `FOR UPDATE SKIP LOCKED`; stale five-minute claims are
 recoverable. Operators can inspect attempts without secrets or authorization
 headers, and authorized merchants can manually requeue terminal failures.
+
+## Health probes
+
+`GET /v1/health/live` proves only that the HTTP process can respond. Kubernetes
+or an equivalent supervisor should use `GET /v1/health/ready` for traffic: it
+returns success only when PostgreSQL responds and essential configured workers
+have started. Neither response contains dependency addresses or configuration.

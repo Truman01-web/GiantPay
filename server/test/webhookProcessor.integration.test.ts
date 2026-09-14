@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { requireSafeTestDatabase } from './integrationGuard.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { processPaymentWebhook } from '../src/payments/webhookProcessor.js';
 import type { ProviderWebhookEvent } from '../src/providers/types.js';
@@ -10,7 +11,7 @@ import { buildApp } from '../src/app.js';
 import { SandboxPaymentProvider } from '../src/providers/sandboxProvider.js';
 import type { Config } from '../src/config.js';
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
+const databaseUrl = process.env.TEST_DATABASE_URL ? requireSafeTestDatabase(process.env.TEST_DATABASE_URL, process.env.ALLOW_REMOTE_TEST_DATABASE === 'true').toString() : undefined;
 const suite = databaseUrl ? describe : describe.skip;
 const schema = `webhook_test_${randomUUID().replaceAll('-', '')}`;
 let admin: pg.Pool;
@@ -117,6 +118,8 @@ suite('transactional webhook processing', () => {
     const config: Config = {
       NODE_ENV: 'test', HOST: '127.0.0.1', PORT: 4000, DATABASE_URL: databaseUrl!,
       PASSWORD_PEPPER: 'p'.repeat(32), COOKIE_SECRET: 'c'.repeat(32), FRONTEND_ORIGIN: 'http://127.0.0.1:5173',
+      TRUSTED_PROXIES: '', COOKIE_SECURE: false, SESSION_IDLE_MINUTES: 30, SESSION_ABSOLUTE_HOURS: 24,
+      RATE_LIMIT_NAMESPACE: 'test:rate', RATE_LIMIT_GENERAL_MAX: 300, RATE_LIMIT_GENERAL_WINDOW_SECONDS: 60,
       PAYMENT_PROVIDER: 'sandbox', SANDBOX_WEBHOOK_SECRET: 'w'.repeat(32), WEBHOOK_TOLERANCE_SECONDS: 300,
       OUTBOX_WORKER_ENABLED: false, OUTBOX_POLL_MS: 1000, SESSION_TTL_HOURS: 12,
       WEBHOOK_ALLOW_HTTP_DEVELOPMENT: false, WEBHOOK_DELIVERY_TIMEOUT_MS: 5000,

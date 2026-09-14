@@ -2,7 +2,11 @@ openapi: 3.1.0
 info:
   title: GiantPay API
   version: 0.1.0
-  description: Contract for the GiantPay backend foundation. Amounts are integer minor units. Sandbox only.
+  description: |
+    Contract for the GiantPay backend foundation. Amounts are integer minor units. Sandbox only.
+    Cookie-authenticated mutations require X-CSRF-Token; bearer API-key requests do not.
+    Credentialed browser requests are accepted only from the configured CORS origin.
+    Rate-limited responses include Retry-After, RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset.
 servers:
   - url: http://127.0.0.1:4000/v1
 tags:
@@ -17,6 +21,13 @@ tags:
   - name: Ledger
   - name: Developer API keys
   - name: Merchant webhooks
+  - name: Reconciliation
+  - name: Ledger integrity
+  - name: Sandbox settlements
+  - name: Operational reports
+  - name: Audit evidence
+  - name: Team access
+  - name: Account security
 paths:
   /developer/api-keys:
     get:
@@ -29,7 +40,7 @@ paths:
       security: [{ cookieSession: [] }]
       operationId: createApiKey
       description: Creates a sandbox key. The complete secret appears in this response only.
-      responses: { '201': { description: Created key and one-time secret }, '422': { $ref: '#/components/responses/Error' } }
+      responses: { '201': { description: Created key and one-time secret }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /developer/api-keys/{id}:
     get:
       tags: [Developer API keys]
@@ -43,7 +54,7 @@ paths:
       operationId: revokeApiKey
       description: Revokes rather than deletes the credential.
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Revoked key metadata }, '404': { $ref: '#/components/responses/Error' } }
+      responses: { '200': { description: Revoked key metadata }, '404': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /developer/webhooks:
     get:
       tags: [Merchant webhooks]
@@ -55,7 +66,7 @@ paths:
       security: [{ cookieSession: [] }]
       operationId: createMerchantWebhook
       description: Creates an HTTPS endpoint and returns its signing secret once.
-      responses: { '201': { description: Created endpoint and one-time signing secret }, '422': { $ref: '#/components/responses/Error' } }
+      responses: { '201': { description: Created endpoint and one-time signing secret }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /developer/webhooks/{id}:
     get:
       tags: [Merchant webhooks]
@@ -89,6 +100,16 @@ paths:
       responses:
         '200': { description: Healthy }
         '503': { $ref: '#/components/responses/Error' }
+  /health/live:
+    get:
+      operationId: getLiveness
+      responses: { '200': { description: Process is alive } }
+  /health/ready:
+    get:
+      operationId: getReadiness
+      responses:
+        '200': { description: Database and essential workers are ready }
+        '503': { description: A required dependency is unavailable }
   /auth/register:
     post:
       tags: [Authentication]
@@ -105,6 +126,7 @@ paths:
             content: { application/json: { schema: { $ref: '#/components/schemas/Accepted' } } },
           }
         '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/login:
     post:
       tags: [Authentication]
@@ -118,6 +140,7 @@ paths:
         '200': { description: Authenticated; sets an HttpOnly session cookie }
         '401': { $ref: '#/components/responses/Error' }
         '423': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/session:
     get:
       tags: [Authentication]
@@ -133,6 +156,7 @@ paths:
       operationId: logout
       responses:
         '204': { description: Logged out }
+        '403': { $ref: '#/components/responses/Error' }
   /auth/email/verify:
     post:
       tags: [Authentication]
@@ -141,6 +165,22 @@ paths:
       responses:
         '200': { description: Verified }
         '400': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/email/verification-request:
+    post:
+      tags: [Authentication]
+      operationId: requestEmailVerification
+      responses:
+        '202': { description: Accepted without disclosing account state }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/mfa/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyMfa
+      description: Generic failure is returned until the production MFA provider is implemented.
+      responses:
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/password/forgot:
     post:
       tags: [Authentication]
@@ -451,6 +491,252 @@ paths:
       operationId: getDashboardVolume
       parameters: [{ $ref: '#/components/parameters/From' }, { $ref: '#/components/parameters/To' }]
       responses: { '200': { description: Daily volume series } }
+  /reconciliation/runs:
+    get:
+      operationId: listReconciliationRuns
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      description: Requires `reconciliation:read`; results are merchant-scoped and paginated.
+      responses: { '200': { description: Reconciliation runs }, '403': { $ref: '#/components/responses/Error' } }
+    post:
+      operationId: startReconciliationRun
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      description: Starts deterministic sandbox reconciliation. Requires `reconciliation:manage` and Idempotency-Key.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Completed or existing restart-safe run }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/runs/{id}:
+    get:
+      operationId: getReconciliationRun
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Merchant-owned reconciliation run }, '404': { $ref: '#/components/responses/Error' } }
+  /reconciliation/exceptions:
+    get:
+      operationId: listReconciliationExceptions
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Lists merchant-scoped classified evidence using bounded pagination.
+      responses: { '200': { description: Reconciliation exceptions } }
+  /reconciliation/exceptions/{id}:
+    get:
+      operationId: getReconciliationException
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Exception and immutable evidence }, '404': { $ref: '#/components/responses/Error' } }
+  /reconciliation/exceptions/{id}/review:
+    post:
+      operationId: reviewReconciliationException
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Valid transitions are OPEN, UNDER_REVIEW, RESOLVED and DISMISSED; terminal transitions require reason and evidence.
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Idempotent transition accepted }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/exceptions/{id}/adjustments:
+    post:
+      operationId: submitCompensatingAdjustment
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Submits an append-only compensating adjustment for independent approval.
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Adjustment awaiting approval }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/adjustments/{id}/approve:
+    post:
+      operationId: approveCompensatingAdjustment
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: Requires a checker different from the creator and posts a compensating reversal.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Approved append-only adjustment }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reconciliation/adjustments/{id}/reject:
+    post:
+      operationId: rejectCompensatingAdjustment
+      tags: [Reconciliation]
+      security: [{ cookieSession: [] }]
+      description: An independent checker rejects the proposal without changing the ledger.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Rejected adjustment }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /ledger/integrity:
+    get:
+      operationId: verifyLedgerIntegrity
+      tags: [Ledger integrity]
+      security: [{ cookieSession: [] }]
+      description: Read-only merchant-scoped verification; never modifies ledger history.
+      responses: { '200': { description: Integrity result and evidence }, '403': { $ref: '#/components/responses/Error' } }
+  /settlements:
+    get:
+      operationId: listSandboxSettlements
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      responses: { '200': { description: Paginated merchant sandbox settlements } }
+    post:
+      operationId: createSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      description: Creates a sandbox-only calculation for an exception-free reconciliation; no payout occurs.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Draft sandbox settlement }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /settlements/{id}:
+    get:
+      operationId: getSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Sandbox settlement with externalTransferExecuted false }, '404': { $ref: '#/components/responses/Error' } }
+  /settlements/{id}/submit:
+    post:
+      operationId: submitSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Awaiting independent approval }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /settlements/{id}/approve:
+    post:
+      operationId: approveSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      description: Maker-checker approval; creator cannot approve.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Approved sandbox calculation }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /settlements/{id}/cancel:
+    post:
+      operationId: cancelSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Cancelled without deleting history }, '409': { $ref: '#/components/responses/Error' } }
+  /settlements/{id}/export:
+    post:
+      operationId: exportSandboxSettlement
+      tags: [Sandbox settlements]
+      security: [{ cookieSession: [] }]
+      description: Produces a formula-safe sandbox CSV and audit record. It does not execute a transfer.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Deterministic sandbox CSV }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /reports/summary:
+    get:
+      tags: [Operational reports]
+      operationId: getOperationalReportSummary
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      description: Tenant- and currency-scoped sandbox operational totals. Periods are UTC, must be positive, and cannot exceed 93 days. Amounts are integer minor-unit strings. These records are not bank, provider, tax, or regulatory statements.
+      parameters:
+        - { name: reportType, in: query, required: true, schema: { $ref: '#/components/schemas/ReportType' } }
+        - { name: currency, in: query, required: true, schema: { type: string, enum: [MWK, USD] } }
+        - { name: periodStart, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: periodEnd, in: query, required: true, schema: { type: string, format: date-time } }
+      responses: { '200': { description: Sandbox operational summary }, '403': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /report-exports:
+    get:
+      tags: [Operational reports]
+      operationId: listOperationalReportExports
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      description: Lists only the authenticated merchant's exports with bounded pagination.
+      responses: { '200': { description: Tenant-scoped export page } }
+    post:
+      tags: [Operational reports]
+      operationId: createOperationalReportExport
+      security: [{ cookieSession: [] }]
+      description: Creates a completed deterministic CSV sandbox record. Browser-session actors with reports:export only. Idempotency-Key is required; identical retries return the durable export, changed payloads conflict. Maximum 93 days and 10000 rows; results are never truncated. Stable errors include UNSUPPORTED_REPORT_TYPE, UNSUPPORTED_CURRENCY, INVALID_REPORTING_PERIOD, REPORTING_RANGE_EXCEEDED, REPORT_ROW_LIMIT_EXCEEDED, REPORT_IDEMPOTENCY_CONFLICT, and REPORT_EXPORT_GENERATION_FAILED.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportType, currency, periodStart, periodEnd]
+              properties:
+                reportType: { $ref: '#/components/schemas/ReportType' }
+                currency: { type: string, enum: [MWK, USD] }
+                periodStart: { type: string, format: date-time }
+                periodEnd: { type: string, format: date-time }
+      responses: { '201': { description: Durable immutable sandbox export }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /report-exports/{id}:
+    get:
+      tags: [Operational reports]
+      operationId: getOperationalReportExport
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Export metadata and SHA-256 hashes }, '404': { $ref: '#/components/responses/Error' } }
+  /report-exports/{id}/download:
+    get:
+      tags: [Operational reports]
+      operationId: downloadOperationalReportExport
+      security: [{ cookieSession: [] }, { bearerAuth: [] }]
+      description: Downloads deterministic formula-neutralized CSV and records one audit event per successful download. Cross-merchant requests return 404.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: GiantPay sandbox operational CSV; not a bank, provider, tax, or regulatory statement
+          headers:
+            Content-Disposition: { schema: { type: string }, description: Sanitized report-type and opaque-export-ID filename }
+            X-Content-Type-Options: { schema: { type: string, const: nosniff } }
+          content: { text/csv: { schema: { type: string } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /audit-events:
+    get:
+      tags: [Audit evidence]
+      operationId: listMerchantAuditEvents
+      security: [{ cookieSession: [] }]
+      description: Browser-session-only, tenant-scoped append-only operational evidence. Metadata is recursively stripped of credentials, secrets, authorization data, and internal errors.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: resourceType, in: query, schema: { type: string } }
+        - { name: actorId, in: query, schema: { type: string } }
+        - { name: periodStart, in: query, schema: { type: string, format: date-time } }
+        - { name: periodEnd, in: query, schema: { type: string, format: date-time } }
+      responses: { '200': { description: Tenant-scoped audit page }, '403': { $ref: '#/components/responses/Error' } }
+  /team/members:
+    get: { tags: [Team access], operationId: listTeamMembers, security: [{ cookieSession: [] }], description: Tenant-scoped members; requires team:read and rejects API keys., responses: { '200': { description: Bounded member page }, '403': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}:
+    get: { tags: [Team access], operationId: getTeamMember, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Safe member metadata }, '404': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/role:
+    patch: { tags: [Team access], operationId: changeTeamMemberRole, security: [{ cookieSession: [] }], description: Requires team:manage; final-owner protection is transactional., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Role changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/suspend:
+    post: { tags: [Team access], operationId: suspendTeamMember, security: [{ cookieSession: [] }], description: Revokes all sessions and protects the final owner., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Suspended }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/reactivate:
+    post: { tags: [Team access], operationId: reactivateTeamMember, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Reactivated }, '404': { $ref: '#/components/responses/Error' } } }
+  /team/members/{id}/remove:
+    post: { tags: [Team access], operationId: removeTeamMember, security: [{ cookieSession: [] }], description: Removes merchant access without deleting financial or audit records., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Removed }, '409': { $ref: '#/components/responses/Error' } } }
+  /team/invitations:
+    get: { tags: [Team access], operationId: listTeamInvitations, security: [{ cookieSession: [] }], responses: { '200': { description: Pending tenant invitations without token hashes } } }
+    post: { tags: [Team access], operationId: createTeamInvitation, security: [{ cookieSession: [] }], description: Creates a 72-hour hashed invitation and encrypted sandbox outbox delivery. Full delivery material is returned once., responses: { '201': { description: Invitation and one-time delivery token }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /team/invitations/{id}/cancel:
+    post: { tags: [Team access], operationId: cancelTeamInvitation, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Durably cancelled }, '404': { $ref: '#/components/responses/Error' } } }
+  /team/invitations/{id}/resend:
+    post: { tags: [Team access], operationId: resendTeamInvitation, security: [{ cookieSession: [] }], description: "Rotates the token hash, refreshes the 72-hour expiry, and queues one encrypted delivery.", parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Rotated invitation and one-time delivery token }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /team/invitations/accept:
+    post: { tags: [Team access], operationId: acceptTeamInvitation, description: "Atomically validates a hashed single-use token and normalized email identity, activates membership, and assigns the role.", responses: { '200': { description: Invitation accepted }, '403': { $ref: '#/components/responses/Error' }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' }, '410': { $ref: '#/components/responses/Error' } } }
+  /roles:
+    get: { tags: [Team access], operationId: listMerchantRoles, security: [{ cookieSession: [] }], responses: { '200': { description: Current database-backed roles and explicit permissions } } }
+    post: { tags: [Team access], operationId: createMerchantRole, security: [{ cookieSession: [] }], description: Unknown permissions and permission escalation are rejected., responses: { '201': { description: Custom role }, '422': { $ref: '#/components/responses/Error' } } }
+  /roles/{id}:
+    patch: { tags: [Team access], operationId: updateMerchantRole, security: [{ cookieSession: [] }], description: Updates a locked custom role; system roles are protected., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Updated role }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /roles/{id}/archive:
+    post: { tags: [Team access], operationId: archiveMerchantRole, security: [{ cookieSession: [] }], description: Archives an unassigned custom role; system and assigned roles are protected., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Archived }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/enrollment:
+    post: { tags: [Account security], operationId: beginMfaEnrollment, security: [{ cookieSession: [] }], description: Returns an authenticator secret once; only encrypted secret material is stored., responses: { '200': { description: Controlled enrollment material }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /auth/mfa/recovery:
+    post: { tags: [Account security], operationId: completeMfaWithRecoveryCode, description: Consumes one hashed recovery code under a row lock and completes one valid login challenge., responses: { '200': { description: Authenticated session }, '401': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /security/mfa/enrollment/verify:
+    post: { tags: [Account security], operationId: verifyMfaEnrollment, security: [{ cookieSession: [] }], description: Activates TOTP and returns recovery codes once., responses: { '200': { description: One-time recovery codes }, '401': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/recovery-codes/regenerate:
+    post: { tags: [Account security], operationId: regenerateRecoveryCodes, security: [{ cookieSession: [] }], description: Invalidates all prior codes and requires MFA within ten minutes., responses: { '200': { description: New one-time codes }, '403': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/disable:
+    post: { tags: [Account security], operationId: disableMfa, security: [{ cookieSession: [] }], description: Requires MFA verification within ten minutes., responses: { '200': { description: MFA disabled }, '403': { $ref: '#/components/responses/Error' } } }
+  /security/mfa/step-up:
+    post: { tags: [Account security], operationId: verifyMfaStepUp, security: [{ cookieSession: [] }], description: Verifies TOTP or a recovery factor for only the current human session; success is valid for ten minutes., responses: { '200': { description: Recent MFA recorded }, '401': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /sessions:
+    get: { tags: [Account security], operationId: listOwnSessions, security: [{ cookieSession: [] }], description: Returns opaque IDs and safe timestamps only., responses: { '200': { description: Active sessions } } }
+  /sessions/{id}:
+    delete: { tags: [Account security], operationId: revokeOwnSession, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Session revoked }, '404': { $ref: '#/components/responses/Error' } } }
+  /sessions/revoke-others:
+    post: { tags: [Account security], operationId: revokeOtherSessions, security: [{ cookieSession: [] }], responses: { '200': { description: All sessions except current revoked } } }
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }
@@ -484,10 +770,21 @@ components:
             },
         }
   responses:
+    TooManyRequests:
+      description: The applicable IP, identity, user, merchant, or API-key bucket is exhausted
+      headers:
+        Retry-After: { schema: { type: integer, minimum: 1 } }
+        RateLimit-Limit: { schema: { type: integer, minimum: 1 } }
+        RateLimit-Remaining: { schema: { type: integer, minimum: 0 } }
+        RateLimit-Reset: { schema: { type: integer, minimum: 1 } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     Error:
       description: Normalized error response
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   schemas:
+    ReportType:
+      type: string
+      enum: [TRANSACTION_ACTIVITY, REFUND_ACTIVITY, PLATFORM_FEES, MERCHANT_LEDGER, RECONCILIATION_RESULTS, SANDBOX_SETTLEMENT_SUMMARIES]
     Accepted: { type: object, required: [accepted], properties: { accepted: { const: true } } }
     Money:
       {

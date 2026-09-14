@@ -7,14 +7,20 @@ import { transaction } from '../db.js';
 import { apiError, authenticate, newId, requirePermission } from '../security.js';
 import { API_KEY_SCOPES, apiKeyVerifier, generateApiKey } from './apiKeys.js';
 import { encryptSecret, validateWebhookUrl } from './webhookSecurity.js';
+import { rateLimit, type RateLimitStore } from '../rateLimit.js';
 
 const events=['payment.processing','payment.succeeded','payment.failed','refund.pending_approval','refund.approved','refund.rejected'] as const;
 const keyView=(r:any)=>({id:r.id,name:r.name,prefix:r.fingerprint,environment:'sandbox',scopes:r.scopes,createdAt:r.created_at,expiresAt:r.expires_at,lastUsedAt:r.last_used_at,revokedAt:r.revoked_at,status:r.revoked_at?'REVOKED':r.expires_at&&new Date(r.expires_at)<=new Date()?'EXPIRED':'ACTIVE'});
 const endpointView=(r:any)=>({id:r.id,name:r.name,url:r.url,enabled:r.enabled,events:r.event_types,secret:r.secret_fingerprint,createdAt:r.created_at,updatedAt:r.updated_at});
 
-export async function registerDeveloperRoutes(app:FastifyInstance,config:Config,db:Db) {
-  const auth=authenticate.bind(null,db), keys=[auth,requirePermission('developer.apiKeys:manage')], hooks=[auth,requirePermission('developer.webhooks:manage')];
-  app.post('/v1/developer/api-keys',{preHandler:keys},async(request,reply)=>{
+export async function registerDeveloperRoutes(app:FastifyInstance,config:Config,db:Db,rateLimits:RateLimitStore) {
+  const auth=authenticate.bind(null,db,config);
+  const keyMutation=rateLimit(rateLimits,config,'api-key-mutation',10,3600,r=>r.actor?.id);
+  const webhookMutation=rateLimit(rateLimits,config,'webhook-mutation',20,3600,r=>r.actor?.merchantId??undefined);
+  const manualRetry=rateLimit(rateLimits,config,'webhook-retry',10,900,r=>r.actor?.merchantId??undefined);
+  const webhookPolicy=async(r:any,p:any)=>r.url.endsWith('/retry')?manualRetry(r,p):webhookMutation(r,p);
+  const keys=[auth,requirePermission('developer.apiKeys:manage'),keyMutation], hooks=[auth,requirePermission('developer.webhooks:manage'),webhookPolicy];
+  app.post('/v1/developer/api-keys',{preHandler:[...keys,keyMutation]},async(request,reply)=>{
     const b=z.object({name:z.string().trim().min(1).max(100),scopes:z.array(z.enum(API_KEY_SCOPES)).min(1),expiresAt:z.iso.datetime().optional()}).parse(request.body);
     if(b.expiresAt&&new Date(b.expiresAt)<=new Date()) return reply.code(422).send(apiError(request,'VALIDATION_ERROR','Expiration must be in the future.'));
     const generated=generateApiKey(),id=newId('key');
@@ -23,7 +29,7 @@ export async function registerDeveloperRoutes(app:FastifyInstance,config:Config,
   });
   app.get('/v1/developer/api-keys',{preHandler:keys},async request=>({data:(await db.query('SELECT * FROM api_keys WHERE merchant_id=$1 ORDER BY created_at DESC',[request.actor!.merchantId])).rows.map(keyView)}));
   app.get('/v1/developer/api-keys/:id',{preHandler:keys},async(request,reply)=>{const {id}=z.object({id:z.string()}).parse(request.params);const x=await db.query('SELECT * FROM api_keys WHERE id=$1 AND merchant_id=$2',[id,request.actor!.merchantId]);return x.rowCount?keyView(x.rows[0]):reply.code(404).send(apiError(request,'NOT_FOUND','API key not found.'));});
-  app.delete('/v1/developer/api-keys/:id',{preHandler:keys},async(request,reply)=>{const {id}=z.object({id:z.string()}).parse(request.params);const row=await transaction(db,async c=>{const x=await c.query('UPDATE api_keys SET revoked_at=coalesce(revoked_at,now()) WHERE id=$1 AND merchant_id=$2 RETURNING *',[id,request.actor!.merchantId]);if(x.rowCount)await c.query(`INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'API_KEY_REVOKED','api_key',$4)`,[newId('aud'),request.actor!.id,request.actor!.merchantId,id]);return x.rows[0];});return row?keyView(row):reply.code(404).send(apiError(request,'NOT_FOUND','API key not found.'));});
+  app.delete('/v1/developer/api-keys/:id',{preHandler:[...keys,keyMutation]},async(request,reply)=>{const {id}=z.object({id:z.string()}).parse(request.params);const row=await transaction(db,async c=>{const x=await c.query('UPDATE api_keys SET revoked_at=coalesce(revoked_at,now()) WHERE id=$1 AND merchant_id=$2 RETURNING *',[id,request.actor!.merchantId]);if(x.rowCount)await c.query(`INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'API_KEY_REVOKED','api_key',$4)`,[newId('aud'),request.actor!.id,request.actor!.merchantId,id]);return x.rows[0];});return row?keyView(row):reply.code(404).send(apiError(request,'NOT_FOUND','API key not found.'));});
 
   const endpointSchema=z.object({name:z.string().trim().min(1).max(100),url:z.url(),events:z.array(z.enum(events)).min(1),enabled:z.boolean().default(true)});
   app.post('/v1/developer/webhooks',{preHandler:hooks},async(request,reply)=>{const b=endpointSchema.parse(request.body);await validateWebhookUrl(b.url,config.NODE_ENV==='development'&&config.WEBHOOK_ALLOW_HTTP_DEVELOPMENT);const secret=`whsec_${randomBytes(32).toString('base64url')}`,id=newId('whe');const x=await transaction(db,async c=>{const created=await c.query(`INSERT INTO merchant_webhook_endpoints(id,merchant_id,name,url,event_types,secret_ciphertext,secret_fingerprint,enabled,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,[id,request.actor!.merchantId,b.name,b.url,[...new Set(b.events)],encryptSecret(secret,config.WEBHOOK_SECRET_KEY??config.COOKIE_SECRET),`whsec_...${secret.slice(-4)}`,b.enabled,request.actor!.id]);await c.query(`INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'WEBHOOK_ENDPOINT_CREATED','webhook_endpoint',$4)`,[newId('aud'),request.actor!.id,request.actor!.merchantId,id]);return created;});return reply.code(201).send({...endpointView(x.rows[0]),secret});});
