@@ -1,168 +1,5 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MARK_SRC } from '@/assets/brand';
-
-// ── Cycling watermark slides ──────────────────────────────────────────────────
-const WATERMARKS = [
-  // Slide 1 — GP brand mark
-  {
-    key: 'mark',
-    render: () => (
-      <img
-        src={MARK_SRC}
-        alt=""
-        className="wm-float w-[65vw] max-w-[520px] select-none"
-        style={{ opacity: 0.13, filter: 'drop-shadow(0 20px 60px rgba(26,109,204,0.4))' }}
-      />
-    ),
-  },
-  // Slide 2 — Laptop / code terminal
-  {
-    key: 'laptop',
-    render: () => (
-      <div className="wm-float select-none" style={{ opacity: 0.13, width: 'min(540px, 72vw)' }}>
-        {/* Monitor body */}
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ border: '2px solid rgba(255,255,255,0.2)', background: '#0d1117' }}
-        >
-          {/* Title bar */}
-          <div
-            className="flex items-center gap-2 px-4 py-2.5"
-            style={{ background: 'rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-          >
-            <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'rgba(255,96,89,0.7)', display: 'inline-block' }} />
-            <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'rgba(255,189,46,0.7)', display: 'inline-block' }} />
-            <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'rgba(40,200,64,0.7)', display: 'inline-block' }} />
-            <span
-              className="font-mono text-white/40"
-              style={{ marginLeft: 12, fontSize: 11, letterSpacing: '0.05em' }}
-            >
-              POST /v1/checkout/sessions
-            </span>
-            <span
-              className="font-mono ml-auto"
-              style={{ fontSize: 10, color: 'rgba(40,200,64,0.8)' }}
-            >
-              201 Created
-            </span>
-          </div>
-          {/* Code body */}
-          <pre
-            className="font-mono text-blue-200 leading-relaxed px-5 py-4"
-            style={{ fontSize: 'clamp(10px, 1.5vw, 13px)', margin: 0 }}
-          >
-{`{
-  "reference": "gp_req_91b7e4c2",
-  "amount":    2500000,
-  "currency":  "MWK",
-  "channels":  ["AIRTEL_MONEY", "CARD"],
-  "status":    "INITIATED",
-  "checkout_url": "https://pay.giantpay.mw/..."
-}`}
-          </pre>
-        </div>
-        {/* Monitor stand */}
-        <div className="flex flex-col items-center">
-          <div style={{ width: 3, height: 22, background: 'rgba(255,255,255,0.15)' }} />
-          <div style={{ width: 80, height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.12)' }} />
-        </div>
-      </div>
-    ),
-  },
-  // Slide 3 — Phone / payment processing
-  {
-    key: 'phone',
-    render: () => (
-      <div className="wm-float select-none" style={{ opacity: 0.13 }}>
-        {/* Phone shell */}
-        <div
-          style={{
-            width: 'min(200px, 35vw)',
-            borderRadius: 32,
-            border: '3px solid rgba(255,255,255,0.22)',
-            background: 'linear-gradient(160deg, #0f1f3d 0%, #0a1628 100%)',
-            overflow: 'hidden',
-            boxShadow: '0 0 60px rgba(26,109,204,0.25)',
-          }}
-        >
-          {/* Notch */}
-          <div className="flex justify-center pt-2 pb-1">
-            <div style={{ width: 60, height: 5, borderRadius: 10, background: 'rgba(255,255,255,0.15)' }} />
-          </div>
-          {/* Status bar */}
-          <div
-            className="flex justify-between items-center px-4 pb-2 font-mono text-white/50"
-            style={{ fontSize: 9 }}
-          >
-            <span>9:41</span>
-            <span style={{ letterSpacing: '0.15em' }}>•••</span>
-          </div>
-          {/* Screen content */}
-          <div
-            className="flex flex-col items-center gap-3 px-4 py-5"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
-          >
-            {/* App logo pill */}
-            <div
-              className="font-bold text-white tracking-tight"
-              style={{ fontSize: 'clamp(12px, 2.5vw, 17px)' }}
-            >
-              Giant<span style={{ color: '#c01c28' }}>Pay</span>
-            </div>
-            <div className="text-white/60" style={{ fontSize: 'clamp(8px, 1.5vw, 11px)' }}>
-              Processing payment…
-            </div>
-            {/* Amount card */}
-            <div
-              className="w-full text-center font-semibold text-white"
-              style={{
-                fontSize: 'clamp(10px, 1.8vw, 14px)',
-                background: 'rgba(26,109,204,0.25)',
-                borderRadius: 10,
-                padding: '8px 12px',
-                border: '1px solid rgba(26,109,204,0.35)',
-              }}
-            >
-              MWK 25,000.00
-            </div>
-            {/* Spinner */}
-            <div
-              style={{
-                width: 'clamp(28px, 5vw, 40px)',
-                height: 'clamp(28px, 5vw, 40px)',
-                borderRadius: '50%',
-                border: '3px solid rgba(255,255,255,0.15)',
-                borderTopColor: '#1a6dcc',
-                animation: 'spin 1.1s linear infinite',
-              }}
-            />
-            {/* Network indicator */}
-            <div className="flex items-center gap-1.5">
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: '#34d399',
-                  animation: 'pulse 2s ease-in-out infinite',
-                }}
-              />
-              <span className="text-white/50" style={{ fontSize: 8, letterSpacing: '0.05em' }}>
-                Airtel Money
-              </span>
-            </div>
-          </div>
-          {/* Home indicator */}
-          <div className="flex justify-center py-3">
-            <div style={{ width: 50, height: 4, borderRadius: 10, background: 'rgba(255,255,255,0.18)' }} />
-          </div>
-        </div>
-      </div>
-    ),
-  },
-];
 
 const BENEFITS = [
   {
@@ -223,18 +60,9 @@ const FAQS = [
 ];
 
 export default function LandingPage() {
-  const [wmIndex, setWmIndex] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setWmIndex((i) => (i + 1) % WATERMARKS.length);
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
-
   return (
     <>
-      {/* ── Hero Section ── */}
+      {/* ── Rich Fintech Hero Section ── */}
       <section
         className="relative overflow-hidden text-white"
         style={{
@@ -264,69 +92,74 @@ export default function LandingPage() {
           }}
         />
 
-        {/* Cycling watermark backgrounds */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-          {WATERMARKS.map((wm, i) => (
-            <div
-              key={wm.key}
-              className="hero-watermark"
-              style={{ opacity: i === wmIndex ? 1 : 0 }}
-            >
-              {wm.render()}
-            </div>
-          ))}
+        {/* Waving GP watermark flag */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
+        >
+          <img
+            src={MARK_SRC}
+            alt=""
+            className="animate-flag-wave-slow w-[85vw] max-w-[620px] opacity-[0.08] select-none"
+            style={{
+              filter: 'drop-shadow(0 20px 60px rgba(26,109,204,0.35))',
+            }}
+          />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6 sm:pt-36 sm:pb-24 text-center">
+        <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-20 sm:px-6 sm:pt-24 sm:pb-28 text-center">
+          {/* Trust Badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/80 backdrop-blur-md mb-6">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Malawi&apos;s Modern Payments Infrastructure</span>
+            <span className="hidden sm:inline text-white/30">•</span>
+            <span className="hidden sm:inline text-white/60">Bank-Grade 256-Bit SSL</span>
+          </div>
 
-          {/* Eyebrow label */}
-          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
-            Malawi's unified payments platform
-          </p>
-
-          {/* Heading */}
-          <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl leading-[1.12]">
-            Payments built for modern{' '}
+          {/* Responsive Heading */}
+          <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl leading-[1.15]">
+            Unified payments.{' '}
             <span
               style={{
-                background: 'linear-gradient(135deg, #4fa3e8 0%, #c9a227 100%)',
+                background: 'linear-gradient(135deg, #4da3ff 0%, #c9a227 50%, #ff5263 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
               }}
             >
-              Malawian businesses.
+              One integration.
             </span>
           </h1>
 
-          {/* Sub-heading */}
-          <p className="mx-auto mt-6 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed text-white/65">
-            Accept mobile money, cards, and bank transfers through one integration.
-            Built for developers, trusted by merchants.
+          {/* Responsive Subheading */}
+          <p className="mx-auto mt-5 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed text-white/70">
+            GiantPay helps businesses and digital platforms in Malawi accept and manage configured digital payment
+            methods through one secure integration, with clear transaction evidence, developer tools, reconciliation
+            and reporting.
           </p>
 
-          {/* CTA buttons */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* Responsive CTA buttons */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
             <Link
               to="/register"
-              className="w-full sm:w-auto text-center rounded-xl px-8 py-3.5 text-sm sm:text-base font-semibold text-white transition-all duration-200 active:scale-[0.98]"
+              className="w-full sm:w-auto text-center rounded-xl px-7 py-3 text-sm sm:text-base font-semibold text-white transition-all duration-200 active:scale-[0.98]"
               style={{
                 background: 'linear-gradient(135deg, #1a6dcc 0%, #0e4da6 100%)',
-                boxShadow: '0 4px 24px rgba(26,109,204,0.4)',
+                boxShadow: '0 4px 20px rgba(26,109,204,0.4)',
               }}
             >
-              Get started free
+              Get Started Free
             </Link>
             <Link
               to="/developers"
-              className="w-full sm:w-auto text-center rounded-xl px-8 py-3.5 text-sm sm:text-base font-semibold text-white/85 border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all duration-200"
+              className="w-full sm:w-auto text-center rounded-xl px-7 py-3 text-sm sm:text-base font-semibold text-white/90 border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all duration-200"
             >
-              View the API docs
+              Explore Developer Tools
             </Link>
           </div>
 
           {/* Payment method logos */}
-          <div className="mt-16 pt-8 border-t border-white/10 flex flex-col items-center gap-4">
+          <div className="mt-14 pt-8 border-t border-white/10 flex flex-col items-center gap-4">
             <p className="text-[10px] uppercase font-semibold tracking-[0.2em] text-white/35">
               Designed for local payment integrations
             </p>
@@ -372,13 +205,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── How GiantPay Works ── */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <div className="text-center max-w-2xl mx-auto">
           <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Simple 3-step setup</p>
           <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-navy-900)]">
             How GiantPay works
           </h2>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--color-neutral-600)]">
+          <p className="mt-2 text-sm text-[var(--color-neutral-600)]">
             From registration to live settlements in just three straightforward steps.
           </p>
         </div>
@@ -416,14 +249,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── Built for Merchants and Developers ── */}
-      <section className="bg-[var(--color-neutral-50)] py-16 sm:py-24 border-y border-[var(--color-neutral-200)]">
+      <section className="bg-[var(--color-neutral-50)] py-16 sm:py-20 border-y border-[var(--color-neutral-200)]">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto">
             <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Enterprise Ready</p>
             <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-navy-900)]">
               Built for merchants and developers
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--color-neutral-600)]">
+            <p className="mt-2 text-sm text-[var(--color-neutral-600)]">
               Engineered with reliability, financial auditability, and ease of integration at its core.
             </p>
           </div>
@@ -448,7 +281,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Developer Experience Section ── */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <div className="rounded-3xl border border-[var(--color-neutral-200)] bg-[var(--color-navy-950)] text-white p-6 sm:p-10 lg:p-12 overflow-hidden relative">
           {/* Subtle glow */}
           <div
@@ -521,13 +354,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── Frequently Asked Questions ── */}
-      <section className="border-t border-[var(--color-neutral-200)] py-16 sm:py-24">
+      <section className="border-t border-[var(--color-neutral-200)] py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-navy-900)]">
               Frequently asked questions
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--color-neutral-600)]">
+            <p className="mt-2 text-sm text-[var(--color-neutral-600)]">
               Everything you need to know about payments, regulatory alignment, and testing.
             </p>
           </div>
