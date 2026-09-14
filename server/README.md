@@ -113,3 +113,11 @@ Outbound endpoints and delivery history are under `/v1/developer/webhooks`.
 See [docs/merchant-webhook-verification.md](docs/merchant-webhook-verification.md).
 This remains a sandbox foundation: it does not execute real payments or refunds
 and is not production ready.
+
+## Merchant onboarding and compliance
+
+Phase 6 replaces the legacy mutable onboarding JSON workflow with normalized,
+tenant-scoped applications, encrypted sensitive fields, metadata-only evidence,
+immutable submissions, and platform-admin review. All decisions remain internal
+sandbox decisions and enable no payments, payouts, provider access, or regulatory
+submission. See [docs/merchant-onboarding-compliance.md](docs/merchant-onboarding-compliance.md).

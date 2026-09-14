@@ -16,6 +16,7 @@ import { registerReconciliationRoutes } from './reconciliation/routes.js';
 import { registerDeveloperRoutes } from './developer/routes.js';
 import { registerReportingRoutes } from './reporting/routes.js';
 import { registerTeamRoutes } from './team/routes.js';
+import { registerOnboardingRoutes } from './onboarding/routes.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
 import { createPaymentProvider } from './providers/index.js';
 import type { PaymentProvider } from './providers/types.js';
@@ -179,19 +180,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   await registerReconciliationRoutes(app,config,db,rateLimits);
   await registerReportingRoutes(app,config,db,rateLimits);
   await registerTeamRoutes(app,config,db,rateLimits);
-  app.get('/v1/merchants/onboarding', { preHandler: [auth] }, async (request) => (await db.query('SELECT onboarding FROM merchants WHERE id=$1',[request.actor!.merchantId])).rows[0]?.onboarding);
-  app.patch('/v1/merchants/onboarding', { preHandler: [auth] }, async (request, reply) => {
-    const current = await db.query('SELECT onboarding FROM merchants WHERE id=$1 FOR UPDATE',[request.actor!.merchantId]);
-    if (!current.rowCount) return reply.code(404).send(apiError(request,'NOT_FOUND','Merchant not found.'));
-    const existing=current.rows[0].onboarding; if (!['DRAFT','INFORMATION_REQUIRED'].includes(existing.status)) return reply.code(409).send(apiError(request,'NOT_EDITABLE','This application can no longer be edited.'));
-    const next={...existing,...z.record(z.string(),z.unknown()).parse(request.body)};
-    await db.query('UPDATE merchants SET onboarding=$1 WHERE id=$2',[next,request.actor!.merchantId]); return next;
-  });
-  app.post('/v1/merchants/onboarding/submit', { preHandler: [auth] }, async (request, reply) => {
-    const result=await db.query(`UPDATE merchants SET onboarding=jsonb_set(jsonb_set(onboarding,'{status}','"SUBMITTED"'),'{timeline}',coalesce(onboarding->'timeline','[]') || $1::jsonb) WHERE id=$2 AND onboarding->>'declarationAccepted'='true' RETURNING onboarding`,[JSON.stringify([{status:'SUBMITTED',occurredAt:new Date().toISOString()}]),request.actor!.merchantId]);
-    if(!result.rowCount) return reply.code(422).send(apiError(request,'INCOMPLETE_APPLICATION','Complete the declaration before submitting.')); return result.rows[0].onboarding;
-  });
-  app.post('/v1/merchants/onboarding/documents',{preHandler:[auth]},async(request,reply)=>{ const part=await request.file(); if(!part) return reply.code(422).send(apiError(request,'FILE_REQUIRED','Select a file.')); let size=0; for await(const chunk of part.file) size+=chunk.length; return {id:newId('doc'),fileName:part.filename,sizeBytes:size}; });
+  await registerOnboardingRoutes(app,config,db,rateLimits);
 
   app.get('/v1/payments',{preHandler:[auth,requirePermission('payments:read')]},async(request)=>{
     const q=pageSchema.extend({search:z.string().max(100).optional(),status:z.string().optional(),channel:z.string().optional()}).parse(request.query); const offset=(q.page-1)*q.pageSize;
