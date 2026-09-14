@@ -12,6 +12,15 @@ const base = `${env.apiUrl}/v1`;
 let activeSession: Session | null = null;
 let pendingMfa: { email: string; challengeId: string } | null = null;
 
+/** Called between tests — this module-level state otherwise persists
+ * across test *files* under this project's `isolate: false` vitest config
+ * (worker reuse shares the module registry), so an earlier file's login
+ * can otherwise leak a session into an unrelated, later test. */
+export function resetAuthMockState(): void {
+  activeSession = null;
+  pendingMfa = null;
+}
+
 export const authHandlers = [
   http.post(`${base}/auth/login`, async ({ request }) => {
     const body = (await request.json()) as { email: string; password: string };

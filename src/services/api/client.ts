@@ -93,6 +93,15 @@ async function request<T>(
   return (await response.json()) as T;
 }
 
+/** Uploads have no inherent request/response size to reason about the way
+ * JSON API calls do, and can run over slow mobile connections — bounded
+ * generously so a real large-file upload isn't cut off, while still
+ * guaranteeing the promise always settles instead of hanging forever on a
+ * connection that silently stalls (see UPLOAD_TIMEOUT_MS usage below). */
+const UPLOAD_TIMEOUT_MS = 60_000;
+
+export const UPLOAD_TIMEOUT_MESSAGE = 'The upload timed out. Please check your connection and try again.';
+
 /**
  * Multipart file upload with real upload-progress events, used by document
  * upload flows (onboarding KYC/KYB). Kept separate from `request` because
@@ -102,13 +111,43 @@ async function request<T>(
 function uploadFile<T>(
   path: string,
   form: FormData,
-  options?: { signal?: AbortSignal; onProgress?: (percent: number) => void },
+  options?: { signal?: AbortSignal; onProgress?: (percent: number) => void; timeoutMs?: number },
 ): Promise<T> {
   return new Promise((resolve, reject) => {
+    if (options?.signal?.aborted) {
+      // `addEventListener('abort', ...)` below only ever fires for a
+      // *future* abort — a signal already aborted before this promise was
+      // created would otherwise be missed entirely and the upload would
+      // proceed anyway.
+      reject(new DOMException('The upload was cancelled.', 'AbortError'));
+      return;
+    }
+
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${env.apiUrl}/v1${path}`);
     xhr.withCredentials = true;
+    const timeoutMs = options?.timeoutMs ?? UPLOAD_TIMEOUT_MS;
+    xhr.timeout = timeoutMs;
     xhr.setRequestHeader('X-Request-Id', crypto.randomUUID());
+
+    // `xhr.timeout`/`ontimeout` and `xhr.abort()`/`onabort` are the
+    // standard browser mechanism and are kept above as the primary path,
+    // but nothing here relies on them exclusively — not every XHR
+    // implementation enforces `.timeout` (browsers vary, and test/mock
+    // environments commonly don't). An explicit timer is the only way to
+    // *guarantee* this promise — and the caller's loading state — can
+    // never hang past `timeoutMs`, or past an abort, regardless.
+    let settled = false;
+    function settleOnce(fn: () => void) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      fn();
+    }
+    const timeoutTimer = setTimeout(() => {
+      xhr.abort();
+      settleOnce(() => reject(new ApiError({ status: 0, code: 'TIMEOUT', message: UPLOAD_TIMEOUT_MESSAGE })));
+    }, timeoutMs);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && options?.onProgress) {
@@ -117,32 +156,60 @@ function uploadFile<T>(
     };
 
     xhr.onload = () => {
-      const contentType = xhr.getResponseHeader('content-type') ?? '';
-      const parsed = contentType.includes('application/json') && xhr.responseText
-        ? JSON.parse(xhr.responseText)
-        : undefined;
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(parsed as T);
-      } else {
-        const body = parsed as RawErrorBody | undefined;
-        if (xhr.status === 401) onUnauthorized?.();
-        reject(
-          new ApiError({
-            status: xhr.status,
-            code: body?.error?.code ?? 'UNKNOWN_ERROR',
-            message: body?.error?.message ?? GENERIC_ERROR_MESSAGE,
-            fields: body?.error?.fields,
-            requestId: body?.error?.requestId,
-          }),
-        );
-      }
+      settleOnce(() => {
+        const contentType = xhr.getResponseHeader('content-type') ?? '';
+        let parsed: unknown;
+        if (contentType.includes('application/json') && xhr.responseText) {
+          try {
+            parsed = JSON.parse(xhr.responseText);
+          } catch {
+            // A JSON content-type with an unparsable body is itself a
+            // malformed response — never let this throw synchronously
+            // here, which would leave the promise (and the caller's
+            // loading state) unsettled forever. Treated as a normal API
+            // error below.
+            reject(new ApiError({ status: xhr.status, code: 'INVALID_RESPONSE', message: GENERIC_ERROR_MESSAGE }));
+            return;
+          }
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(parsed as T);
+        } else {
+          const body = parsed as RawErrorBody | undefined;
+          if (xhr.status === 401) onUnauthorized?.();
+          reject(
+            new ApiError({
+              status: xhr.status,
+              code: body?.error?.code ?? 'UNKNOWN_ERROR',
+              message: body?.error?.message ?? GENERIC_ERROR_MESSAGE,
+              fields: body?.error?.fields,
+              requestId: body?.error?.requestId,
+            }),
+          );
+        }
+      });
     };
 
     xhr.onerror = () => {
-      reject(new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE }));
+      settleOnce(() => reject(new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE })));
     };
 
-    options?.signal?.addEventListener('abort', () => xhr.abort());
+    xhr.ontimeout = () => {
+      settleOnce(() => reject(new ApiError({ status: 0, code: 'TIMEOUT', message: UPLOAD_TIMEOUT_MESSAGE })));
+    };
+
+    // Mirrors how `request()` treats a fetch abort: reject with a plain
+    // AbortError rather than an ApiError, so callers checking
+    // `signal.aborted` can tell an intentional cancellation apart from a
+    // real failure instead of showing a generic error message for it.
+    xhr.onabort = () => {
+      settleOnce(() => reject(new DOMException('The upload was cancelled.', 'AbortError')));
+    };
+
+    options?.signal?.addEventListener('abort', () => {
+      xhr.abort();
+      settleOnce(() => reject(new DOMException('The upload was cancelled.', 'AbortError')));
+    });
 
     xhr.send(form);
   });
