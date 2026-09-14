@@ -1,12 +1,17 @@
 /**
- * Single point of reference for the GiantPay/GiantPlus logo asset.
+ * Brand asset exports for GiantPay.
  *
- * Supplied by the product owner as a JPEG export (full lockup: mark +
- * "GiantPay" + "GLOBAL FINANCE SOLUTIONS" tagline, on its own light
- * off-white backing). `src/components/navigation/Logo.tsx` is the only
- * consumer — swap this import if a cleaner (e.g. transparent-background
- * PNG, or a standalone icon-only mark for compact/favicon use) asset is
- * ever supplied. Never redraw, recolor, crop or distort the source file.
+ * LOGO_SRC — full lockup: GP mark + "GiantPay" + "GLOBAL FINANCE SOLUTIONS"
+ *            Transparent-background PNG. Use on any coloured surface.
+ *
+ * MARK_SRC — standalone GP icon (no wordmark). Use in compact slots such as
+ *            the collapsed sidebar, watermark backgrounds, and favicon
+ *            contexts where the full lockup would be too wide.
+ *
+ * Never redraw, recolor, crop or distort these source files.
  */
-import logoFull from './giantpay-logo.jpg';
-export const LOGO_SRC: string | null = logoFull;
+import logoFull from './giantpay-logo.png';
+import logoMark from './giantpay-mark.png';
+
+export const LOGO_SRC: string = logoFull;
+export const MARK_SRC: string = logoMark;

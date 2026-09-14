@@ -1,7 +1,7 @@
 import { Suspense, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { Logo } from '@/components/navigation/Logo';
+import { Logo, LogoWhite } from '@/components/navigation/Logo';
 import { IconButton } from '@/components/ui/IconButton';
 import { Drawer, DrawerContent } from '@/components/ui/Drawer';
 import { TooltipProvider } from '@/components/ui/Tooltip';
@@ -34,8 +34,8 @@ export function MerchantLayout() {
           style={{ width: collapsed ? '4.5rem' : '15.5rem' }}
         >
           <div className="flex h-16 items-center justify-between px-4">
-            {!collapsed && <Logo inverted />}
-            {collapsed && <Logo variant="mark" />}
+            {!collapsed && <LogoWhite />}
+            {collapsed && <Logo variant="mark" className="h-9 w-9 object-contain" />}
           </div>
           <SidebarNav groups={MERCHANT_NAV} collapsed={collapsed} />
           <div className="border-t border-white/10 p-2">
