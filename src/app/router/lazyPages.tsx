@@ -1,11 +1,18 @@
 import { lazy } from 'react';
 
 export const LandingPage = lazy(() => import('@/pages/LandingPage'));
+export const PricingPage = lazy(() => import('@/pages/PricingPage'));
 export const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 export const TermsPage = lazy(() => import('@/pages/TermsPage'));
 export const StatusPage = lazy(() => import('@/pages/StatusPage'));
 export const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 export const PublicFeaturePage = lazy(() => import('@/pages/PublicFeaturePage'));
+
+export const CompanyAboutPage = lazy(() => import('@/pages/company/AboutPage'));
+export const CompanyGiantPlusPage = lazy(() => import('@/pages/company/GiantPlusPage'));
+export const CompanyCompliancePage = lazy(() => import('@/pages/company/CompliancePage'));
+export const CompanyContactPage = lazy(() => import('@/pages/company/ContactPage'));
+export const CompanyCareersPage = lazy(() => import('@/pages/company/CareersPage'));
 
 export const LoginPage = lazy(() => import('@/pages/LoginPage'));
 export const RegisterPage = lazy(() => import('@/pages/RegisterPage'));

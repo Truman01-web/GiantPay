@@ -1,3 +1,6 @@
+﻿import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+
 export default function PrivacyPage() {
   return (
     <div>
@@ -8,7 +11,16 @@ export default function PrivacyPage() {
         }}
       >
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
-          <div className="text-xs font-semibold uppercase tracking-wider text-blue-300">Legal & Governance</div>
+          <div className="mb-6">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-blue-300">Legal &amp; Governance</div>
           <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Privacy Policy</h1>
           <p className="mt-2 text-sm text-white/60">
             Placeholder content — replace with GiantPlus&apos;s approved privacy policy before launch.
