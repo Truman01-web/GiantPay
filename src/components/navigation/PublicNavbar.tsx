@@ -1,17 +1,31 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Logo } from '@/components/navigation/Logo';
+import { LogoWhite } from '@/components/navigation/Logo';
 import { PUBLIC_NAV_GROUPS, type NavGroup } from './publicNavData';
 import { cn } from '@/lib/cn';
 
 export function PublicNavbar() {
   const location = useLocation();
+  const [isScrolled, setIsScrolled] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMobileGroups, setExpandedMobileGroups] = useState<Record<string, boolean>>({});
 
   const navRef = useRef<HTMLElement>(null);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Passive, efficient scroll listener (threshold: 8px)
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 8;
+      setIsScrolled((prev) => (prev !== scrolled ? scrolled : prev));
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
 
   // Click outside to close desktop dropdown
   useEffect(() => {
@@ -71,7 +85,9 @@ export function PublicNavbar() {
       role="banner"
       className={cn(
         'fixed top-0 inset-x-0 z-50 transition-all duration-200 ease-standard motion-reduce:transition-none',
-        'border-b border-white/60 bg-white/65 shadow-sm shadow-slate-900/5 backdrop-blur-2xl'
+        isScrolled
+          ? 'bg-[#061428]/85 backdrop-blur-md border-b border-white/10 shadow-sm shadow-black/20'
+          : 'bg-transparent border-b border-transparent shadow-none'
       )}
     >
       <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -82,7 +98,7 @@ export function PublicNavbar() {
             className="flex items-center rounded-lg focus-visible:outline-2 focus-visible:outline-blue-400"
             aria-label="GiantPay Home"
           >
-            <Logo />
+            <LogoWhite />
           </Link>
 
           {/* Desktop Navigation */}
@@ -100,8 +116,8 @@ export function PublicNavbar() {
                     className={cn(
                       'px-3.5 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-blue-400',
                       isActive
-                        ? 'bg-[#1B4FD8]/10 text-[#1B4FD8]'
-                        : 'text-slate-600 hover:bg-white/70 hover:text-slate-950'
+                        ? 'text-white bg-white/10'
+                        : 'text-white/80 hover:text-white hover:bg-white/5'
                     )}
                     aria-current={isActive ? 'page' : undefined}
                   >
@@ -133,16 +149,16 @@ export function PublicNavbar() {
                     className={cn(
                       'inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-blue-400',
                       isOpen || hasActiveChild
-                        ? 'bg-[#1B4FD8]/10 text-[#1B4FD8]'
-                        : 'text-slate-600 hover:bg-white/70 hover:text-slate-950'
+                        ? 'text-white bg-white/10'
+                        : 'text-white/80 hover:text-white hover:bg-white/5'
                     )}
                   >
                     <span>{group.label}</span>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className={cn(
-                        'h-4 w-4 transition-transform duration-200 motion-reduce:transition-none text-slate-400',
-                        isOpen ? 'rotate-180 text-[#1B4FD8]' : ''
+                        'h-4 w-4 transition-transform duration-200 motion-reduce:transition-none text-white/60',
+                        isOpen ? 'rotate-180 text-white' : ''
                       )}
                       fill="none"
                       viewBox="0 0 24 24"
@@ -160,9 +176,9 @@ export function PublicNavbar() {
                       id={`nav-menu-${group.label}`}
                       role="menu"
                       aria-labelledby={`nav-btn-${group.label}`}
-                      className="absolute left-0 mt-1.5 w-80 rounded-2xl border border-white/70 bg-white/80 p-2.5 shadow-2xl shadow-slate-900/10 backdrop-blur-3xl animate-in fade-in-50 zoom-in-95 duration-150 motion-reduce:animate-none"
+                      className="absolute left-0 mt-1.5 w-80 rounded-2xl border border-white/15 bg-[#0B1E38]/95 p-2.5 shadow-2xl backdrop-blur-xl animate-in fade-in-50 zoom-in-95 duration-150 motion-reduce:animate-none"
                     >
-                      <div className="mb-1 border-b border-slate-200/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white/40 border-b border-white/10 mb-1">
                         {group.label}
                       </div>
                       <div className="flex flex-col gap-0.5">
@@ -176,14 +192,14 @@ export function PublicNavbar() {
                               className={cn(
                                 'group flex flex-col rounded-xl px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-blue-400',
                                 isCurrent
-                                  ? 'bg-[#1B4FD8]/10 text-[#1B4FD8]'
-                                  : 'text-slate-600 hover:bg-white/80 hover:text-slate-950'
+                                  ? 'bg-blue-600/20 text-white'
+                                  : 'hover:bg-white/08 text-white/85 hover:text-white'
                               )}
                               aria-current={isCurrent ? 'page' : undefined}
                               onClick={() => setActiveGroup(null)}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-slate-800 group-hover:text-[#1B4FD8] transition-colors">
+                                <span className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">
                                   {item.label}
                                 </span>
                                 {item.badge && (
@@ -193,7 +209,7 @@ export function PublicNavbar() {
                                 )}
                               </div>
                               {item.description && (
-                                <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">
+                                <p className="mt-0.5 text-xs text-white/50 line-clamp-1">
                                   {item.description}
                                 </p>
                               )}
@@ -213,7 +229,7 @@ export function PublicNavbar() {
         <div className="hidden sm:flex items-center gap-3">
           <Link
             to="/login"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200/80 bg-white/50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white hover:border-slate-300 transition-all focus-visible:outline-2 focus-visible:outline-blue-400"
+            className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white hover:bg-white/10 hover:border-white/35 transition-all focus-visible:outline-2 focus-visible:outline-blue-400"
           >
             Sign In
           </Link>
@@ -242,7 +258,7 @@ export function PublicNavbar() {
             onClick={() => setMobileOpen((prev) => !prev)}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-slate-200/80 bg-white/50 text-slate-700 hover:bg-white hover:text-slate-950 transition-colors focus-visible:outline-2 focus-visible:outline-blue-400"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-blue-400"
           >
             {mobileOpen ? (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
