@@ -1,5 +1,32 @@
+import { cloneElement } from 'react';
 import { Link } from 'react-router-dom';
-import { MARK_SRC } from '@/assets/brand';
+
+const PAYMENT_METHODS = [
+  {
+    label: 'Airtel Money',
+    icon: <img src="/brands/airtel-money.svg" alt="Airtel Money" className="h-12 w-12 object-contain" />,
+  },
+  {
+    label: 'TNM Mpamba',
+    icon: <img src="/brands/tnm-mpamba.svg" alt="TNM Mpamba" className="h-12 w-12 object-contain" />,
+  },
+  {
+    label: 'Visa',
+    icon: <img src="/brands/visa.svg" alt="Visa" className="h-12 w-12 object-contain" />,
+  },
+  {
+    label: 'Mastercard',
+    icon: <img src="/brands/mastercard.svg" alt="Mastercard" className="h-12 w-12 object-contain" />,
+  },
+  {
+    label: 'National Switch',
+    icon: (
+      <svg className="h-12 w-12 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    ),
+  },
+];
 
 const BENEFITS = [
   {
@@ -22,7 +49,7 @@ const BENEFITS = [
   },
   {
     title: 'Reconciliation built in',
-    body: 'Match transactions automatically against provider and settlement records without manual spreadsheets.',
+    body: 'Match transactions against settlement records automatically and surface exceptions, without manual spreadsheets.',
     icon: (
       <svg className="h-6 w-6 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -43,11 +70,11 @@ const BENEFITS = [
 const FAQS = [
   {
     q: 'Which payment methods can I accept in Malawi?',
-    a: 'Available channels include Airtel Money, TNM Mpamba, Visa & Mastercard, and direct bank transfers via the National Switch. Channels are activated based on your merchant account tier.',
+    a: 'GiantPay is designed to support Airtel Money, TNM Mpamba, Visa & Mastercard, and direct bank transfers via the National Switch. You can test each of these payment flows today in our sandbox, ahead of full production rollout.',
   },
   {
     q: 'How do I get started?',
-    a: 'Register an account, complete your KYC/KYB business verification, and test immediately in our full sandbox environment before production activation.',
+    a: 'Register an account, complete your KYC/KYB business verification, and start testing immediately in our full sandbox environment.',
   },
   {
     q: 'Can I test before going live?',
@@ -55,7 +82,7 @@ const FAQS = [
   },
   {
     q: 'How are payouts and settlements handled?',
-    a: 'GiantPay reconciles incoming payments directly with telecom and bank providers, delivering automated settlement batches to your registered Malawian business bank account.',
+    a: 'In sandbox, you can simulate settlement batches and reconciliation reports against your test transactions. Live payouts to your Malawian business bank account will be available once provider and regulatory onboarding is complete.',
   },
 ];
 
@@ -65,139 +92,80 @@ export default function LandingPage() {
       {/* ── Rich Fintech Hero Section ── */}
       <section
         className="relative overflow-hidden text-white"
-        style={{
-          background: 'linear-gradient(160deg, #061428 0%, #0B2445 32%, #0d2d5e 65%, #071a38 100%)',
-        }}
+        style={{ background: 'linear-gradient(160deg, #061428 0%, #0B2445 32%, #0d2d5e 65%, #071a38 100%)' }}
       >
-        {/* Background glow orbs */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full"
-          style={{
-            background: 'radial-gradient(circle at 40% 40%, rgba(26,109,204,0.22) 0%, transparent 65%)',
-          }}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-32 -right-32 h-[550px] w-[550px] rounded-full"
-          style={{
-            background: 'radial-gradient(circle at 60% 60%, rgba(192,28,40,0.18) 0%, transparent 65%)',
-          }}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/4 right-1/4 h-[400px] w-[400px] rounded-full"
-          style={{
-            background: 'radial-gradient(circle, rgba(201,162,39,0.1) 0%, transparent 60%)',
-          }}
-        />
+        <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-16 sm:px-6 sm:pt-24 sm:pb-20">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            {/* Left column — copy + actions */}
+            <div className="text-center lg:text-left">
+              <h1 className="mx-auto max-w-xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl leading-[1.15] lg:mx-0">
+                Unified payments.{' '}
+                <span style={{ color: '#ff5263' }}>One integration.</span>
+              </h1>
 
-        {/* Waving GP watermark flag */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
-        >
-          <img
-            src={MARK_SRC}
-            alt=""
-            className="animate-flag-wave-slow w-[85vw] max-w-[620px] opacity-[0.08] select-none"
-            style={{
-              filter: 'drop-shadow(0 20px 60px rgba(26,109,204,0.35))',
-            }}
-          />
-        </div>
+              <p className="mx-auto mt-5 max-w-xl text-sm sm:text-base md:text-lg leading-relaxed text-white/85 lg:mx-0">
+                GiantPay helps businesses and digital platforms in Malawi accept and manage configured digital payment
+                methods through one secure integration, with clear transaction evidence, developer tools, reconciliation
+                and reporting.
+              </p>
 
-        <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-20 sm:px-6 sm:pt-24 sm:pb-28 text-center">
-          {/* Trust Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/80 backdrop-blur-md mb-6">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Malawi&apos;s Modern Payments Infrastructure</span>
-            <span className="hidden sm:inline text-white/30">•</span>
-            <span className="hidden sm:inline text-white/60">Bank-Grade 256-Bit SSL</span>
-          </div>
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 sm:gap-6 w-full">
+                <Link
+                  to="/register"
+                  className="w-full sm:w-auto text-center rounded-xl bg-white px-7 py-3 text-sm sm:text-base font-semibold text-[#1a6dcc] shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl active:scale-[0.98]"
+                >
+                  Create sandbox account
+                </Link>
+                <Link
+                  to="/developers/overview"
+                  className="group inline-flex items-center gap-1.5 text-sm sm:text-base font-semibold text-white transition-all duration-300 ease-in-out hover:gap-2.5"
+                >
+                  Explore Developer Tools
+                  <span aria-hidden="true" className="transition-transform duration-300 ease-in-out group-hover:translate-x-1">→</span>
+                </Link>
+              </div>
+            </div>
 
-          {/* Responsive Heading */}
-          <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl leading-[1.15]">
-            Unified payments.{' '}
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #4da3ff 0%, #c9a227 50%, #ff5263 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              One integration.
-            </span>
-          </h1>
-
-          {/* Responsive Subheading */}
-          <p className="mx-auto mt-5 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed text-white/70">
-            GiantPay helps businesses and digital platforms in Malawi accept and manage configured digital payment
-            methods through one secure integration, with clear transaction evidence, developer tools, reconciliation
-            and reporting.
-          </p>
-
-          {/* Responsive CTA buttons */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
-            <Link
-              to="/register"
-              className="w-full sm:w-auto text-center rounded-xl px-7 py-3 text-sm sm:text-base font-semibold text-white transition-all duration-200 active:scale-[0.98]"
-              style={{
-                background: 'linear-gradient(135deg, #1a6dcc 0%, #0e4da6 100%)',
-                boxShadow: '0 4px 20px rgba(26,109,204,0.4)',
-              }}
-            >
-              Get Started Free
-            </Link>
-            <Link
-              to="/developers"
-              className="w-full sm:w-auto text-center rounded-xl px-7 py-3 text-sm sm:text-base font-semibold text-white/90 border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all duration-200"
-            >
-              Explore Developer Tools
-            </Link>
+            {/* Right column — product visual */}
+            <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-6 rounded-[2rem] bg-white/10 blur-2xl"
+              />
+              <img
+                src="/hero/hero-payment-phone.jpg"
+                alt="A customer completing a contactless mobile payment"
+                className="relative w-full rounded-3xl object-cover shadow-2xl"
+                style={{ aspectRatio: '4 / 3' }}
+              />
+            </div>
           </div>
 
           {/* Payment method logos */}
-          <div className="mt-14 pt-8 border-t border-white/10 flex flex-col items-center gap-4">
-            <p className="text-[10px] uppercase font-semibold tracking-[0.2em] text-white/35">
+          <div className="mt-14 pt-8 border-t border-white/20 flex flex-col items-center gap-4 w-full">
+            <p className="text-[10px] uppercase font-semibold tracking-[0.2em] text-white/60">
               Designed for local payment integrations
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3" aria-label="Supported payment methods">
-              {/* Airtel Money */}
-              <div className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 backdrop-blur-sm">
-                <span className="inline-flex h-7 w-14 items-center justify-center rounded bg-white px-1.5">
-                  <img src="/brands/airtel-money.svg" alt="Airtel Money" className="h-4 w-auto object-contain" />
-                </span>
-                <span className="text-xs font-medium text-white/80">Airtel Money</span>
-              </div>
-
-              {/* TNM Mpamba */}
-              <div className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 backdrop-blur-sm">
-                <span className="inline-flex h-7 w-14 items-center justify-center rounded bg-white px-1.5">
-                  <img src="/brands/tnm-mpamba.svg" alt="TNM Mpamba" className="h-4 w-auto object-contain" />
-                </span>
-                <span className="text-xs font-medium text-white/80">TNM Mpamba</span>
-              </div>
-
-              {/* Visa */}
-              <div className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 backdrop-blur-sm">
-                <img src="/brands/visa.svg" alt="Visa" className="h-3.5 w-auto object-contain" />
-                <span className="text-xs font-medium text-white/80">Visa</span>
-              </div>
-
-              {/* Mastercard */}
-              <div className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 backdrop-blur-sm">
-                <img src="/brands/mastercard.svg" alt="Mastercard" className="h-4 w-auto object-contain" />
-                <span className="text-xs font-medium text-white/80">Mastercard</span>
-              </div>
-
-              {/* National Switch */}
-              <div className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 backdrop-blur-sm">
-                <svg className="h-4 w-4 text-blue-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <span className="text-xs font-medium text-white/80">National Switch</span>
+            <div className="w-full max-w-3xl overflow-hidden">
+              <div
+                className="flex w-max items-center gap-3 animate-marquee-ltr motion-reduce:animate-none"
+                aria-label="Planned payment methods"
+              >
+                {[0, 1].map((copy) =>
+                  PAYMENT_METHODS.map((method) => (
+                    <div
+                      key={`${copy}-${method.label}`}
+                      aria-hidden={copy === 1}
+                      className="flex items-center px-3 py-2"
+                    >
+                      <span className="inline-flex h-16 w-16 shrink-0 animate-pulse items-center justify-center">
+                        {copy === 1 && method.icon.type === 'img'
+                          ? cloneElement(method.icon, { alt: '' })
+                          : method.icon}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -212,7 +180,7 @@ export default function LandingPage() {
             How GiantPay works
           </h2>
           <p className="mt-2 text-sm text-[var(--color-neutral-600)]">
-            From registration to live settlements in just three straightforward steps.
+            From registration to sandbox testing in just three straightforward steps.
           </p>
         </div>
 
@@ -231,7 +199,7 @@ export default function LandingPage() {
             {
               step: '3',
               title: 'Go live',
-              body: 'Switch to production credentials and receive automated payouts directly to your bank account.',
+              body: 'Move from sandbox to production once your integration is verified and provider onboarding is complete.',
             },
           ].map((item) => (
             <li
@@ -304,13 +272,13 @@ export default function LandingPage() {
                 Clean, predictable APIs and webhooks
               </h2>
               <p className="mt-4 text-sm sm:text-base leading-relaxed text-white/70">
-                Sandbox and production API keys, webhooks with delivery history, idempotent requests, and documentation with
+                Sandbox API keys, webhooks with delivery history, idempotent requests, and documentation with
                 cURL, JavaScript/TypeScript and PHP examples — all built around the same trusted-status model the hosted
                 checkout uses.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  to="/developers"
+                  to="/developers/overview"
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-500 transition-colors"
                 >
                   View Developer Docs

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/feedback/Alert';
 import { ApiError } from '@/services/api/errors';
-import { MARK_SRC, LOGO_SRC } from '@/assets/brand';
 import { useMfaVerifyMutation, useResendMfaMutation } from './useAuthMutations';
 import type { MfaChallenge } from '@/types/auth';
 
@@ -82,95 +82,67 @@ export function MfaChallengeForm({ challenge, onVerified }: { challenge: MfaChal
         : null;
 
   return (
-    /* Glassmorphism card — matches LoginFlow style */
-    <div
-      className="relative overflow-hidden rounded-2xl px-8 py-9 shadow-2xl"
-      style={{
-        background: 'rgba(255, 255, 255, 0.07)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.12)',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
-      }}
-    >
-      {/* GP mark watermark */}
-      <div className="pointer-events-none absolute -right-8 -bottom-8 opacity-[0.06]" aria-hidden="true">
-        <img src={MARK_SRC} alt="" className="w-48 h-auto" />
-      </div>
+    <Card>
+      <CardContent>
+        <h1 className="text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Verify it's you</h1>
+        <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
+          Enter the {current.codeLength}-digit code from your authenticator app.
+        </p>
 
-      {/* Logo */}
-      <div className="mb-7 flex justify-center">
-        <img src={LOGO_SRC} alt="GiantPay" className="h-14 w-auto object-contain" />
-      </div>
+        {expired && (
+          <div className="mt-4">
+            <Alert variant="warning">This code has expired. Request a new one below.</Alert>
+          </div>
+        )}
+        {!expired && errorMessage && (
+          <div className="mt-4">
+            <Alert variant="danger">{errorMessage}</Alert>
+          </div>
+        )}
 
-      <h1 className="text-2xl font-bold text-white tracking-tight">Verify it's you</h1>
-      <p className="mt-1 text-sm text-white/55">
-        Enter the {current.codeLength}-digit code from your authenticator app.
-      </p>
-
-      {expired && (
-        <div className="mt-4">
-          <Alert variant="warning">This code has expired. Request a new one below.</Alert>
+        <div className="mt-5 flex justify-between gap-2" role="group" aria-label="Verification code">
+          {digits.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => {
+                inputRefs.current[i] = el;
+              }}
+              inputMode="numeric"
+              autoComplete={i === 0 ? 'one-time-code' : 'off'}
+              aria-label={`Digit ${i + 1} of ${current.codeLength}`}
+              maxLength={1}
+              value={digit}
+              disabled={expired}
+              onChange={(e) => handleDigitChange(i, e.target.value)}
+              onPaste={handlePaste}
+              onKeyDown={(e) => {
+                if (e.key === 'Backspace' && !digit) inputRefs.current[i - 1]?.focus();
+              }}
+              className="h-12 w-11 rounded-[var(--radius-sm)] border border-[var(--color-neutral-300)] text-center text-[length:var(--text-h3)] tabular-nums focus:border-[var(--color-blue-500)] disabled:bg-[var(--color-neutral-50)]"
+            />
+          ))}
         </div>
-      )}
-      {!expired && errorMessage && (
-        <div className="mt-4">
-          <Alert variant="danger">{errorMessage}</Alert>
+
+        <p className="mt-3 text-[length:var(--text-help)] text-[var(--color-neutral-500)]" aria-live="polite">
+          {expired ? 'Code expired' : `Expires in ${expiresLabel}`}
+        </p>
+
+        <Button className="mt-5 w-full" disabled={code.length !== current.codeLength || expired} loading={verify.isPending} onClick={handleVerify}>
+          Verify
+        </Button>
+
+        <div className="mt-4 flex items-center justify-between text-[length:var(--text-label)]">
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendInMs > 0 || resend.isPending}
+            className="font-medium text-[var(--color-blue-600)] hover:underline disabled:text-[var(--color-neutral-400)] disabled:no-underline"
+          >
+            {resendInMs > 0 ? `Resend available in ${Math.ceil(resendInMs / 1000)}s` : 'Resend code'}
+          </button>
+          <span className="text-[var(--color-neutral-500)]">Lost access? Use a recovery code.</span>
         </div>
-      )}
-
-      {/* OTP digit inputs */}
-      <div className="mt-6 flex justify-between gap-2" role="group" aria-label="Verification code">
-        {digits.map((digit, i) => (
-          <input
-            key={i}
-            ref={(el) => {
-              inputRefs.current[i] = el;
-            }}
-            inputMode="numeric"
-            autoComplete={i === 0 ? 'one-time-code' : 'off'}
-            aria-label={`Digit ${i + 1} of ${current.codeLength}`}
-            maxLength={1}
-            value={digit}
-            disabled={expired}
-            onChange={(e) => handleDigitChange(i, e.target.value)}
-            onPaste={handlePaste}
-            onKeyDown={(e) => {
-              if (e.key === 'Backspace' && !digit) inputRefs.current[i - 1]?.focus();
-            }}
-            className={
-              'h-12 w-11 rounded-lg border text-center text-xl font-semibold tabular-nums text-white transition-colors ' +
-              'bg-white/10 border-white/20 focus:border-white/60 focus:bg-white/20 focus:outline-none ' +
-              'disabled:opacity-40 disabled:cursor-not-allowed'
-            }
-          />
-        ))}
-      </div>
-
-      <p className="mt-3 text-xs text-white/40" aria-live="polite">
-        {expired ? 'Code expired' : `Expires in ${expiresLabel}`}
-      </p>
-
-      <Button
-        className="mt-5 w-full !bg-[#1a6dcc] hover:!bg-[#1460b4] !shadow-[0_4px_20px_rgba(26,109,204,0.4)]"
-        disabled={code.length !== current.codeLength || expired}
-        loading={verify.isPending}
-        onClick={handleVerify}
-      >
-        Verify
-      </Button>
-
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={resendInMs > 0 || resend.isPending}
-          className="font-medium text-[#c9a227] hover:text-[#e0b83a] transition-colors disabled:text-white/30 disabled:cursor-not-allowed"
-        >
-          {resendInMs > 0 ? `Resend in ${Math.ceil(resendInMs / 1000)}s` : 'Resend code'}
-        </button>
-        <span className="text-white/35">Lost access? Use a recovery code.</span>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -16,7 +16,7 @@ export default function StatusPage() {
           </div>
           <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-white">System Status</h1>
           <p className="mt-2 text-sm text-white/60">
-            Real-time status of GiantPay gateway, sandbox APIs, and provider connectivity.
+            Status of GiantPay's sandbox APIs and core platform services.
           </p>
         </div>
       </section>

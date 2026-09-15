@@ -111,3 +111,13 @@
   animation: wm-float 9s ease-in-out infinite;
 }
 
+/* ── Payment method logo marquee (left to right) ── */
+@keyframes marqueeLeftToRight {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0%); }
+}
+
+.animate-marquee-ltr {
+  animation: marqueeLeftToRight 24s linear infinite;
+}
+

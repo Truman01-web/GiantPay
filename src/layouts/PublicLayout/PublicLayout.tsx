@@ -48,7 +48,7 @@ const FOOTER_LINKS = [
   { label: 'Privacy Policy', to: '/privacy' },
   { label: 'Terms of Service', to: '/terms' },
   { label: 'System Status', to: '/status' },
-  { label: 'Developer Docs', to: '/developers' },
+  { label: 'Developer Docs', to: '/developers/overview' },
 ];
 
 export function PublicLayout() {

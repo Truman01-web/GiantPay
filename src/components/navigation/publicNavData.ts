@@ -54,13 +54,15 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
     items: [
       {
         label: 'Developer Overview',
-        to: '/developers',
+        to: '/developers/overview',
         description: 'Architecture, sandbox testing, and quickstart guides',
+        badge: 'Coming soon',
       },
       {
         label: 'API Documentation',
-        to: '/developers/documentation',
+        to: '/developers/api-documentation',
         description: 'RESTful API specifications with cURL & TypeScript examples',
+        badge: 'Coming soon',
       },
       {
         label: 'Collections API',
@@ -76,8 +78,9 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
       },
       {
         label: 'Webhooks',
-        to: '/developers/webhooks',
+        to: '/developers/webhooks-api',
         description: 'Signed HMAC event delivery with delivery history logs',
+        badge: 'Coming soon',
       },
       {
         label: 'SDKs',
@@ -93,7 +96,7 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
       {
         label: 'API Status',
         to: '/status',
-        description: 'Live uptime, latency metrics, and operational health',
+        description: 'Sandbox uptime, latency metrics, and operational health',
       },
     ],
   },
@@ -108,17 +111,20 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
       {
         label: 'Mobile Money',
         to: '/services/mobile-money',
-        description: 'Airtel Money and TNM Mpamba wallet integrations',
+        description: 'Airtel Money and TNM Mpamba wallet support',
+        badge: 'Planned',
       },
       {
         label: 'Card Payments',
         to: '/services/card-payments',
         description: 'Visa and Mastercard transaction processing',
+        badge: 'Planned',
       },
       {
         label: 'Bank Transfers',
         to: '/services/bank-transfers',
         description: 'National Switch and direct interbank clearance',
+        badge: 'Planned',
       },
       {
         label: 'Merchant Tools',
@@ -154,7 +160,7 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
       {
         label: 'System Status',
         to: '/status',
-        description: 'Real-time service health and maintenance notices',
+        description: 'Sandbox service health and maintenance notices',
       },
     ],
   },

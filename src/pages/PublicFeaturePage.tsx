@@ -30,12 +30,6 @@ export default function PublicFeaturePage({
       description =
         'Fair transaction fees with zero hidden costs. Test in sandbox today with simulated pricing models.';
       isPlanned = false;
-    } else if (location.pathname === '/developers') {
-      title = 'Developer Platform & Documentation';
-      category = 'Developers';
-      description =
-        'Integrate modern Malawian payment flows into your platform using clean REST APIs, SDKs, and sandbox tooling.';
-      isPlanned = false;
     } else {
       // Find matching item in PUBLIC_NAV_GROUPS
       for (const group of PUBLIC_NAV_GROUPS) {

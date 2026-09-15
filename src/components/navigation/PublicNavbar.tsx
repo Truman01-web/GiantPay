@@ -378,7 +378,7 @@ export function PublicNavbar() {
               onClick={() => setMobileOpen(false)}
               className="flex min-h-[44px] items-center justify-center rounded-xl px-4 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-md"
             >
-              Get Started Free
+              Create sandbox account
             </Link>
           </div>
         </div>
