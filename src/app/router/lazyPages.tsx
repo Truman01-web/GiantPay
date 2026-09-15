@@ -31,3 +31,9 @@ export const ReconciliationPage = lazy(() => import('@/pages/ReconciliationPage'
 export const ReconciliationRunDetailPage = lazy(() => import('@/pages/ReconciliationRunDetailPage'));
 export const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 export const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
+export const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
+
+export const DeveloperDashboardPage = lazy(() => import('@/pages/DeveloperDashboardPage'));
+export const DeveloperApiKeysPage = lazy(() => import('@/pages/DeveloperApiKeysPage'));
+export const DeveloperWebhooksPage = lazy(() => import('@/pages/DeveloperWebhooksPage'));
+export const DeveloperWebhookDetailPage = lazy(() => import('@/pages/DeveloperWebhookDetailPage'));

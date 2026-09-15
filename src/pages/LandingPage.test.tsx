@@ -22,14 +22,14 @@ describe('LandingPage Hero Section & Brand Assets', () => {
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: /payments built for modern malawian businesses/i,
+        name: /unified payments/i,
       })
     ).toBeInTheDocument();
 
     // Required Supporting text
     expect(
       screen.getByText(
-        /create payment experiences, manage transactions and prepare your business for secure mobile-money, card and bank-transfer integrations/i
+        /developer tools and sandbox environments for businesses in malawi to test and prepare/i
       )
     ).toBeInTheDocument();
 
@@ -38,8 +38,8 @@ describe('LandingPage Hero Section & Brand Assets', () => {
     expect(primaryCta).toBeInTheDocument();
     expect(primaryCta).toHaveAttribute('href', '/register');
 
-    // Secondary action: Explore the API
-    const secondaryCta = screen.getByRole('link', { name: /explore the api/i });
+    // Secondary action: Explore Developer Tools
+    const secondaryCta = screen.getByRole('link', { name: /explore developer tools/i });
     expect(secondaryCta).toBeInTheDocument();
     expect(secondaryCta).toHaveAttribute('href', '/developers');
   });
@@ -85,12 +85,15 @@ describe('LandingPage Hero Section & Brand Assets', () => {
   it('12. avoids false production-integration claims and uses honest integration-ready wording', () => {
     renderLandingPage();
 
-    // Intro header uses honest phrasing
-    expect(screen.getByText(/designed for local payment integrations/i)).toBeInTheDocument();
+    // Intro header uses honest planned phrasing
+    expect(screen.getByText(/planned payment channels/i)).toBeInTheDocument();
+    expect(screen.getByText(/integration-ready/i)).toBeInTheDocument();
 
-    // Does NOT say "We accept" or "Currently supported" as production claims
+    // Does NOT make false production claims or SSL marketing exaggerations
+    expect(screen.queryByText(/bank-grade 256-bit ssl/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/supported payment methods/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/we accept/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/currently supported/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/receive automated payouts directly to your bank account/i)).not.toBeInTheDocument();
   });
 
   it('13. maintains React StrictMode compatibility', () => {
