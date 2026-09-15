@@ -51,7 +51,7 @@ function GlassField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-white/75">
+      <label htmlFor={id} className="text-sm font-medium text-slate-700">
         {label}
         {required && <span className="ml-0.5 text-red-400" aria-hidden="true">*</span>}
       </label>
@@ -62,8 +62,8 @@ function GlassField({
 }
 
 const inputCls =
-  'h-10 w-full rounded-lg border border-white/15 bg-white/8 px-3 text-sm text-white ' +
-  'placeholder:text-white/25 focus:border-white/40 focus:bg-white/12 focus:outline-none ' +
+  'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 ' +
+  'placeholder:text-slate-400 focus:border-[#1B4FD8] focus:outline-none ' +
   'transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
 
 export function LoginFlow() {
@@ -100,13 +100,9 @@ export function LoginFlow() {
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl shadow-2xl"
+      className="relative overflow-hidden rounded-2xl border border-white/80 bg-white/80 shadow-2xl shadow-slate-900/10 backdrop-blur-2xl"
       style={{
-        background: 'rgba(10, 28, 62, 0.58)',
-        backdropFilter: 'blur(28px)',
-        WebkitBackdropFilter: 'blur(28px)',
-        border: '1px solid rgba(255,255,255,0.18)',
-        boxShadow: '0 32px 64px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.22)',
+        boxShadow: '0 24px 60px rgba(15,23,42,0.12)',
       }}
     >
       {/* Coloured top accent bar */}
@@ -119,7 +115,7 @@ export function LoginFlow() {
         {/* ← Back to Home */}
         <Link
           to="/"
-          className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-white/50 hover:text-white/90 transition-colors group"
+          className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#1B4FD8] transition-colors group"
         >
           <svg
             className="h-3.5 w-3.5 transition-transform duration-150 group-hover:-translate-x-0.5"
@@ -143,8 +139,8 @@ export function LoginFlow() {
           />
         </div>
 
-        <h1 className="text-xl sm:text-[23px] font-bold text-white tracking-tight text-center sm:text-left">Welcome back</h1>
-        <p className="mt-1 text-xs sm:text-sm text-white/60 text-center sm:text-left">Sign in to your GiantPay merchant account.</p>
+        <h1 className="text-xl sm:text-[23px] font-bold text-slate-900 tracking-tight text-center sm:text-left">Welcome back</h1>
+        <p className="mt-1 text-xs sm:text-sm text-slate-500 text-center sm:text-left">Sign in to your GiantPay merchant account.</p>
 
         {errorMessage && (
           <div className="mt-4"><Alert variant="danger">{errorMessage}</Alert></div>
@@ -176,7 +172,7 @@ export function LoginFlow() {
 
           <div className="flex items-center justify-between">
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-white/65">
+            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-600">
               <Controller
                 control={control}
                 name="remember"
@@ -186,7 +182,7 @@ export function LoginFlow() {
             </label>
             <Link
               to="/forgot-password"
-              className="text-sm font-medium text-[#c9a227] hover:text-[#e0b83a] transition-colors"
+              className="text-sm font-medium text-[#1B4FD8] hover:text-blue-700 transition-colors"
             >
               Forgot password?
             </Link>
@@ -206,9 +202,9 @@ export function LoginFlow() {
           </Button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-white/45">
+        <p className="mt-5 text-center text-sm text-slate-500">
           New to GiantPay?{' '}
-          <Link to="/register" className="font-semibold text-[#c9a227] hover:text-[#e0b83a] transition-colors">
+          <Link to="/register" className="font-semibold text-[#1B4FD8] hover:text-blue-700 transition-colors">
             Create an account
           </Link>
         </p>
@@ -218,7 +214,7 @@ export function LoginFlow() {
             className="mt-5 rounded-xl p-3"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.12)' }}
           >
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/35">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Sandbox demo accounts · MFA code: 123456
             </p>
             <div className="flex flex-col gap-0.5">
@@ -229,7 +225,7 @@ export function LoginFlow() {
                   onClick={() => { setValue('email', a.email); setValue('password', a.password); }}
                   className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left hover:bg-white/08 transition-colors"
                 >
-                  <span className="text-xs text-white/60 truncate max-w-[200px] sm:max-w-none">{a.email}</span>
+                  <span className="text-xs text-slate-600 truncate max-w-[200px] sm:max-w-none">{a.email}</span>
                   <span
                     className="ml-2 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
                     style={{ background: 'rgba(201,162,39,0.15)', color: '#c9a227' }}

@@ -14,23 +14,23 @@
  */
 @theme {
   /* Foundation — deep navy/charcoal, same hue family as the logo's blue */
-  --color-navy-950: #0b1b33;
-  --color-navy-900: #10233f;
-  --color-navy-800: #16304f;
-  --color-navy-700: #1e3f63;
-  --color-navy-600: #2b527d;
-  --color-navy-500: #3d6690;
-  --color-navy-100: #dbe6f2;
-  --color-navy-50: #f2f6fb;
+  --color-navy-950: #0f172a;
+  --color-navy-900: #1e293b;
+  --color-navy-800: #334155;
+  --color-navy-700: #475569;
+  --color-navy-600: #64748b;
+  --color-navy-500: #94a3b8;
+  --color-navy-100: #e2e8f0;
+  --color-navy-50: #f8fafc;
 
   /* Primary interactive — the logo's blue */
-  --color-blue-700: #043672;
-  --color-blue-600: #054092;
-  --color-blue-500: #3766a8;
-  --color-blue-400: #698cbe;
-  --color-blue-300: #9bb3d3;
-  --color-blue-100: #dae2ef;
-  --color-blue-50: #f0f4f9;
+  --color-blue-700: #1e40af;
+  --color-blue-600: #1b4fd8;
+  --color-blue-500: #3b82f6;
+  --color-blue-400: #60a5fa;
+  --color-blue-300: #93c5fd;
+  --color-blue-100: #dbeafe;
+  --color-blue-50: #f1f5ff;
 
   /* Brand red — the logo's red — controlled accent + destructive/error */
   --color-red-700: #980c20;
@@ -56,14 +56,14 @@
   --color-amber-50: #fdf6ea;
 
   /* Neutral surfaces */
-  --color-neutral-900: #1a1f27;
-  --color-neutral-700: #3d4451;
-  --color-neutral-600: #5a6270;
-  --color-neutral-500: #7b8492;
-  --color-neutral-300: #c3c9d1;
-  --color-neutral-200: #dde1e6;
-  --color-neutral-100: #eef0f3;
-  --color-neutral-50: #f8f9fb;
+  --color-neutral-900: #0f172a;
+  --color-neutral-700: #334155;
+  --color-neutral-600: #64748b;
+  --color-neutral-500: #94a3b8;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-50: #f8faff;
   --color-white: #ffffff;
 
   /* Typography */

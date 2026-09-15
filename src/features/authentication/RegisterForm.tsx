@@ -28,28 +28,28 @@ function GlassField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-white/75">
+      <label className="text-sm font-medium text-slate-700">
         {label}
         {required && <span className="ml-0.5 text-red-400" aria-hidden="true">*</span>}
       </label>
       {children}
-      {help && !error && <p className="text-xs text-white/35">{help}</p>}
+      {help && !error && <p className="text-xs text-slate-400">{help}</p>}
       {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }
 
 const inputCls =
-  'h-10 w-full rounded-lg border border-white/15 bg-white/8 px-3 text-sm text-white ' +
-  'placeholder:text-white/25 focus:border-white/40 focus:bg-white/12 focus:outline-none ' +
+  'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 ' +
+  'placeholder:text-slate-400 focus:border-[#1B4FD8] focus:outline-none ' +
   'transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
 
 const cardStyle: React.CSSProperties = {
-  background: 'rgba(10, 28, 62, 0.58)',
+  background: 'rgba(255,255,255,0.82)',
   backdropFilter: 'blur(28px)',
   WebkitBackdropFilter: 'blur(28px)',
-  border: '1px solid rgba(255,255,255,0.18)',
-  boxShadow: '0 32px 64px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.22)',
+  border: '1px solid rgba(255,255,255,0.82)',
+  boxShadow: '0 24px 60px rgba(15,23,42,0.12)',
 };
 
 const accentBar = (
@@ -96,8 +96,8 @@ export function RegisterForm() {
           <svg className="mx-auto h-14 w-14 text-emerald-400 drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h1 className="mt-4 text-2xl font-bold text-white">Check your email</h1>
-          <p className="mt-2 text-sm text-white/60">
+          <h1 className="mt-4 text-2xl font-bold text-slate-900">Check your email</h1>
+          <p className="mt-2 text-sm text-slate-500">
             We&apos;ve sent a verification link to confirm your account. Once verified, you can sign in and start your merchant application.
           </p>
           <Link
@@ -141,8 +141,8 @@ export function RegisterForm() {
           <img src={LOGO_SRC} alt="GiantPay" className="h-16 sm:h-20 w-auto object-contain drop-shadow-md" />
         </div>
 
-        <h1 className="text-xl sm:text-[22px] font-bold text-white tracking-tight text-center sm:text-left">Create your account</h1>
-        <p className="mt-1 text-xs sm:text-sm text-white/60 text-center sm:text-left">Start with sandbox access — production activates after review.</p>
+        <h1 className="text-xl sm:text-[22px] font-bold text-slate-900 tracking-tight text-center sm:text-left">Create your account</h1>
+        <p className="mt-1 text-xs sm:text-sm text-slate-500 text-center sm:text-left">Start with sandbox access — production activates after review.</p>
 
         {errorMessage && (
           <div className="mt-4"><Alert variant="danger">{errorMessage}</Alert></div>
@@ -193,7 +193,7 @@ export function RegisterForm() {
             />
           </GlassField>
 
-          <label className="flex items-start gap-2.5 text-sm text-white/65 cursor-pointer select-none">
+          <label className="flex items-start gap-2.5 text-sm text-slate-600 cursor-pointer select-none">
             <Controller
               control={control}
               name="acceptTerms"
@@ -201,9 +201,9 @@ export function RegisterForm() {
             />
             <span>
               I agree to the{' '}
-              <Link to="/terms" className="font-medium text-[#c9a227] hover:text-[#e0b83a] transition-colors">Terms</Link>
+              <Link to="/terms" className="font-medium text-[#1B4FD8] hover:text-blue-700 transition-colors">Terms</Link>
               {' '}and{' '}
-              <Link to="/privacy" className="font-medium text-[#c9a227] hover:text-[#e0b83a] transition-colors">Privacy Policy</Link>
+              <Link to="/privacy" className="font-medium text-[#1B4FD8] hover:text-blue-700 transition-colors">Privacy Policy</Link>
             </span>
           </label>
           {errors.acceptTerms && <p className="text-xs text-red-400">{errors.acceptTerms.message}</p>}
@@ -222,9 +222,9 @@ export function RegisterForm() {
           </Button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-white/45">
+        <p className="mt-5 text-center text-sm text-slate-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-[#c9a227] hover:text-[#e0b83a] transition-colors">
+          <Link to="/login" className="font-semibold text-[#1B4FD8] hover:text-blue-700 transition-colors">
             Sign in
           </Link>
         </p>
