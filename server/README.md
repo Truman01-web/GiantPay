@@ -129,3 +129,12 @@ support cases, separate public replies and internal notes, append-only histories
 redacted administrative read models, transactional audit/outbox evidence, and
 Redis-backed protection. It remains sandbox-only and performs no payout or
 external support delivery. See [docs/platform-administration-support.md](docs/platform-administration-support.md).
+
+## Disputes and chargebacks
+
+Phase 8 adds tenant-isolated sandbox disputes, metadata-only evidence, private
+investigation notes, independently reviewed decisions, durable idempotency,
+append-only history, and pending-only financial-effect instructions. It performs
+no provider communication, real chargeback, payout, or fund movement. See
+[docs/disputes-chargebacks.md](docs/disputes-chargebacks.md).
+[The Phase 8 test matrix](docs/disputes-test-matrix.md) maps all 80 acceptance scenarios.
