@@ -32,7 +32,103 @@ tags:
   - name: Account security
   - name: Merchant support
   - name: Platform administration
+  - name: Notifications
+  - name: Platform notifications
 paths:
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [Notifications]
+      summary: List the authenticated merchant user's in-app notifications
+      parameters:
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses: { '200': { description: User-isolated notification page }, '401': { description: Authentication required }, '403': { description: Permission denied } }
+  /notifications/unread-count:
+    get:
+      operationId: getNotificationUnreadCount
+      tags: [Notifications]
+      summary: Count the authenticated user's unread in-app notifications
+      responses: { '200': { description: Unread count } }
+  /notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [Notifications]
+      summary: Get effective notification preferences and channel availability
+      responses: { '200': { description: Effective preferences } }
+    patch:
+      operationId: updateNotificationPreference
+      tags: [Notifications]
+      summary: Update one versioned notification preference
+      parameters: [{ in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 8, maxLength: 128 } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [category, channel, enabled, expectedVersion], properties: { category: { type: string }, channel: { enum: [IN_APP, EMAIL, SMS] }, enabled: { type: boolean }, expectedVersion: { type: integer, minimum: 0 } } } } } }
+      responses: { '200': { description: Updated preference; external delivery remains unavailable }, '409': { description: 'Mandatory policy, stale version, or idempotency conflict' } }
+  /notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [Notifications]
+      summary: Idempotently mark an owned notification read
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Original or replayed read result }, '404': { description: Notification not found } }
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [Notifications]
+      summary: Idempotently mark the authenticated user's notifications read
+      parameters: [{ in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Read count } }
+  /platform/notifications:
+    get:
+      operationId: listPlatformNotifications
+      tags: [Platform notifications]
+      summary: List the authenticated platform staff user's notifications
+      responses: { '200': { description: User-isolated platform inbox } }
+  /platform/notifications/unread-count:
+    get:
+      operationId: getPlatformNotificationUnreadCount
+      tags: [Platform notifications]
+      summary: Count unread platform-staff notifications
+      responses: { '200': { description: Unread count } }
+  /platform/notifications/{id}/read:
+    post:
+      operationId: markPlatformNotificationRead
+      tags: [Platform notifications]
+      summary: Mark an owned platform notification read
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Read result }, '404': { description: Notification not found } }
+  /platform/notifications/read-all:
+    post:
+      operationId: markAllPlatformNotificationsRead
+      tags: [Platform notifications]
+      summary: Mark all notifications for the authenticated platform user read
+      parameters: [{ in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Read count } }
+  /platform/notification-deliveries:
+    get:
+      operationId: listNotificationDeliveries
+      tags: [Platform notifications]
+      summary: List redacted notification delivery operations
+      responses: { '200': { description: Redacted delivery list } }
+  /platform/notification-deliveries/{id}:
+    get:
+      operationId: getNotificationDelivery
+      tags: [Platform notifications]
+      summary: Get a redacted delivery operation
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Redacted delivery }, '404': { description: Delivery not found } }
+  /platform/notification-deliveries/{id}/retry:
+    post:
+      operationId: retryNotificationDelivery
+      tags: [Platform notifications]
+      summary: Request an authorized retry without bypassing disabled providers
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Retry accepted }, '409': { description: 'Provider disabled, stale state, or idempotency conflict' } }
+  /platform/notification-templates:
+    get:
+      operationId: listNotificationTemplates
+      tags: [Platform notifications]
+      summary: List controlled template metadata without rendered recipient content
+      responses: { '200': { description: Template metadata } }
   /support/cases:
     get:
       operationId: listMerchantSupportCases

@@ -19,6 +19,7 @@ import { registerTeamRoutes } from './team/routes.js';
 import { registerOnboardingRoutes } from './onboarding/routes.js';
 import { registerPlatformRoutes } from './platform/routes.js';
 import { registerDisputeRoutes } from './disputes/routes.js';
+import { registerNotificationRoutes } from './notifications/routes.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
 import { createPaymentProvider } from './providers/index.js';
 import type { PaymentProvider } from './providers/types.js';
@@ -185,6 +186,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   await registerOnboardingRoutes(app,config,db,rateLimits);
   await registerPlatformRoutes(app,config,db,rateLimits);
   await registerDisputeRoutes(app,config,db,rateLimits);
+  await registerNotificationRoutes(app,config,db,rateLimits);
 
   app.get('/v1/payments',{preHandler:[auth,requirePermission('payments:read')]},async(request)=>{
     const q=pageSchema.extend({search:z.string().max(100).optional(),status:z.string().optional(),channel:z.string().optional()}).parse(request.query); const offset=(q.page-1)*q.pageSize;

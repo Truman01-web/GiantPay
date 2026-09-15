@@ -109,3 +109,14 @@ database lifecycle constraints, immutable history, and atomic audit/outbox write
 make retries and concurrent decisions deterministic. Because the ledger has no
 approved dispute accounts, financial effects remain unique pending sandbox
 instructions and never imply provider processing, payout, or real fund movement.
+
+## Notification boundary
+
+Committed business outbox events are mapped to controlled, versioned templates
+and trusted recipients. Event receipts and advisory locks prevent duplicate
+notifications. Inbox reads are scoped to the active human user and authority;
+API keys cannot access personal communications. In-app content is immediately
+available, while email and SMS jobs use leases and append-only attempts but
+remain honestly disabled until approved providers return authenticated evidence.
+Preference, read-state, retry, audit, outbox, and idempotency effects commit
+atomically. Administrative views expose masked contact metadata only.
