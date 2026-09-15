@@ -11,13 +11,15 @@ pointing `VITE_API_URL` at a real GiantPay backend — once its contract is
 available — requires no rewrite, only replacing mock handlers with real
 network calls that already match the typed service layer's shape.
 
-Delivery is phased (see §8). This pass ("Foundation + Merchant Core") builds
-the full application shell plus one deep, production-quality vertical slice:
-**authentication → onboarding → dashboard → transactions → payment links →
-refunds**. Admin console, developer portal, team/support, settlements,
-reconciliation and reports are scaffolded as routed, permission-gated stubs
-with a clear "not yet implemented" state — never faked as working — and are
-the subject of the next phase.
+Delivery is phased (see §8). The initial pass ("Foundation + Merchant Core")
+built the full application shell plus one deep, production-quality vertical
+slice: **authentication → onboarding → dashboard → transactions → payment
+links → refunds**. A later hardening pass fixed session bootstrap, upload
+handling and checkout polling for StrictMode/failure-mode correctness, and
+built out **settlements and reconciliation** to the same depth. Admin
+console, developer portal, team/support and reports remain scaffolded as
+routed, permission-gated stubs with a clear "not yet implemented" state —
+never faked as working — see `HANDOVER.md` for exact current status.
 
 ## 1. Technology baseline
 
@@ -123,12 +125,13 @@ See `docs/testing-strategy.md`.
 |---|---|---|
 | 0 | Discovery, docs, architecture | **Done** (this document set) |
 | 1 | Foundation: tokens, shared components, routing/guards, layouts, typed API client, MSW, auth shell, error boundaries | **Done** |
-| 2 | Merchant core: onboarding, dashboard, transactions, payment links, refunds | **Done** (deep slice); settlements/reconciliation/reports left as routed stubs |
-| 3 | Hosted checkout | **Done** (core states: initializing/ready/submitting/requires-action/processing/pending/success/failed/expired, trusted-status polling) |
+| 2 | Merchant core: onboarding, dashboard, transactions, payment links, refunds | **Done** (deep slice); reports left as a routed stub |
+| 2.5 | Settlements and reconciliation | **Done** — list/detail pages, exception review with a maker-checker-shaped update workflow, all backend-confirmed via a real MSW round-trip |
+| 3 | Hosted checkout | **Done** (core states: initializing/ready/submitting/requires-action/processing/pending/success/failed/expired, bounded trusted-status polling with a redundant timeout guard) |
 | 4 | Developer platform (API keys, webhooks, docs) | Routed stub only — next phase |
 | 5 | Team & support | Routed stub only — next phase |
 | 6 | Administration & operations | Routed stub only — next phase |
-| 7 | Production hardening (full a11y audit, cross-browser, perf budget, full Playwright journey suite) | Partial — core flows covered; full audit is next phase |
+| 7 | Production hardening (full a11y audit, cross-browser, perf budget, full Playwright journey suite) | Partial — core flows covered, session/upload/checkout failure modes hardened; full audit is next phase |
 
 Known risks and remaining backend requirements are tracked in `HANDOVER.md`
 at the repository root, updated at the end of each phase.

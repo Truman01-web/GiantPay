@@ -5,7 +5,13 @@ import type { UploadedDocument } from '@/types/onboarding';
 
 export interface FileUploadProps {
   label: string;
+  /** Native file-picker filter, e.g. ".pdf,.jpg,.jpeg,.png". */
   accept?: string;
+  /** Real MIME types to validate against — extensions alone can't be
+   * trusted (a renamed file, or any file dropped via drag-and-drop, which
+   * ignores `accept` entirely). Falls back to matching `accept`'s
+   * extensions only when the browser reports no MIME type at all. */
+  acceptedMimeTypes?: string[];
   maxSizeBytes?: number;
   documents: UploadedDocument[];
   onFilesSelected: (files: File[]) => void;
@@ -13,17 +19,54 @@ export interface FileUploadProps {
   onRetry: (id: string) => void;
 }
 
+function formatMaxSize(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))}MB`;
+}
+
+function extensionAllowed(fileName: string, accept: string): boolean {
+  const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+  return accept
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .includes(ext);
+}
+
 /** Drag-and-drop + file-selector upload with progress, retry and removal —
  * used for onboarding KYC/KYB documents. File type/size requirements are
- * passed in from backend configuration rather than hard-coded. */
-export function FileUpload({ label, accept, maxSizeBytes, documents, onFilesSelected, onRemove, onRetry }: FileUploadProps) {
+ * passed in from backend configuration rather than hard-coded. Rejected
+ * files are never silently dropped — the customer always sees why. */
+export function FileUpload({ label, accept, acceptedMimeTypes, maxSizeBytes, documents, onFilesSelected, onRemove, onRetry }: FileUploadProps) {
   const [dragOver, setDragOver] = useState(false);
+  const [rejection, setRejection] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function validate(file: File): string | null {
+    if (maxSizeBytes && file.size > maxSizeBytes) {
+      return `"${file.name}" is too large. Please choose a file under ${formatMaxSize(maxSizeBytes)}.`;
+    }
+    if (acceptedMimeTypes?.length) {
+      const typeOk = file.type ? acceptedMimeTypes.includes(file.type) : accept ? extensionAllowed(file.name, accept) : false;
+      if (!typeOk) {
+        return `"${file.name}" isn't a supported file type.`;
+      }
+    }
+    return null;
+  }
 
   function handleFiles(fileList: FileList | null) {
     if (!fileList) return;
-    const files = Array.from(fileList).filter((f) => !maxSizeBytes || f.size <= maxSizeBytes);
-    if (files.length) onFilesSelected(files);
+    const accepted: File[] = [];
+    let firstRejection: string | null = null;
+    for (const file of Array.from(fileList)) {
+      const error = validate(file);
+      if (error) {
+        firstRejection ??= error;
+      } else {
+        accepted.push(file);
+      }
+    }
+    setRejection(firstRejection);
+    if (accepted.length) onFilesSelected(accepted);
   }
 
   return (
@@ -65,6 +108,12 @@ export function FileUpload({ label, accept, maxSizeBytes, documents, onFilesSele
         />
       </div>
 
+      {rejection && (
+        <p role="alert" className="mt-2 text-[length:var(--text-help)] text-[var(--color-red-600)]">
+          {rejection}
+        </p>
+      )}
+
       {documents.length > 0 && (
         <ul className="mt-3 flex flex-col gap-2">
           {documents.map((doc) => (
@@ -77,21 +126,33 @@ export function FileUpload({ label, accept, maxSizeBytes, documents, onFilesSele
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[length:var(--text-label)] font-medium text-[var(--color-neutral-900)]">{doc.fileName}</p>
                 {doc.status === 'UPLOADING' && (
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-neutral-100)]">
+                  <div
+                    role="progressbar"
+                    aria-label={`Uploading ${doc.fileName}`}
+                    aria-valuenow={doc.uploadProgress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-neutral-100)]"
+                  >
                     <div
                       className="h-full rounded-full bg-[var(--color-blue-500)] transition-[width] duration-[var(--duration-base)]"
                       style={{ width: `${doc.uploadProgress}%` }}
                     />
                   </div>
                 )}
-                {doc.status === 'FAILED' && <p className="text-[length:var(--text-help)] text-[var(--color-red-600)]">Upload failed</p>}
+                {doc.status === 'FAILED' && <p className="text-[length:var(--text-help)] text-[var(--color-red-600)]">{doc.error || 'Upload failed'}</p>}
               </div>
               {doc.status === 'FAILED' && (
                 <button type="button" onClick={() => onRetry(doc.id)} aria-label={`Retry uploading ${doc.fileName}`} className="rounded p-1 text-[var(--color-neutral-500)] hover:bg-[var(--color-neutral-100)]">
                   <RotateCcw className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
-              <button type="button" onClick={() => onRemove(doc.id)} aria-label={`Remove ${doc.fileName}`} className="rounded p-1 text-[var(--color-neutral-500)] hover:bg-[var(--color-neutral-100)]">
+              <button
+                type="button"
+                onClick={() => onRemove(doc.id)}
+                aria-label={doc.status === 'UPLOADING' ? `Cancel uploading ${doc.fileName}` : `Remove ${doc.fileName}`}
+                className="rounded p-1 text-[var(--color-neutral-500)] hover:bg-[var(--color-neutral-100)]"
+              >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </li>

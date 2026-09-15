@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileUpload } from '@/components/forms/FileUpload';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/feedback/Alert';
 import { merchantsApi } from '@/services/api/merchants';
+import { describeUploadError } from './describeUploadError';
 import type { UploadedDocument } from '@/types/onboarding';
 
 const CATEGORIES = [
@@ -10,6 +11,10 @@ const CATEGORIES = [
   { key: 'proof_of_address', label: 'Proof of business address' },
   { key: 'director_id', label: "Director's identification" },
 ];
+
+const MAX_SIZE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png';
+const ACCEPTED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
 interface CategorizedDoc extends UploadedDocument {
   category: string;
@@ -23,17 +28,50 @@ export function DocumentsStep({ initialDocuments, saving, onBack, onNext }: { in
   // a ref, keyed by the document's local id, and dropped once a file is
   // removed or successfully uploaded.
   const fileRefs = useRef(new Map<string, File>());
+  // One AbortController per in-flight upload, so removing a document or
+  // unmounting the step can actually cancel the underlying request instead
+  // of just letting it run to completion in the background.
+  const controllers = useRef(new Map<string, AbortController>());
+  // Guards against a duplicate upload starting for the same document (e.g.
+  // a rapid double-click on retry before the button re-renders as disabled).
+  const inFlight = useRef(new Set<string>());
+
+  useEffect(
+    () => () => {
+      for (const controller of controllers.current.values()) controller.abort();
+      controllers.current.clear();
+    },
+    [],
+  );
 
   const allCategoriesHaveAtLeastOne = CATEGORIES.every((c) => documents.some((d) => d.category === c.key && d.status === 'UPLOADED'));
 
   async function uploadOne(localId: string, category: string, file: File) {
-    setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, status: 'UPLOADING', uploadProgress: 0 } : d)));
+    if (inFlight.current.has(localId)) return;
+    inFlight.current.add(localId);
+
+    const controller = new AbortController();
+    controllers.current.set(localId, controller);
+
+    setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, status: 'UPLOADING', uploadProgress: 0, error: null } : d)));
     try {
-      await merchantsApi.uploadDocument({ category, file }, { onProgress: (percent) => setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, uploadProgress: percent } : d))) });
-      setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, status: 'UPLOADED', uploadProgress: 100 } : d)));
+      const result = await merchantsApi.uploadDocument(
+        { category, file },
+        { signal: controller.signal, onProgress: (percent) => setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, uploadProgress: percent } : d))) },
+      );
+      setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, fileName: result.fileName, sizeBytes: result.sizeBytes, status: 'UPLOADED', uploadProgress: 100, error: null } : d)));
       fileRefs.current.delete(localId);
-    } catch {
-      setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, status: 'FAILED' } : d)));
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // Cancelled (removed, or the step unmounted) — not a failure; the
+        // document is already gone from state (or about to be), so there
+        // is nothing safe or useful to show.
+        return;
+      }
+      setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, status: 'FAILED', error: describeUploadError(err) } : d)));
+    } finally {
+      inFlight.current.delete(localId);
+      controllers.current.delete(localId);
     }
   }
 
@@ -41,12 +79,13 @@ export function DocumentsStep({ initialDocuments, saving, onBack, onNext }: { in
     for (const file of files) {
       const localId = crypto.randomUUID();
       fileRefs.current.set(localId, file);
-      setDocuments((prev) => [...prev, { id: localId, category, fileName: file.name, sizeBytes: file.size, status: 'UPLOADING', uploadProgress: 0 }]);
+      setDocuments((prev) => [...prev, { id: localId, category, fileName: file.name, sizeBytes: file.size, status: 'UPLOADING', uploadProgress: 0, error: null }]);
       void uploadOne(localId, category, file);
     }
   }
 
   function handleRemove(id: string) {
+    controllers.current.get(id)?.abort();
     fileRefs.current.delete(id);
     setDocuments((prev) => prev.filter((d) => d.id !== id));
   }
@@ -54,7 +93,7 @@ export function DocumentsStep({ initialDocuments, saving, onBack, onNext }: { in
   function handleRetry(id: string) {
     const doc = documents.find((d) => d.id === id);
     const file = fileRefs.current.get(id);
-    if (!doc || !file) return;
+    if (!doc || !file || doc.status === 'UPLOADING') return;
     void uploadOne(id, doc.category, file);
   }
 
@@ -76,8 +115,9 @@ export function DocumentsStep({ initialDocuments, saving, onBack, onNext }: { in
         <FileUpload
           key={cat.key}
           label={cat.label}
-          accept=".pdf,.jpg,.jpeg,.png"
-          maxSizeBytes={10 * 1024 * 1024}
+          accept={ACCEPTED_EXTENSIONS}
+          acceptedMimeTypes={ACCEPTED_MIME_TYPES}
+          maxSizeBytes={MAX_SIZE_BYTES}
           documents={documents.filter((d) => d.category === cat.key)}
           onFilesSelected={(files) => handleFilesSelected(cat.key, files)}
           onRemove={handleRemove}

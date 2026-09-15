@@ -5,6 +5,8 @@ import { refundsHandlers } from './refunds';
 import { checkoutHandlers } from './checkout';
 import { merchantsHandlers } from './merchants';
 import { dashboardHandlers } from './dashboard';
+import { settlementsHandlers } from './settlements';
+import { reconciliationHandlers } from './reconciliation';
 
 export const handlers = [
   ...authHandlers,
@@ -14,4 +16,6 @@ export const handlers = [
   ...checkoutHandlers,
   ...merchantsHandlers,
   ...dashboardHandlers,
+  ...settlementsHandlers,
+  ...reconciliationHandlers,
 ];

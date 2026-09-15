@@ -5,9 +5,20 @@ import { env } from './app/config/env';
 import './index.css';
 
 async function prepare() {
-  if (env.useMockApi) {
-    const { worker } = await import('./mocks/browser');
+  if (!env.useMockApi) return;
+  const { worker } = await import('./mocks/browser');
+  try {
     await worker.start({ onUnhandledRequest: 'bypass' });
+  } catch (error) {
+    // public/mockServiceWorker.js is generated (git-ignored) — `pnpm dev`
+    // regenerates it automatically via the `predev` script, but fail loud
+    // and still render rather than leaving a blank page if it's missing
+    // for any other reason (e.g. Vite run directly, bypassing pnpm scripts).
+    console.error(
+      '[GiantPay] Mock API worker failed to start — API calls will fail until this is fixed. ' +
+        'Run `pnpm msw:init` to regenerate public/mockServiceWorker.js.',
+      error,
+    );
   }
 }
 

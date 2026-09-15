@@ -6,6 +6,12 @@ import type { OnboardingDraft } from '@/types/onboarding';
 const base = `${env.apiUrl}/v1`;
 let draft: OnboardingDraft = structuredClone(MOCK_ONBOARDING_DRAFT);
 
+/** See resetAuthMockState in ../handlers/auth.ts for why this is needed
+ * between tests under this project's `isolate: false` vitest config. */
+export function resetMerchantsMockState(): void {
+  draft = structuredClone(MOCK_ONBOARDING_DRAFT);
+}
+
 export const merchantsHandlers = [
   http.get(`${base}/merchants/onboarding`, () => HttpResponse.json(draft)),
 

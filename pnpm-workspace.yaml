@@ -2,7 +2,7 @@ packages:
   - .
   - server
 
-onlyBuiltDependencies:
-  - msw
-  - argon2
-  - esbuild
+allowBuilds:
+  argon2: true
+  esbuild: true
+  msw: true

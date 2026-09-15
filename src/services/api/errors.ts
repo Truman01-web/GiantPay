@@ -40,6 +40,18 @@ export class ApiError extends Error {
   get isValidation(): boolean {
     return this.status === 422 || this.status === 400;
   }
+
+  get isPayloadTooLarge(): boolean {
+    return this.status === 413;
+  }
+
+  get isUnsupportedMediaType(): boolean {
+    return this.status === 415;
+  }
+
+  get isRateLimited(): boolean {
+    return this.status === 429;
+  }
 }
 
 /** Safe, user-facing fallback copy — never a raw technical message. */

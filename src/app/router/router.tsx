@@ -29,6 +29,10 @@ import {
   PaymentLinkDetailPage,
   RefundsPage,
   RefundDetailPage,
+  SettlementsPage,
+  SettlementDetailPage,
+  ReconciliationPage,
+  ReconciliationRunDetailPage,
   SettingsPage,
   SecuritySettingsPage,
 } from './lazyPages';
@@ -93,7 +97,7 @@ export const router = createBrowserRouter([
         path: '/settlements',
         element: (
           <RequirePermission permission="settlements:read">
-            <FeatureComingSoon title="Settlements" description="Settlement tracking (pending, available, processing, completed) is on the roadmap." />
+            <SettlementsPage />
           </RequirePermission>
         ),
       },
@@ -101,7 +105,7 @@ export const router = createBrowserRouter([
         path: '/settlements/:id',
         element: (
           <RequirePermission permission="settlements:read">
-            <FeatureComingSoon title="Settlement detail" />
+            <SettlementDetailPage />
           </RequirePermission>
         ),
       },
@@ -109,7 +113,7 @@ export const router = createBrowserRouter([
         path: '/reconciliation',
         element: (
           <RequirePermission permission="reconciliation:read">
-            <FeatureComingSoon title="Reconciliation" description="Matched/unmatched/exception tracking is on the roadmap." />
+            <ReconciliationPage />
           </RequirePermission>
         ),
       },
@@ -117,7 +121,7 @@ export const router = createBrowserRouter([
         path: '/reconciliation/:id',
         element: (
           <RequirePermission permission="reconciliation:read">
-            <FeatureComingSoon title="Reconciliation run" />
+            <ReconciliationRunDetailPage />
           </RequirePermission>
         ),
       },

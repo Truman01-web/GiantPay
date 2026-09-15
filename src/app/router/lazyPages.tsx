@@ -25,5 +25,9 @@ export const CreatePaymentLinkPage = lazy(() => import('@/pages/CreatePaymentLin
 export const PaymentLinkDetailPage = lazy(() => import('@/pages/PaymentLinkDetailPage'));
 export const RefundsPage = lazy(() => import('@/pages/RefundsPage'));
 export const RefundDetailPage = lazy(() => import('@/pages/RefundDetailPage'));
+export const SettlementsPage = lazy(() => import('@/pages/SettlementsPage'));
+export const SettlementDetailPage = lazy(() => import('@/pages/SettlementDetailPage'));
+export const ReconciliationPage = lazy(() => import('@/pages/ReconciliationPage'));
+export const ReconciliationRunDetailPage = lazy(() => import('@/pages/ReconciliationRunDetailPage'));
 export const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 export const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));

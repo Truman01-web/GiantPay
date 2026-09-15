@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup';
 import { AmountDisplay } from '@/components/data-display/AmountDisplay';
 import { Alert } from '@/components/feedback/Alert';
 import { FullPageLoader } from '@/components/feedback/FullPageLoader';
+import { ErrorState } from '@/components/feedback/ErrorState';
 import { ApiError } from '@/services/api/errors';
 import { useCheckoutSession, useSubmitCheckout } from './useCheckoutQueries';
 import { usePaymentStatusPolling } from './usePaymentStatusPolling';
@@ -74,6 +75,20 @@ export function CheckoutFlow() {
   if (submittedReference) {
     if (polled.status) {
       return <PaymentResult status={polled.status} polling={polled.polling} onRefresh={polled.refresh} />;
+    }
+    // Polling gave up (permanent error, or the max retry window elapsed)
+    // without ever getting a valid status back — show a recoverable error
+    // instead of an indefinite spinner. `error` is only ever non-null once
+    // an attempt has actually concluded, so this can't fire on the very
+    // first render before polling has even started.
+    if (!polled.polling && polled.error) {
+      return (
+        <Card>
+          <CardContent>
+            <ErrorState title="We couldn't confirm your payment" message={polled.error} onRetry={polled.refresh} />
+          </CardContent>
+        </Card>
+      );
     }
     return <FullPageLoader label="Checking payment status…" />;
   }

@@ -40,6 +40,8 @@ export interface UploadedDocument {
   sizeBytes: number;
   status: 'UPLOADING' | 'UPLOADED' | 'FAILED';
   uploadProgress: number;
+  /** Safe, user-facing message set only when status is 'FAILED'. */
+  error?: string | null;
 }
 
 export interface SettlementConfig {
