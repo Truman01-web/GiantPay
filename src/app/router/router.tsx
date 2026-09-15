@@ -35,6 +35,11 @@ import {
   ReconciliationRunDetailPage,
   SettingsPage,
   SecuritySettingsPage,
+  ReportsPage,
+  DeveloperDashboardPage,
+  DeveloperApiKeysPage,
+  DeveloperWebhooksPage,
+  DeveloperWebhookDetailPage,
 } from './lazyPages';
 
 export const router = createBrowserRouter([
@@ -129,7 +134,7 @@ export const router = createBrowserRouter([
         path: '/reports',
         element: (
           <RequirePermission permission="reports:read">
-            <FeatureComingSoon title="Reports" description="Backend-generated transaction, fee, refund and settlement reports are on the roadmap." />
+            <ReportsPage />
           </RequirePermission>
         ),
       },
@@ -137,8 +142,8 @@ export const router = createBrowserRouter([
       {
         path: '/developers',
         element: (
-          <RequirePermission permission="developer.apiKeys:manage">
-            <FeatureComingSoon title="Developers" description="API key management, webhooks and documentation are on the roadmap." />
+          <RequirePermission anyOf={['developer.apiKeys:manage', 'developer.webhooks:manage']}>
+            <DeveloperDashboardPage />
           </RequirePermission>
         ),
       },
@@ -146,7 +151,7 @@ export const router = createBrowserRouter([
         path: '/developers/api-keys',
         element: (
           <RequirePermission permission="developer.apiKeys:manage">
-            <FeatureComingSoon title="API keys" />
+            <DeveloperApiKeysPage />
           </RequirePermission>
         ),
       },
@@ -154,7 +159,7 @@ export const router = createBrowserRouter([
         path: '/developers/webhooks',
         element: (
           <RequirePermission permission="developer.webhooks:manage">
-            <FeatureComingSoon title="Webhooks" />
+            <DeveloperWebhooksPage />
           </RequirePermission>
         ),
       },
@@ -162,7 +167,7 @@ export const router = createBrowserRouter([
         path: '/developers/webhooks/:id',
         element: (
           <RequirePermission permission="developer.webhooks:manage">
-            <FeatureComingSoon title="Webhook detail" />
+            <DeveloperWebhookDetailPage />
           </RequirePermission>
         ),
       },

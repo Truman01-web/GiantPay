@@ -40,7 +40,7 @@ export function AuthLayout() {
         }}
       />
 
-      {/* ── Large GP mark watermark — waving like a flag with rich brand colors ── */}
+      {/* ── Large GP mark watermark — subtle background presence ── */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
@@ -48,9 +48,9 @@ export function AuthLayout() {
         <img
           src={MARK_SRC}
           alt=""
-          className="animate-flag-wave-slow w-[80vw] max-w-[680px] opacity-[0.10] select-none"
+          className="animate-flag-wave-slow w-[75vw] max-w-[620px] opacity-[0.04] select-none"
           style={{
-            filter: 'drop-shadow(0 20px 60px rgba(26,109,204,0.35))',
+            filter: 'drop-shadow(0 15px 40px rgba(26,109,204,0.15))',
           }}
         />
       </div>

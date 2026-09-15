@@ -7,6 +7,11 @@ import { merchantsHandlers } from './merchants';
 import { dashboardHandlers } from './dashboard';
 import { settlementsHandlers } from './settlements';
 import { reconciliationHandlers } from './reconciliation';
+import { reportsHandlers } from './reports';
+import { developersHandlers } from './developers';
+import { teamHandlers } from './team';
+import { adminHandlers } from './admin';
+import { supportHandlers } from './support';
 
 export const handlers = [
   ...authHandlers,
@@ -18,4 +23,9 @@ export const handlers = [
   ...dashboardHandlers,
   ...settlementsHandlers,
   ...reconciliationHandlers,
+  ...reportsHandlers,
+  ...developersHandlers,
+  ...teamHandlers,
+  ...adminHandlers,
+  ...supportHandlers,
 ];
