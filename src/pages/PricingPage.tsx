@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Zap, HelpCircle, Sparkles, Building2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Zap, HelpCircle, Building2 } from 'lucide-react';
 import { useState } from 'react';
 
-const HERO_BG_IMAGE = '/hero-bg.jpg';
+const HERO_BG_IMAGE =
+  'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=2000&q=80';
 const HERO_BG_FALLBACK =
-  'https://us.123rf.com/450wm/nuruddean/nuruddean2304/nuruddean230400049/203441600-online-payment-banking-and-online-shopping-digital-e-commerce-concept-man-using-mobile-smart-phone.jpg?ver=6';
+  'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=2000&q=80';
 
 interface PricingTier {
   id: string;
@@ -179,11 +180,7 @@ export default function PricingPage() {
             </Link>
           </div>
           <div className="mx-auto max-w-3xl text-center">
-            {/* Top pill badge */}
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50/80 px-4 py-1.5 text-xs font-bold text-[#1B4FD8] backdrop-blur-sm shadow-xs">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span>Transparent & Predictable Pricing for Malawi</span>
-            </div>
+
 
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
               Simple, fair pricing.{' '}

@@ -42,6 +42,15 @@ export default function ContactPage() {
       {/* Hero */}
       <section className="relative isolate overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28"
         style={{ background: "linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)" }}>
+        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
+          <img
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=2000&q=80"
+            alt=""
+            className="h-full w-full object-cover object-center opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]" />
+        </div>
         <div aria-hidden className="pointer-events-none absolute inset-0 opacity-20"
           style={{ backgroundImage: "radial-gradient(circle at 60% 40%, #1B4FD8 0%, transparent 60%)" }} />
         <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">

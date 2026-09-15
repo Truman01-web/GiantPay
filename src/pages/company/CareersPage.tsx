@@ -133,7 +133,16 @@ export default function CareersPage() {
   return (
     <main className="overflow-hidden bg-slate-50 text-slate-900">
       {/* Hero Section */}
-      <section className="relative isolate overflow-hidden bg-gradient-to-b from-[#061428] via-[#0B2445] to-[#0d2d5e] pt-24 pb-20 text-white lg:pt-32 lg:pb-28">
+      <section className="relative isolate overflow-hidden pt-24 pb-20 text-white lg:pt-32 lg:pb-28">
+        {/* Background image */}
+        <img
+          src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?auto=format&fit=crop&w=1920&q=80"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-[#061428]/80" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(27,79,216,0.35),transparent)] pointer-events-none" />
         <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8">

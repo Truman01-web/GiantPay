@@ -26,7 +26,7 @@ export default function PublicFeaturePage({
   if (!title) {
     // Special top-level routes
     if (location.pathname === '/pricing') {
-      title = 'Transparent, Predictable Pricing';
+      title = 'Pricing';
       category = 'Pricing';
       description =
         'Fair transaction fees with zero hidden costs. Test in sandbox today with simulated pricing models.';

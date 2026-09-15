@@ -1,8 +1,8 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Target, Eye, Heart, Shield, Zap, Globe } from "lucide-react";
 
-const HERO_BG_IMAGE = "/hero-bg.jpg";
-const HERO_BG_FALLBACK = "https://us.123rf.com/450wm/nuruddean/nuruddean2304/nuruddean230400049/203441600-online-payment-banking-and-online-shopping-digital-e-commerce-concept-man-using-mobile-smart-phone.jpg?ver=6";
+const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=80";
+const HERO_BG_FALLBACK = "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=80";
 
 const TIMELINE = [
   { year: "2021", title: "GiantPlus Founded", body: "GiantPlus Global Finance Solutions is incorporated in Malawi with a mandate to build modern financial infrastructure for Malawian businesses." },

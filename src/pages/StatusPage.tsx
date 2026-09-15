@@ -1,16 +1,19 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Info } from 'lucide-react';
 
 export default function StatusPage() {
   return (
     <div>
-      <section
-        className="relative overflow-hidden text-white pt-28 pb-14 sm:pt-36 sm:pb-16"
-        style={{
-          background: 'linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)',
-        }}
-      >
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
+      <section className="relative overflow-hidden text-white pt-28 pb-14 sm:pt-36 sm:pb-16">
+        {/* Background image — server/monitoring context */}
+        <img
+          src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1920&q=80"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-[#061428]/85" />
+        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6">
           <div className="mb-6">
             <Link
               to="/"
