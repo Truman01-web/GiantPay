@@ -90,3 +90,12 @@ records append-only transitions, information requests, risk classifications and
 decisions; maker-checker approval separates reviewer and approver. The same
 transaction creates redacted audit evidence and future-notification outbox events.
 This boundary performs no external verification or regulatory submission.
+
+## Platform administration boundary
+
+Active merchant-less platform staff receive only explicit database permissions;
+merchant roles and API-key scopes cannot confer platform authority. Support uses
+tenant-consistent normalized tables, separate public/internal content, explicit
+database lifecycle checks, statement-level append-only histories, authority-scoped
+idempotency, row locking, redacted audit/outbox payloads, and selected operational
+projections. All settlement visibility is sandbox evidence and never payout execution.

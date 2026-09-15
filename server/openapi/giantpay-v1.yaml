@@ -28,7 +28,163 @@ tags:
   - name: Audit evidence
   - name: Team access
   - name: Account security
+  - name: Merchant support
+  - name: Platform administration
 paths:
+  /support/cases:
+    get:
+      operationId: listMerchantSupportCases
+      tags: [Merchant support]
+      summary: List the authenticated merchant's support cases
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Tenant-scoped cases}, '401': {$ref: '#/components/responses/Error'}}
+    post:
+      operationId: createMerchantSupportCase
+      tags: [Merchant support]
+      summary: Create a sandbox support case and initial public message
+      description: Requires support:write, CSRF, and Idempotency-Key. Do not include passwords, OTPs, secrets, or complete payment credentials.
+      security: [{ cookieSession: [] }]
+      parameters: [{name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      responses: {'201': {description: Durable case}, '409': {$ref: '#/components/responses/Error'}}
+  /support/cases/{id}:
+    get:
+      operationId: getMerchantSupportCase
+      tags: [Merchant support]
+      summary: View a tenant-owned case and public messages; internal notes are never returned
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Public case view}, '404': {$ref: '#/components/responses/Error'}}
+  /support/cases/{id}/replies:
+    post:
+      operationId: createMerchantSupportReply
+      tags: [Merchant support]
+      summary: Add an idempotent public merchant reply
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      responses: {'201': {description: Public reply}, '404': {$ref: '#/components/responses/Error'}}
+  /support/cases/{id}/status:
+    post:
+      operationId: denyMerchantSupportStatusTransition
+      tags: [Merchant support]
+      summary: Deny merchant status transitions because closure and reopening are platform-controlled
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'403': {$ref: '#/components/responses/Error'}}
+  /platform/support/cases:
+    get:
+      operationId: listPlatformSupportCases
+      tags: [Platform administration]
+      summary: List support cases across merchants with stable filtering
+      description: Human platform session with platform.support.read only; API keys and merchant sessions are denied.
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Redacted support cases}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/support/cases/{id}:
+    get:
+      operationId: getPlatformSupportCase
+      tags: [Platform administration]
+      summary: View public messages, private internal notes, and append-only history
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Authorized staff view}, '404': {$ref: '#/components/responses/Error'}}
+  /platform/support/cases/{id}/replies:
+    post:
+      operationId: createPlatformSupportReply
+      tags: [Platform administration]
+      summary: Add an idempotent public staff reply
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      responses: {'201': {description: Public reply}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/support/cases/{id}/internal-notes:
+    post:
+      operationId: createPlatformSupportInternalNote
+      tags: [Platform administration]
+      summary: Add an idempotent private staff note that is never merchant-visible
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      responses: {'201': {description: Internal note recorded}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/support/cases/{id}/assign:
+    post:
+      operationId: assignPlatformSupportCase
+      tags: [Platform administration]
+      summary: Assign or reassign eligible active platform staff
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      responses: {'200': {description: Assignment recorded}, '409': {$ref: '#/components/responses/Error'}}
+  /platform/support/cases/{id}/status:
+    post:
+      operationId: transitionPlatformSupportCase
+      tags: [Platform administration]
+      summary: Apply an explicit support lifecycle transition with a reason
+      security: [{ cookieSession: [] }]
+      description: Requires Idempotency-Key and expectedStatus. Identical retries replay the durable response; changed input conflicts. Includes resolution, closure, and reopening.
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      responses: {'200': {description: Transition recorded}, '409': {$ref: '#/components/responses/Error'}}
+  /platform/support/cases/{id}/priority:
+    post:
+      operationId: prioritizePlatformSupportCase
+      tags: [Platform administration]
+      summary: Change LOW, NORMAL, HIGH, or URGENT priority without implying an SLA
+      security: [{ cookieSession: [] }]
+      description: Requires Idempotency-Key and expectedPriority for exactly-one-winner concurrency.
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      responses: {'200': {description: Priority history recorded}, '409': {$ref: '#/components/responses/Error'}}
+  /platform/merchants:
+    get:
+      operationId: listPlatformMerchants
+      tags: [Platform administration]
+      summary: List privacy-aware merchant summaries
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Merchant summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/merchants/{id}:
+    get:
+      operationId: getPlatformMerchant
+      tags: [Platform administration]
+      summary: View masked merchant and operational summary data
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Redacted merchant detail}, '404': {$ref: '#/components/responses/Error'}}
+  /platform/transactions:
+    get:
+      operationId: listPlatformTransactions
+      tags: [Platform administration]
+      summary: Search selected cross-merchant transaction fields without customer or credential data
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Redacted transactions}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/refunds:
+    get:
+      operationId: listPlatformRefunds
+      tags: [Platform administration]
+      summary: Read refund operations without changing existing maker-checker decisions
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Refund summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/settlements:
+    get:
+      operationId: listPlatformSettlements
+      tags: [Platform administration]
+      summary: Read sandbox settlement evidence; no payout is executed
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Sandbox-only settlement summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/reconciliation/exceptions:
+    get:
+      operationId: listPlatformReconciliationExceptions
+      tags: [Platform administration]
+      summary: Read reconciliation exceptions without ledger mutation
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Exception summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/audit-events:
+    get:
+      operationId: listPlatformAuditEvents
+      tags: [Platform administration]
+      summary: Read redacted append-only audit evidence and audit the sensitive lookup
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Redacted audit records}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/health:
+    get:
+      operationId: getPlatformHealth
+      tags: [Platform administration]
+      summary: Read dependency availability without configuration or infrastructure secrets
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Safe dependency state}, '403': {$ref: '#/components/responses/Error'}}
   /developer/api-keys:
     get:
       tags: [Developer API keys]
