@@ -32,13 +32,31 @@ suite('team access database controls', () => {
     await admin.query(`CREATE SCHEMA ${schema}`);
     db = new pg.Pool({ connectionString: url!, options: `-c search_path=${schema}` });
     for (const name of (await readdir(resolve('migrations')))
-      .filter((x) => x.endsWith('.sql') && !x.startsWith('010_'))
+      .filter(
+        (x) =>
+          x.endsWith('.sql') &&
+          !x.startsWith('010_') &&
+          !x.startsWith('011_') &&
+          !x.startsWith('012_'),
+      )
       .sort())
       await db.query(await readFile(resolve('migrations', name), 'utf8'));
     await db.query(
       `INSERT INTO merchants(id,name) VALUES('m1','One'),('m2','Two');INSERT INTO users(id,merchant_id,name,email,password_hash,role,permissions) VALUES('u1','m1','One','one@test.invalid','x','OWNER','{}'),('u2','m2','Two','two@test.invalid','x','OWNER','{}'),('platform-admin',NULL,'Platform','platform@test.invalid','x','PLATFORM_ADMIN','{}')`,
     );
     await db.query(await readFile(resolve('migrations/010_team_access_security.sql'), 'utf8'));
+    await db.query(
+      await readFile(
+        resolve('migrations/011_merchant_onboarding_compliance.sql'),
+        'utf8',
+      ),
+    );
+    await db.query(
+      await readFile(
+        resolve('migrations/012_platform_administration_support.sql'),
+        'utf8',
+      ),
+    );
     await db.query(
       `INSERT INTO users(id,merchant_id,name,email,normalized_email,password_hash,role,permissions,status) VALUES('invitee','m1','Invitee','invitee@test.invalid','invitee@test.invalid','x','VIEWER','{}','REMOVED')`,
     );

@@ -16,6 +16,7 @@ interface RawErrorBody {
 }
 
 let onUnauthorized: (() => void) | null = null;
+let activeCsrfToken: string | null = null;
 
 /** Registered once by the session provider so the client can react to a
  * lost/expired session globally without every call site handling it. */
@@ -23,13 +24,28 @@ export function registerUnauthorizedHandler(handler: () => void): void {
   onUnauthorized = handler;
 }
 
-function buildHeaders(hasBody: boolean, options?: RequestOptions): HeadersInit {
+export function setActiveCsrfToken(token: string | null): void {
+  activeCsrfToken = token;
+}
+
+function getCsrfToken(): string | null {
+  if (activeCsrfToken) return activeCsrfToken;
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)giantpay_csrf=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function buildHeaders(hasBody: boolean, options?: RequestOptions, method?: string): HeadersInit {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'X-Request-Id': crypto.randomUUID(),
   };
   if (hasBody) headers['Content-Type'] = 'application/json';
   if (options?.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey;
+  if (method && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+    const csrf = getCsrfToken();
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+  }
   return headers;
 }
 
@@ -61,7 +77,7 @@ async function request<T>(
     response = await fetch(url, {
       method,
       credentials: 'include',
-      headers: buildHeaders(body !== undefined, options),
+      headers: buildHeaders(body !== undefined, options, method),
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: options?.signal,
     });
@@ -90,7 +106,12 @@ async function request<T>(
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const data = (await response.json()) as T;
+  if (data && typeof data === 'object' && 'csrfToken' in data) {
+    const csrfToken = (data as { csrfToken?: unknown }).csrfToken;
+    if (typeof csrfToken === 'string') setActiveCsrfToken(csrfToken);
+  }
+  return data;
 }
 
 /** Uploads have no inherent request/response size to reason about the way
@@ -129,6 +150,8 @@ function uploadFile<T>(
     const timeoutMs = options?.timeoutMs ?? UPLOAD_TIMEOUT_MS;
     xhr.timeout = timeoutMs;
     xhr.setRequestHeader('X-Request-Id', crypto.randomUUID());
+    const csrf = getCsrfToken();
+    if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
 
     // `xhr.timeout`/`ontimeout` and `xhr.abort()`/`onabort` are the
     // standard browser mechanism and are kept above as the primary path,
@@ -225,3 +248,5 @@ export const apiClient = {
     request<T>('DELETE', path, undefined, options),
   uploadFile,
 };
+
+export const api = apiClient;
