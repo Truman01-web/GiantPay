@@ -121,3 +121,11 @@ tenant-scoped applications, encrypted sensitive fields, metadata-only evidence,
 immutable submissions, and platform-admin review. All decisions remain internal
 sandbox decisions and enable no payments, payouts, provider access, or regulatory
 submission. See [docs/merchant-onboarding-compliance.md](docs/merchant-onboarding-compliance.md).
+
+## Platform administration and support
+
+Phase 7 provides database-backed platform permissions, tenant-scoped merchant
+support cases, separate public replies and internal notes, append-only histories,
+redacted administrative read models, transactional audit/outbox evidence, and
+Redis-backed protection. It remains sandbox-only and performs no payout or
+external support delivery. See [docs/platform-administration-support.md](docs/platform-administration-support.md).
