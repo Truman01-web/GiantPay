@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, MapPin, Phone, Mail, Clock, MessageSquare, Building2, HeadphonesIcon } from "lucide-react";
 
@@ -6,10 +6,10 @@ const OFFICES = [
   {
     city: "Lilongwe",
     role: "Head Office",
-    address: "Area 47, Lilongwe, Malawi",
-    phone: "+265 885 362 150",
+    address: "Area 46, Lilongwe, Malawi",
+    phone: "+265 881 933 960",
     email: "info@giantpay.mw",
-    hours: "Mon â€“ Fri, 08:00 â€“ 17:00 CAT",
+    hours: "Mon – Fri, 08:00 – 17:00 CAT",
   },
   {
     city: "Blantyre",
