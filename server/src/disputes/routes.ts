@@ -6,6 +6,7 @@ import type { Db } from '../db.js';
 import { transaction } from '../db.js';
 import { rateLimit, type RateLimitStore } from '../rateLimit.js';
 import { apiError, authenticate, authenticateSessionOrApiKey, newId } from '../security.js';
+import { operationalControlGuard } from '../operations/controls.js';
 
 class DisputeError extends Error { constructor(readonly code:string,message:string,readonly status=409){super(message)} }
 const canonical=(v:unknown):string=>Array.isArray(v)?`[${v.map(canonical).join(',')}]`:v&&typeof v==='object'?`{${Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>`${JSON.stringify(k)}:${canonical(x)}`).join(',')}}`:JSON.stringify(v);
@@ -22,6 +23,8 @@ const view=(x:any)=>({id:x.id,reference:x.reference,merchantId:x.merchant_id,pay
 const handle=(r:FastifyRequest,p:FastifyReply,e:unknown)=>{if(e instanceof z.ZodError)return p.code(400).send(apiError(r,'VALIDATION_ERROR','The request is invalid.'));if(e instanceof DisputeError)return p.code(e.status).send(apiError(r,e.code,e.message));const pg=e as any;if(pg?.code==='23505')return p.code(409).send(apiError(r,'DISPUTE_CONFLICT','A conflicting dispute record already exists.'));if(pg?.code==='23514')return p.code(409).send(apiError(r,'DISPUTE_INVALID_TRANSITION','The requested dispute change is not allowed.'));throw e;};
 
 export async function registerDisputeRoutes(app:FastifyInstance,config:Config,db:Db,limits:RateLimitStore){
+ const disputeControl=operationalControlGuard(db,'DISPUTE_MUTATIONS_PAUSED');
+ app.addHook('preHandler',async(r,p)=>{if(r.method==='POST'&&r.routeOptions.url?.includes('/disputes'))return disputeControl(r,p);});
  const merchantAuth=authenticateSessionOrApiKey(db,config.PASSWORD_PEPPER,limits,config);
  const merchant=(permission:string)=>[merchantAuth,async(r:FastifyRequest,p:FastifyReply)=>{if(p.sent)return;if(!r.actor?.merchantId)return p.code(403).send(apiError(r,'FORBIDDEN','Merchant authority is required.'));if(!r.actor.permissions.includes(permission))return p.code(403).send(apiError(r,'FORBIDDEN','You do not have permission to perform this action.'));}];
  const platform=(permission:string)=>[async(r:FastifyRequest,p:FastifyReply)=>{if(r.headers.authorization)return p.code(403).send(apiError(r,'FORBIDDEN','A browser session is required.'));await authenticate(db,config,r,p);if(p.sent)return;if(r.actor?.authType==='apiKey'||r.actor?.merchantId!==null||r.actor?.role!=='PLATFORM_ADMIN')return p.code(403).send(apiError(r,'PLATFORM_PERMISSION_DENIED','Platform staff authority is required.'));if(!r.actor.permissions.includes(permission))return p.code(403).send(apiError(r,'PLATFORM_PERMISSION_DENIED','You do not have permission to perform this action.'));}];

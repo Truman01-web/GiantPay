@@ -4,6 +4,7 @@ import type { Db } from './db.js';
 import { verifyApiKey } from './developer/apiKeys.js';
 import type { Config } from './config.js';
 import { rateLimit, type RateLimitStore } from './rateLimit.js';
+import { operationalMetrics } from './operations/metrics.js';
 
 export const SESSION_COOKIE = 'giantpay_session';
 export const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -22,7 +23,7 @@ declare module 'fastify' {
 
 export async function authenticate(db: Db, config:Config, request: FastifyRequest, reply: FastifyReply) {
   const token = request.cookies[SESSION_COOKIE];
-  if (!token) return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Sign in is required.'));
+  if (!token) {operationalMetrics.increment('authentication_denials_total',{reason:'missing_session'});return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Sign in is required.'));}
   const result = await db.query(
     `SELECT u.id, u.merchant_id, u.name, u.email,coalesce(mr.name,u.role) role,coalesce(mr.permissions,u.permissions) permissions, u.mfa_enabled,
             m.name merchant_name, coalesce(m.environment,'production') environment
@@ -31,7 +32,7 @@ export async function authenticate(db: Db, config:Config, request: FastifyReques
       WHERE s.token_hash=$1 AND s.expires_at > now() AND s.absolute_expires_at > now()
         AND s.revoked_at IS NULL AND u.status='ACTIVE' AND s.last_seen_at > now()-($2 || ' minutes')::interval`, [tokenHash(token),String(config.SESSION_IDLE_MINUTES)],
   );
-  if (!result.rowCount) return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Your session has expired.'));
+  if (!result.rowCount) {operationalMetrics.increment('authentication_denials_total',{reason:'invalid_session'});return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Your session has expired.'));}
   await db.query('UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1',[tokenHash(token)]);
   const row = result.rows[0];
   request.actor = { id: row.id, merchantId: row.merchant_id, name: row.name, email: row.email, role: row.role, permissions: row.permissions, mfaEnabled: row.mfa_enabled, merchantName: row.merchant_name, environment: row.environment, authType: 'session' };

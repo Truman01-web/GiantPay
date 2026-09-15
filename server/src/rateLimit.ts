@@ -3,6 +3,7 @@ import { createClient, type RedisClientType } from 'redis';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Config } from './config.js';
 import { apiError } from './security.js';
+import { operationalMetrics } from './operations/metrics.js';
 
 export interface RateLimitResult { allowed: boolean; limit: number; remaining: number; resetSeconds: number }
 export interface RateLimitStore { consume(key:string,limit:number,windowSeconds:number):Promise<RateLimitResult>; close():Promise<void>; ping():Promise<void> }
@@ -30,6 +31,6 @@ export const safeRateKey=(config:Config,kind:string,value:string)=>`${config.RAT
 export function rateLimit(store:RateLimitStore,config:Config,policy:string,limit:number,windowSeconds:number,identity:(request:FastifyRequest)=>string|undefined,failClosed=true){
   return async(request:FastifyRequest,reply:FastifyReply)=>{const value=identity(request);if(!value)return;let result:RateLimitResult;try{result=await store.consume(safeRateKey(config,policy,value),limit,windowSeconds);}catch(error){request.log.warn({err:error,policy},'rate limit store unavailable');if(failClosed||config.NODE_ENV==='production')return reply.code(503).send(apiError(request,'SECURITY_SERVICE_UNAVAILABLE','Request protection is temporarily unavailable.'));return;}
     reply.header('RateLimit-Limit',result.limit).header('RateLimit-Remaining',result.remaining).header('RateLimit-Reset',result.resetSeconds);
-    if(!result.allowed){reply.header('Retry-After',result.resetSeconds);return reply.code(429).send(apiError(request,'RATE_LIMITED','Too many requests. Try again later.'));}
+    if(!result.allowed){operationalMetrics.increment('rate_limit_rejections_total',{policy});reply.header('Retry-After',result.resetSeconds);return reply.code(429).send(apiError(request,'RATE_LIMITED','Too many requests. Try again later.'));}
   };
 }

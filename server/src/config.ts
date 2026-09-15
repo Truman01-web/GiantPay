@@ -28,6 +28,13 @@ const schema = z.object({
   WEBHOOK_DELIVERY_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5000),
   WEBHOOK_MAX_RESPONSE_BYTES: z.coerce.number().int().min(1024).max(65536).default(8192),
   WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
+  LOG_LEVEL: z.enum(['fatal','error','warn','info','debug']).default('info'),
+  HEALTH_CHECK_TIMEOUT_MS: z.coerce.number().int().min(100).max(10_000).default(1500),
+  WORKER_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
+  WORKER_LEASE_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
+  GRACEFUL_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(15_000),
+  EXTERNAL_DELIVERY_ENABLED: z.literal('false').default('false').transform(()=>false),
+  REAL_PAYOUTS_ENABLED: z.literal('false').default('false').transform(()=>false),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -40,5 +47,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
   if (config.NODE_ENV === 'production' && config.COOKIE_SECURE === false) throw new Error('COOKIE_SECURE must not be false in production');
   if (config.NODE_ENV === 'production' && new URL(config.FRONTEND_ORIGIN).protocol !== 'https:') throw new Error('FRONTEND_ORIGIN must use HTTPS in production');
   if (config.NODE_ENV === 'production' && config.PAYMENT_PROVIDER === 'sandbox') throw new Error('PAYMENT_PROVIDER=sandbox is forbidden in production');
+  if (config.NODE_ENV === 'production' && [config.PASSWORD_PEPPER,config.COOKIE_SECRET,config.SANDBOX_WEBHOOK_SECRET].some(value=>/^(.)\1+$/.test(value))) throw new Error('Development-only secrets are forbidden in production');
   return config;
 }

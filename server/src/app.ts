@@ -20,6 +20,9 @@ import { registerOnboardingRoutes } from './onboarding/routes.js';
 import { registerPlatformRoutes } from './platform/routes.js';
 import { registerDisputeRoutes } from './disputes/routes.js';
 import { registerNotificationRoutes } from './notifications/routes.js';
+import { registerOperationsRoutes } from './operations/routes.js';
+import { operationalMetrics } from './operations/metrics.js';
+import { isOperationalControlActive } from './operations/routes.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
 import { createPaymentProvider } from './providers/index.js';
 import type { PaymentProvider } from './providers/types.js';
@@ -30,7 +33,7 @@ import { decryptSecret,encryptSecret } from './developer/webhookSecurity.js';
 import { PERMISSIONS,verifyTotp } from './team/security.js';
 
 declare module 'fastify' {
-  interface FastifyRequest { rawWebhookBody?: Buffer }
+  interface FastifyRequest { rawWebhookBody?: Buffer; traceId?: string }
 }
 
 class WebhookBodyTooLargeError extends Error {}
@@ -70,7 +73,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   const rateLimits=suppliedRateLimits??new MemoryRateLimitStore();
   const trustedProxies=config.TRUSTED_PROXIES.split(',').map(v=>v.trim()).filter(Boolean);
   const app = Fastify({
-    logger: config.NODE_ENV === 'test' ? false : {redact:{paths:['req.headers.authorization','req.headers.cookie','res.headers.set-cookie','password','*.password','*.token','*.secret','*.code','config.DATABASE_URL','config.REDIS_URL'],censor:'[REDACTED]'}},
+    logger: config.NODE_ENV === 'test' ? false : {level:config.LOG_LEVEL,redact:{paths:['req.headers.authorization','req.headers.cookie','req.headers.x-csrf-token','res.headers.set-cookie','password','*.password','*.token','*.secret','*.code','*.email','*.phone','config.DATABASE_URL','config.REDIS_URL'],censor:'[REDACTED]'}},
     trustProxy: trustedProxies.length?trustedProxies:false, bodyLimit: 1024 * 1024,
     genReqId: (req) => {const value=req.headers['x-request-id'];return typeof value==='string'&&/^[A-Za-z0-9._-]{1,100}$/.test(value)?value:newId('req');},
   });
@@ -81,6 +84,15 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   app.decorateRequest('actor', null);
   app.decorateRequest('rawWebhookBody', undefined);
   app.addHook('onClose',async()=>{await rateLimits.close();});
+  app.addHook('onRequest',async(request,reply)=>{reply.header('X-Request-Id',request.id);const value=request.headers.traceparent;if(typeof value==='string'&&/^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/.test(value)){request.traceId=value.slice(3,35);reply.header('traceparent',value);}});
+  const requestStarted=new WeakMap<object,number>();
+  app.addHook('onRequest',async request=>{requestStarted.set(request,performance.now());});
+  app.addHook('onResponse',async(request,reply)=>{const route=request.routeOptions.url??'unmatched',statusClass=`${Math.floor(reply.statusCode/100)}xx`,method=request.method.toUpperCase();operationalMetrics.increment('http_requests_total',{method,route,statusClass});operationalMetrics.duration('http_request_duration_ms',{method,route},performance.now()-(requestStarted.get(request)??performance.now()));});
+  app.addHook('onError',async(request,_reply,error)=>{operationalMetrics.increment('application_errors_total',{route:request.routeOptions.url??'unmatched',kind:error instanceof ZodError?'validation':'internal'});});
+  app.addHook('preHandler',async(request,reply)=>{
+    const route=request.routeOptions.url, control=request.method==='POST'&&route==='/v1/payment-links'?'PAYMENT_CREATION_PAUSED':request.method==='POST'&&route==='/v1/refunds'?'REFUND_MUTATIONS_PAUSED':null;
+    if(control&&await isOperationalControlActive(db,control))return reply.code(503).send(apiError(request,'OPERATIONAL_CONTROL_ACTIVE','This operation is temporarily paused by an approved operational control.'));
+  });
   const clientIp=(request:import('fastify').FastifyRequest)=>request.ip;
   app.addHook('onRequest',async(request,reply)=>{if(['POST','PUT','PATCH'].includes(request.method)&&(request.headers['content-length']||request.headers['transfer-encoding'])){const type=String(request.headers['content-type']??'').split(';')[0]??'';if(type!=='application/json'&&!type.startsWith('multipart/form-data'))return reply.code(415).send(apiError(request,'UNSUPPORTED_MEDIA_TYPE','Use a supported request content type.'));}});
   app.addHook('onRequest',async(request,reply)=>rateLimit(rateLimits,config,request.url.startsWith('/v1/health')?'health':'general',request.url.startsWith('/v1/health')?120:config.RATE_LIMIT_GENERAL_MAX,config.RATE_LIMIT_GENERAL_WINDOW_SECONDS,clientIp,false)(request,reply));
@@ -122,11 +134,14 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
     return reply.code(500).send(apiError(request, 'INTERNAL_ERROR', 'Something went wrong.'));
   });
 
+  const bounded=async(work:Promise<unknown>)=>Promise.race([work,new Promise((_,reject)=>setTimeout(()=>reject(new Error('dependency timeout')),config.HEALTH_CHECK_TIMEOUT_MS))]);
   app.get('/v1/health/live', async () => ({ status: 'alive' }));
   app.get('/v1/health/ready', async (_request, reply) => {
-    try { await Promise.all([db.query('SELECT 1'),rateLimits.ping()]); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ready' }; }
+    try { await bounded(Promise.all([db.query('SELECT 1'),rateLimits.ping()])); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ready' }; }
     catch { return reply.code(503).send({ status: 'unavailable' }); }
   });
+  app.get('/health/live', async () => ({ status: 'alive' }));
+  app.get('/health/ready', async (_request,reply) => {try{await bounded(Promise.all([db.query('SELECT 1'),rateLimits.ping()]));if(!workersReady())throw new Error('workers unavailable');return {status:'ready'};}catch{return reply.code(503).send({status:'unavailable'});}});
   app.get('/v1/health', async (_request, reply) => {
     try { await Promise.all([db.query('SELECT 1'),rateLimits.ping()]); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ok' }; }
     catch { return reply.code(503).send({ status: 'unavailable' }); }
@@ -187,6 +202,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   await registerPlatformRoutes(app,config,db,rateLimits);
   await registerDisputeRoutes(app,config,db,rateLimits);
   await registerNotificationRoutes(app,config,db,rateLimits);
+  await registerOperationsRoutes(app,config,db,rateLimits);
 
   app.get('/v1/payments',{preHandler:[auth,requirePermission('payments:read')]},async(request)=>{
     const q=pageSchema.extend({search:z.string().max(100).optional(),status:z.string().optional(),channel:z.string().optional()}).parse(request.query); const offset=(q.page-1)*q.pageSize;
