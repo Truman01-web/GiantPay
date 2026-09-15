@@ -40,7 +40,7 @@ export function AuthLayout() {
         }}
       />
 
-      {/* ── Large GP mark watermark — waving like a flag with rich brand colors ── */}
+      {/* ── Large GP mark watermark — subtle background presence ── */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"

@@ -36,7 +36,8 @@ suite('team access database controls', () => {
         (x) =>
           x.endsWith('.sql') &&
           !x.startsWith('010_') &&
-          !x.startsWith('011_'),
+          !x.startsWith('011_') &&
+          !x.startsWith('012_'),
       )
       .sort())
       await db.query(await readFile(resolve('migrations', name), 'utf8'));
@@ -47,6 +48,12 @@ suite('team access database controls', () => {
     await db.query(
       await readFile(
         resolve('migrations/011_merchant_onboarding_compliance.sql'),
+        'utf8',
+      ),
+    );
+    await db.query(
+      await readFile(
+        resolve('migrations/012_platform_administration_support.sql'),
         'utf8',
       ),
     );
