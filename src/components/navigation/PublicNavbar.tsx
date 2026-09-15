@@ -6,12 +6,25 @@ import { cn } from '@/lib/cn';
 
 export function PublicNavbar() {
   const location = useLocation();
+  const [isScrolled, setIsScrolled] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMobileGroups, setExpandedMobileGroups] = useState<Record<string, boolean>>({});
 
   const navRef = useRef<HTMLElement>(null);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Passive, efficient scroll listener (threshold: 8px)
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 8;
+      setIsScrolled((prev) => (prev !== scrolled ? scrolled : prev));
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Click outside to close desktop dropdown
   useEffect(() => {
@@ -71,7 +84,9 @@ export function PublicNavbar() {
       role="banner"
       className={cn(
         'fixed top-0 inset-x-0 z-50 transition-all duration-200 ease-standard motion-reduce:transition-none',
-        'border-b border-white/60 bg-white/65 shadow-sm shadow-slate-900/5 backdrop-blur-2xl'
+        isScrolled || mobileOpen
+          ? 'border-b border-white/60 bg-white/75 shadow-sm shadow-slate-900/5 backdrop-blur-2xl'
+          : 'bg-transparent border-b border-transparent shadow-none'
       )}
     >
       <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
