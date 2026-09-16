@@ -173,6 +173,16 @@
   animation: wm-float 9s ease-in-out infinite;
 }
 
+/* ── Payment method logo strip (left to right) ── */
+@keyframes marqueeLeftToRight {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0%); }
+}
+
+.animate-marquee-ltr {
+  animation: marqueeLeftToRight 26s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,

@@ -54,17 +54,22 @@ describe('LandingPage Hero Section & Brand Assets', () => {
     expect(textContent).not.toContain('🏦');
 
     // Verify required text labels ("Airtel Money" also appears in the
-    // floating transaction-card mockup, so it isn't unique on the page)
+    // floating transaction-card mockup, and the payment-methods strip now
+    // renders a duplicate, aria-hidden copy for a seamless left-to-right
+    // loop, so none of these are guaranteed unique on the page)
     expect(screen.getAllByText('Airtel Money').length).toBeGreaterThan(0);
-    expect(screen.getByText('TNM Mpamba')).toBeInTheDocument();
-    expect(screen.getByText('Visa')).toBeInTheDocument();
-    expect(screen.getByText('Mastercard')).toBeInTheDocument();
-    expect(screen.getByText('National Switch / Bank Transfer')).toBeInTheDocument();
+    expect(screen.getAllByText('TNM Mpamba').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Visa').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mastercard').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('National Switch / Bank Transfer').length).toBeGreaterThan(0);
   });
 
   it('11. provides appropriate alternative text for official brand logos', () => {
     renderLandingPage();
 
+    // The strip's duplicate copy (for the seamless loop) is aria-hidden and
+    // uses an empty alt, so exactly one accessible instance of each logo
+    // remains — everything else on the page uses inline SVGs, not <img>.
     const airtelImg = screen.getByAltText('Airtel Money logo');
     expect(airtelImg).toBeInTheDocument();
     expect(airtelImg).toHaveAttribute('src', '/brands/airtel-money.svg');
