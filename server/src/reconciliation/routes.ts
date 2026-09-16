@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { operationalControlGuard } from '../operations/controls.js';
 import type { Config } from '../config.js';
 import type { Db } from '../db.js';
 import { transaction } from '../db.js';
@@ -84,7 +85,7 @@ export async function registerReconciliationRoutes(
   const reconRead = [auth, requirePermission('reconciliation:read')],
     reconWrite = [auth, requirePermission('reconciliation:manage'), mutate],
     settleRead = [auth, requirePermission('settlements:read')],
-    settleWrite = [auth, requirePermission('settlements:manage'), mutate];
+    settleWrite = [auth, requirePermission('settlements:manage'), mutate, operationalControlGuard(db,'SETTLEMENT_PROCESSING_PAUSED')];
   app.post('/v1/reconciliation/runs', { preHandler: reconWrite }, async (request, reply) => {
     const b = period.parse(request.body),
       key = z.string().min(8).max(128).parse(request.headers['idempotency-key']);

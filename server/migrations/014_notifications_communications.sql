@@ -1,0 +1,49 @@
+CREATE TABLE notification_templates(
+ template_key text NOT NULL, version integer NOT NULL CHECK(version>0), category text NOT NULL CHECK(category IN ('SECURITY','PAYMENT','REFUND','SETTLEMENT','RECONCILIATION','COMPLIANCE','ONBOARDING','SUPPORT','DISPUTE','TEAM_ACCESS','SYSTEM')),
+ channel text NOT NULL CHECK(channel IN ('IN_APP','EMAIL','SMS')), audience_type text NOT NULL CHECK(audience_type IN ('MERCHANT_USER','PLATFORM_STAFF')),
+ subject_template text, body_template text NOT NULL, required_variables text[] NOT NULL DEFAULT '{}', active boolean NOT NULL DEFAULT true,
+ created_at timestamptz NOT NULL DEFAULT now(), superseded_at timestamptz, PRIMARY KEY(template_key,version),
+ CHECK(length(body_template)<=10000 AND body_template !~* '<script|javascript:|https?://')
+);
+CREATE TABLE notifications(
+ id text PRIMARY KEY, authority text NOT NULL CHECK(authority IN ('MERCHANT','PLATFORM')), merchant_id text REFERENCES merchants(id), recipient_user_id text NOT NULL REFERENCES users(id),
+ category text NOT NULL CHECK(category IN ('SECURITY','PAYMENT','REFUND','SETTLEMENT','RECONCILIATION','COMPLIANCE','ONBOARDING','SUPPORT','DISPUTE','TEAM_ACCESS','SYSTEM')),
+ template_key text NOT NULL, template_version integer NOT NULL, title text NOT NULL CHECK(length(title)<=300), body text NOT NULL CHECK(length(body)<=10000),
+ channel text NOT NULL CHECK(channel IN ('IN_APP','EMAIL','SMS')), delivery_state text NOT NULL CHECK(delivery_state IN ('PENDING','CLAIMED','DEFERRED','DISABLED','SANDBOXED','SENT','DELIVERED','FAILED_RETRYABLE','FAILED_TERMINAL','CANCELLED')),
+ related_entity_type text, related_entity_id text, deduplication_key text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(), available_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz,
+ FOREIGN KEY(template_key,template_version) REFERENCES notification_templates(template_key,version),
+ CHECK((authority='MERCHANT' AND merchant_id IS NOT NULL) OR (authority='PLATFORM' AND merchant_id IS NULL))
+);
+CREATE TABLE notification_recipients(notification_id text PRIMARY KEY REFERENCES notifications(id),recipient_user_id text NOT NULL REFERENCES users(id),merchant_id text REFERENCES merchants(id),contact_masked text,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE notification_preferences(user_id text NOT NULL REFERENCES users(id),merchant_id text REFERENCES merchants(id),category text NOT NULL,channel text NOT NULL CHECK(channel IN ('IN_APP','EMAIL','SMS')),enabled boolean NOT NULL,version integer NOT NULL DEFAULT 1 CHECK(version>0),updated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(user_id,category,channel));
+CREATE TABLE notification_delivery_jobs(id text PRIMARY KEY,notification_id text NOT NULL UNIQUE REFERENCES notifications(id),channel text NOT NULL CHECK(channel IN ('IN_APP','EMAIL','SMS')),state text NOT NULL CHECK(state IN ('PENDING','CLAIMED','DEFERRED','DISABLED','SANDBOXED','SENT','DELIVERED','FAILED_RETRYABLE','FAILED_TERMINAL','CANCELLED')),attempt_count integer NOT NULL DEFAULT 0,max_attempts integer NOT NULL DEFAULT 5 CHECK(max_attempts BETWEEN 1 AND 10),available_at timestamptz NOT NULL DEFAULT now(),lease_owner text,lease_expires_at timestamptz,last_error_code text,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE notification_delivery_attempts(id text PRIMARY KEY,job_id text NOT NULL REFERENCES notification_delivery_jobs(id),attempt_number integer NOT NULL CHECK(attempt_number>0),result_state text NOT NULL,error_code text,provider_reference text,authenticated_evidence boolean NOT NULL DEFAULT false,attempted_at timestamptz NOT NULL DEFAULT now(),UNIQUE(job_id,attempt_number));
+CREATE TABLE notification_read_history(id text PRIMARY KEY,notification_id text NOT NULL REFERENCES notifications(id),user_id text NOT NULL REFERENCES users(id),read_at timestamptz NOT NULL DEFAULT now(),UNIQUE(notification_id,user_id));
+CREATE TABLE notification_idempotency(authority_scope text NOT NULL,actor_id text NOT NULL,operation text NOT NULL,resource_id text NOT NULL DEFAULT '',idempotency_key text NOT NULL,request_sha256 char(64) NOT NULL,response_status integer NOT NULL,response_body jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(authority_scope,actor_id,operation,resource_id,idempotency_key));
+CREATE TABLE notification_event_receipts(outbox_event_id text NOT NULL,event_type text NOT NULL,recipient_user_id text NOT NULL,channel text NOT NULL,template_key text NOT NULL,template_version integer NOT NULL,notification_id text NOT NULL REFERENCES notifications(id),created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(outbox_event_id,recipient_user_id,channel,template_key,template_version));
+CREATE INDEX notifications_inbox_idx ON notifications(recipient_user_id,created_at DESC,id DESC);
+CREATE INDEX notifications_merchant_idx ON notifications(merchant_id,created_at DESC,id DESC);
+CREATE INDEX notification_jobs_claim_idx ON notification_delivery_jobs(state,available_at,lease_expires_at);
+CREATE INDEX notification_attempts_job_idx ON notification_delivery_attempts(job_id,attempted_at DESC,id DESC);
+
+CREATE FUNCTION notification_template_immutable() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'notification template versions are append-only' USING ERRCODE='55000'; END $$;
+CREATE TRIGGER notification_template_used_immutable BEFORE UPDATE OR DELETE ON notification_templates FOR EACH STATEMENT EXECUTE FUNCTION notification_template_immutable();
+CREATE FUNCTION notification_identity_immutable() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF (OLD.authority,OLD.merchant_id,OLD.recipient_user_id,OLD.category,OLD.template_key,OLD.template_version,OLD.channel,OLD.related_entity_type,OLD.related_entity_id,OLD.title,OLD.body) IS DISTINCT FROM (NEW.authority,NEW.merchant_id,NEW.recipient_user_id,NEW.category,NEW.template_key,NEW.template_version,NEW.channel,NEW.related_entity_type,NEW.related_entity_id,NEW.title,NEW.body) THEN RAISE EXCEPTION 'notification identity and content are immutable' USING ERRCODE='55000'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER notification_identity_immutable BEFORE UPDATE ON notifications FOR EACH ROW EXECUTE FUNCTION notification_identity_immutable();
+CREATE FUNCTION reject_notification_history_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'notification history is append-only' USING ERRCODE='55000'; END $$;
+CREATE TRIGGER notification_attempts_append_only BEFORE UPDATE OR DELETE ON notification_delivery_attempts FOR EACH STATEMENT EXECUTE FUNCTION reject_notification_history_mutation();
+CREATE TRIGGER notification_reads_append_only BEFORE UPDATE OR DELETE ON notification_read_history FOR EACH STATEMENT EXECUTE FUNCTION reject_notification_history_mutation();
+CREATE TRIGGER notification_receipts_append_only BEFORE UPDATE OR DELETE ON notification_event_receipts FOR EACH STATEMENT EXECUTE FUNCTION reject_notification_history_mutation();
+CREATE FUNCTION notification_job_transition() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.state=OLD.state THEN RETURN NEW; END IF; IF (OLD.state='PENDING' AND NEW.state IN ('CLAIMED','CANCELLED','DISABLED','SANDBOXED')) OR (OLD.state='CLAIMED' AND NEW.state IN ('DEFERRED','DISABLED','SANDBOXED','SENT','FAILED_RETRYABLE','FAILED_TERMINAL','CANCELLED')) OR (OLD.state IN ('DEFERRED','FAILED_RETRYABLE') AND NEW.state IN ('PENDING','CLAIMED','FAILED_TERMINAL','CANCELLED')) OR (OLD.state='SENT' AND NEW.state IN ('DELIVERED','FAILED_RETRYABLE','FAILED_TERMINAL')) THEN RETURN NEW; END IF; RAISE EXCEPTION 'invalid notification delivery transition' USING ERRCODE='23514'; END $$;
+CREATE TRIGGER notification_job_state_valid BEFORE UPDATE OF state ON notification_delivery_jobs FOR EACH ROW EXECUTE FUNCTION notification_job_transition();
+CREATE FUNCTION notification_provider_evidence() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.channel IN ('EMAIL','SMS') AND NEW.state IN ('SENT','DELIVERED') AND NOT EXISTS(SELECT 1 FROM notification_delivery_attempts WHERE job_id=NEW.id AND authenticated_evidence) THEN RAISE EXCEPTION 'authenticated provider evidence required' USING ERRCODE='23514'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER notification_provider_evidence_required BEFORE UPDATE OF state ON notification_delivery_jobs FOR EACH ROW EXECUTE FUNCTION notification_provider_evidence();
+
+INSERT INTO notification_templates(template_key,version,category,channel,audience_type,subject_template,body_template,required_variables) VALUES
+('generic.merchant.event',1,'SYSTEM','IN_APP','MERCHANT_USER','GiantPay update','An update is available for {{entityType}} {{entityId}}.','{entityType,entityId}'),
+('generic.platform.event',1,'SYSTEM','IN_APP','PLATFORM_STAFF','Operational update','An operational update is available for {{entityType}} {{entityId}}.','{entityType,entityId}');
+INSERT INTO notification_templates(template_key,version,category,channel,audience_type,subject_template,body_template,required_variables)
+SELECT 'event.'||lower(category),1,category,'IN_APP','MERCHANT_USER','GiantPay update','An update is available for {{entityType}} {{entityId}}.','{entityType,entityId}'::text[]
+FROM unnest(ARRAY['SECURITY','PAYMENT','REFUND','SETTLEMENT','RECONCILIATION','COMPLIANCE','ONBOARDING','SUPPORT','DISPUTE','TEAM_ACCESS']) category;
+UPDATE users SET permissions=(SELECT array_agg(DISTINCT p ORDER BY p) FROM unnest(permissions||ARRAY['platform.notifications.read','platform.notifications.delivery.read','platform.notifications.delivery.retry','platform.notifications.templates.read']) p) WHERE merchant_id IS NULL AND role='PLATFORM_ADMIN';
+UPDATE merchant_roles SET permissions=(SELECT array_agg(DISTINCT p ORDER BY p) FROM unnest(permissions||ARRAY['notifications.read','notifications.manage_preferences','notifications.mark_read']) p) WHERE normalized_name IN ('owner','administrator','support');

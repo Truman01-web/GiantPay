@@ -23,6 +23,8 @@ tags:
   - name: Merchant webhooks
   - name: Reconciliation
   - name: Ledger integrity
+  - name: Disputes
+  - name: Platform disputes
   - name: Sandbox settlements
   - name: Operational reports
   - name: Audit evidence
@@ -30,7 +32,103 @@ tags:
   - name: Account security
   - name: Merchant support
   - name: Platform administration
+  - name: Notifications
+  - name: Platform notifications
 paths:
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [Notifications]
+      summary: List the authenticated merchant user's in-app notifications
+      parameters:
+        - { in: query, name: cursor, schema: { type: string } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses: { '200': { description: User-isolated notification page }, '401': { description: Authentication required }, '403': { description: Permission denied } }
+  /notifications/unread-count:
+    get:
+      operationId: getNotificationUnreadCount
+      tags: [Notifications]
+      summary: Count the authenticated user's unread in-app notifications
+      responses: { '200': { description: Unread count } }
+  /notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [Notifications]
+      summary: Get effective notification preferences and channel availability
+      responses: { '200': { description: Effective preferences } }
+    patch:
+      operationId: updateNotificationPreference
+      tags: [Notifications]
+      summary: Update one versioned notification preference
+      parameters: [{ in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 8, maxLength: 128 } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [category, channel, enabled, expectedVersion], properties: { category: { type: string }, channel: { enum: [IN_APP, EMAIL, SMS] }, enabled: { type: boolean }, expectedVersion: { type: integer, minimum: 0 } } } } } }
+      responses: { '200': { description: Updated preference; external delivery remains unavailable }, '409': { description: 'Mandatory policy, stale version, or idempotency conflict' } }
+  /notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [Notifications]
+      summary: Idempotently mark an owned notification read
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Original or replayed read result }, '404': { description: Notification not found } }
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [Notifications]
+      summary: Idempotently mark the authenticated user's notifications read
+      parameters: [{ in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Read count } }
+  /platform/notifications:
+    get:
+      operationId: listPlatformNotifications
+      tags: [Platform notifications]
+      summary: List the authenticated platform staff user's notifications
+      responses: { '200': { description: User-isolated platform inbox } }
+  /platform/notifications/unread-count:
+    get:
+      operationId: getPlatformNotificationUnreadCount
+      tags: [Platform notifications]
+      summary: Count unread platform-staff notifications
+      responses: { '200': { description: Unread count } }
+  /platform/notifications/{id}/read:
+    post:
+      operationId: markPlatformNotificationRead
+      tags: [Platform notifications]
+      summary: Mark an owned platform notification read
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Read result }, '404': { description: Notification not found } }
+  /platform/notifications/read-all:
+    post:
+      operationId: markAllPlatformNotificationsRead
+      tags: [Platform notifications]
+      summary: Mark all notifications for the authenticated platform user read
+      parameters: [{ in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Read count } }
+  /platform/notification-deliveries:
+    get:
+      operationId: listNotificationDeliveries
+      tags: [Platform notifications]
+      summary: List redacted notification delivery operations
+      responses: { '200': { description: Redacted delivery list } }
+  /platform/notification-deliveries/{id}:
+    get:
+      operationId: getNotificationDelivery
+      tags: [Platform notifications]
+      summary: Get a redacted delivery operation
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Redacted delivery }, '404': { description: Delivery not found } }
+  /platform/notification-deliveries/{id}/retry:
+    post:
+      operationId: retryNotificationDelivery
+      tags: [Platform notifications]
+      summary: Request an authorized retry without bypassing disabled providers
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
+      responses: { '200': { description: Retry accepted }, '409': { description: 'Provider disabled, stale state, or idempotency conflict' } }
+  /platform/notification-templates:
+    get:
+      operationId: listNotificationTemplates
+      tags: [Platform notifications]
+      summary: List controlled template metadata without rendered recipient content
+      responses: { '200': { description: Template metadata } }
   /support/cases:
     get:
       operationId: listMerchantSupportCases
@@ -946,6 +1044,31 @@ paths:
     delete: { tags: [Account security], operationId: revokeOwnSession, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Session revoked }, '404': { $ref: '#/components/responses/Error' } } }
   /sessions/revoke-others:
     post: { tags: [Account security], operationId: revokeOtherSessions, security: [{ cookieSession: [] }], responses: { '200': { description: All sessions except current revoked } } }
+  /disputes:
+    get: { tags: [Disputes], operationId: listMerchantDisputes, security: [{ cookieSession: [] }, { sandboxApiKey: [] }], description: Tenant-scoped sandbox dispute records with deterministic created-at and ID cursors., parameters: [{ $ref: '#/components/parameters/DisputeCursor' }, { $ref: '#/components/parameters/DisputeLimit' }], responses: { '200': { description: Merchant dispute page }, '403': { $ref: '#/components/responses/Error' } } }
+  /disputes/{id}:
+    get: { tags: [Disputes], operationId: getMerchantDispute, security: [{ cookieSession: [] }, { sandboxApiKey: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Merchant-safe dispute projection }, '404': { $ref: '#/components/responses/Error' } } }
+  /disputes/{id}/responses:
+    post: { tags: [Disputes], operationId: addMerchantDisputeResponse, security: [{ cookieSession: [] }, { sandboxApiKey: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeResponseInput' } } } }, responses: { '201': { description: Append-only public response }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /disputes/{id}/evidence:
+    post: { tags: [Disputes], operationId: addMerchantDisputeEvidence, security: [{ cookieSession: [] }, { sandboxApiKey: [] }], description: Records sandbox metadata only; no binary upload or provider submission occurs., parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeEvidenceInput' } } } }, responses: { '201': { description: Metadata-only evidence record }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /platform/disputes:
+    get: { tags: [Platform disputes], operationId: listPlatformDisputes, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/DisputeCursor' }, { $ref: '#/components/parameters/DisputeLimit' }], responses: { '200': { description: Authorized platform dispute page }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+    post: { tags: [Platform disputes], operationId: createPlatformDispute, security: [{ cookieSession: [] }], description: Records a sandbox operational dispute; it performs no provider call or fund movement., parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateDisputeInput' } } } }, responses: { '201': { description: Atomic sandbox dispute record }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } } }
+  /platform/disputes/{id}:
+    get: { tags: [Platform disputes], operationId: getPlatformDispute, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Authorized staff projection including internal notes and histories }, '404': { $ref: '#/components/responses/Error' } } }
+  /platform/disputes/{id}/responses:
+    post: { tags: [Platform disputes], operationId: addPlatformDisputeResponse, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeResponseInput' } } } }, responses: { '201': { description: Append-only public staff response }, '409': { $ref: '#/components/responses/Error' } } }
+  /platform/disputes/{id}/internal-notes:
+    post: { tags: [Platform disputes], operationId: addDisputeInternalNote, security: [{ cookieSession: [] }], description: Body is platform-private and excluded from audit and outbox metadata., parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeResponseInput' } } } }, responses: { '201': { description: Private append-only note } } }
+  /platform/disputes/{id}/request-information:
+    post: { tags: [Platform disputes], operationId: requestDisputeInformation, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeExpectedStateInput' } } } }, responses: { '200': { description: Information requested }, '409': { $ref: '#/components/responses/Error' } } }
+  /platform/disputes/{id}/assign:
+    post: { tags: [Platform disputes], operationId: assignDispute, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '200': { description: Expected-state assignment }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /platform/disputes/{id}/status:
+    post: { tags: [Platform disputes], operationId: changeDisputeStatus, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeExpectedStateInput' } } } }, responses: { '200': { description: Allowed expected-state transition }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+  /platform/disputes/{id}/decisions:
+    post: { tags: [Platform disputes], operationId: mutateDisputeDecision, security: [{ cookieSession: [] }], description: Proposes or independently reviews a terminal sandbox decision. Financial effects remain pending instructions and cause no payout., parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '200': { description: Independently reviewed decision }, '201': { description: Decision proposal }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }
@@ -959,6 +1082,8 @@ components:
         in: query,
         schema: { type: integer, minimum: 1, maximum: 100, default: 20 },
       }
+    DisputeCursor: { name: cursor, in: query, schema: { type: string }, description: ISO timestamp and stable ID separated by a vertical bar. }
+    DisputeLimit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
     IdempotencyKey:
       {
         name: Idempotency-Key,
@@ -991,6 +1116,16 @@ components:
       description: Normalized error response
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   schemas:
+    CreateDisputeInput:
+      type: object
+      required: [paymentId, source, reasonCategory, amountMinor, currency, summary]
+      properties: { paymentId: { type: string }, transactionId: { type: string }, externalReference: { type: string }, source: { type: string, enum: [SANDBOX, MERCHANT_REPORTED, PLATFORM_REPORTED, PROVIDER_REPORTED] }, reasonCategory: { type: string, enum: [FRAUDULENT, DUPLICATE, PRODUCT_NOT_RECEIVED, SERVICE_NOT_PROVIDED, NOT_AS_DESCRIBED, CREDIT_NOT_PROCESSED, INCORRECT_AMOUNT, PROCESSING_ERROR, OTHER] }, amountMinor: { type: integer, minimum: 1 }, currency: { type: string, pattern: '^[A-Z]{3}$' }, summary: { type: string, minLength: 3, maxLength: 1000 }, responseDeadline: { type: string, format: date-time } }
+    DisputeResponseInput: { type: object, required: [body], properties: { body: { type: string, minLength: 1, maxLength: 10000 } } }
+    DisputeEvidenceInput:
+      type: object
+      required: [evidenceType, description, originalFilename, mimeType, fileSize, checksumSha256]
+      properties: { evidenceType: { type: string }, description: { type: string }, originalFilename: { type: string }, mimeType: { type: string, enum: [application/pdf, image/png, image/jpeg, text/plain] }, fileSize: { type: integer, minimum: 1, maximum: 10485760 }, checksumSha256: { type: string, pattern: '^[0-9a-f]{64}$' } }
+    DisputeExpectedStateInput: { type: object, required: [reason, expectedStatus, expectedVersion], properties: { reason: { type: string, minLength: 3 }, expectedStatus: { type: string, enum: [OPEN, NEEDS_MERCHANT_RESPONSE, MERCHANT_RESPONDED, UNDER_REVIEW, ACCEPTED, CONTESTED, WON, LOST, CLOSED] }, expectedVersion: { type: integer, minimum: 1 } } }
     ReportType:
       type: string
       enum: [TRANSACTION_ACTIVITY, REFUND_ACTIVITY, PLATFORM_FEES, MERCHANT_LEDGER, RECONCILIATION_RESULTS, SANDBOX_SETTLEMENT_SUMMARIES]

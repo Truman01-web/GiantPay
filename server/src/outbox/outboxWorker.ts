@@ -1,5 +1,6 @@
 import type { Db } from '../db.js';
 import { transaction } from '../db.js';
+import { operationalMetrics } from '../operations/metrics.js';
 
 export interface OutboxMessage { id: string; eventType: string; aggregateType: string; aggregateId: string; payload: unknown; deduplicationKey: string }
 export interface OutboxPublisher { publish(message: OutboxMessage): Promise<void> }
@@ -12,9 +13,10 @@ export class OutboxWorker {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private stopped = true;
 
-  constructor(private readonly db: Db, private readonly publisher: OutboxPublisher, private readonly pollMs = 1000) {}
+  constructor(private readonly db: Db, private readonly publisher: OutboxPublisher, private readonly pollMs = 1000, private readonly canClaim:()=>Promise<boolean>=async()=>true) {}
 
   async runOnce(): Promise<boolean> {
+    if(!await this.canClaim()) return false;
     const event = await transaction(this.db, async (client) => {
       const result = await client.query(
         `SELECT * FROM outbox_events
@@ -27,9 +29,11 @@ export class OutboxWorker {
       return row;
     });
     if (!event) return false;
+    operationalMetrics.increment('worker_jobs_total',{worker:'outbox',outcome:'claimed'});
     try {
       await this.publisher.publish({ id: event.id, eventType: event.event_type, aggregateType: event.aggregate_type, aggregateId: event.aggregate_id, payload: event.payload, deduplicationKey: event.deduplication_key });
       await this.db.query(`UPDATE outbox_events SET status='PUBLISHED',published_at=now(),locked_at=NULL,last_error=NULL WHERE id=$1 AND status='PROCESSING'`, [event.id]);
+      operationalMetrics.increment('worker_jobs_total',{worker:'outbox',outcome:'succeeded'});
     } catch (error) {
       const safeError = error instanceof Error ? error.message.slice(0, 300) : 'Publisher failed';
       await this.db.query(
@@ -38,6 +42,7 @@ export class OutboxWorker {
          WHERE id=$1 AND status='PROCESSING'`,
         [event.id, safeError],
       );
+      operationalMetrics.increment('worker_jobs_total',{worker:'outbox',outcome:Number(event.attempt_count)+1>=Number(event.max_attempts)?'terminal':'retry'});
     }
     return true;
   }

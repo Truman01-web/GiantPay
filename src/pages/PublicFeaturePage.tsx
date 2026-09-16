@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { PUBLIC_NAV_GROUPS } from '@/components/navigation/publicNavData';
 
 interface Props {
@@ -25,7 +26,7 @@ export default function PublicFeaturePage({
   if (!title) {
     // Special top-level routes
     if (location.pathname === '/pricing') {
-      title = 'Transparent, Predictable Pricing';
+      title = 'Pricing';
       category = 'Pricing';
       description =
         'Fair transaction fees with zero hidden costs. Test in sandbox today with simulated pricing models.';
@@ -72,6 +73,15 @@ export default function PublicFeaturePage({
         }}
       >
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="mb-6">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-300">
             <span>{category ?? 'GiantPay Platform'}</span>
             {isPlanned && (

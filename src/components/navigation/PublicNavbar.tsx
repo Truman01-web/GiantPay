@@ -26,7 +26,6 @@ export function PublicNavbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-
   // Click outside to close desktop dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -85,7 +84,7 @@ export function PublicNavbar() {
       role="banner"
       className={cn(
         'fixed top-0 inset-x-0 z-50 transition-all duration-200 ease-standard motion-reduce:transition-none',
-        isScrolled
+        isScrolled || mobileOpen
           ? 'bg-[#061428]/85 backdrop-blur-md border-b border-white/10 shadow-sm shadow-black/20'
           : 'bg-transparent border-b border-transparent shadow-none'
       )}

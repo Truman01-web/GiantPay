@@ -4,6 +4,7 @@ import { newId } from '../security.js';
 import type { Config } from '../config.js';
 import type { OutboxMessage, OutboxPublisher } from '../outbox/outboxWorker.js';
 import { decryptSecret, signWebhook, validateWebhookUrl } from './webhookSecurity.js';
+import { operationalMetrics } from '../operations/metrics.js';
 
 export class MerchantWebhookPublisher implements OutboxPublisher {
   constructor(private db:Db,private maxAttempts:number) {}
@@ -20,10 +21,12 @@ class DeliveryError extends Error { constructor(public kind:string,public retrya
 
 export class WebhookDeliveryWorker {
   private timer:ReturnType<typeof setTimeout>|null=null; private stopped=true;
-  constructor(private db:Db,private config:Config,private pollMs=1000){}
+  constructor(private db:Db,private config:Config,private pollMs=1000,private canClaim:()=>Promise<boolean>=async()=>true){}
   async runOnce(){
+    if(!await this.canClaim())return false;
     const row=await transaction(this.db,async c=>{const x=await c.query(`SELECT d.*,e.url,e.event_types,e.secret_ciphertext,o.event_type,o.payload FROM webhook_deliveries d JOIN merchant_webhook_endpoints e ON e.id=d.endpoint_id JOIN outbox_events o ON o.id=d.event_id WHERE (d.status='PENDING' OR (d.status='PROCESSING' AND d.locked_at<now()-interval '5 minutes')) AND d.next_attempt_at<=now() ORDER BY d.created_at FOR UPDATE OF d SKIP LOCKED LIMIT 1`);if(!x.rowCount)return null;const r=x.rows[0];await c.query(`UPDATE webhook_deliveries SET status='PROCESSING',locked_at=now(),attempt_count=attempt_count+1,updated_at=now() WHERE id=$1`,[r.id]);return {...r,attempt_count:Number(r.attempt_count)+1};});
     if(!row)return false;
+    operationalMetrics.increment('worker_jobs_total',{worker:'webhook',outcome:'claimed'});
     const body=Buffer.from(JSON.stringify({id:row.event_id,type:row.event_type,createdAt:new Date().toISOString(),data:row.payload}));
     try {
       await validateWebhookUrl(row.url,this.config.NODE_ENV==='development'&&this.config.WEBHOOK_ALLOW_HTTP_DEVELOPMENT);

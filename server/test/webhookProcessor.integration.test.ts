@@ -124,6 +124,9 @@ suite('transactional webhook processing', () => {
       OUTBOX_WORKER_ENABLED: false, OUTBOX_POLL_MS: 1000, SESSION_TTL_HOURS: 12,
       WEBHOOK_ALLOW_HTTP_DEVELOPMENT: false, WEBHOOK_DELIVERY_TIMEOUT_MS: 5000,
       WEBHOOK_MAX_RESPONSE_BYTES: 8192, WEBHOOK_MAX_ATTEMPTS: 8,
+      LOG_LEVEL: 'info', HEALTH_CHECK_TIMEOUT_MS: 1500, WORKER_BATCH_SIZE: 10,
+      WORKER_LEASE_SECONDS: 60, GRACEFUL_SHUTDOWN_TIMEOUT_MS: 15000,
+      EXTERNAL_DELIVERY_ENABLED: false, REAL_PAYOUTS_ENABLED: false,
     };
     const app = await buildApp(config, db, new SandboxPaymentProvider(config.SANDBOX_WEBHOOK_SECRET, 300, 'test'));
     const response = await app.inject({ method: 'GET', url: '/v1/payment-status/GP-TEST-1' });
