@@ -27,16 +27,17 @@ describe('PublicNavbar', () => {
     vi.restoreAllMocks();
   });
 
-  it('1. renders fully transparent navbar at the top of the page', () => {
+  it('1. renders a translucent navbar at the top of the page', () => {
     renderNavbar();
     const header = screen.getByRole('banner');
     expect(header).toBeInTheDocument();
-    expect(header.className).toContain('bg-transparent');
-    expect(header.className).toContain('border-transparent');
+    expect(header.className).toContain('bg-white/50');
+    expect(header.className).toContain('backdrop-blur-md');
+    expect(header.className).toContain('border-white/40');
     expect(header.className).toContain('shadow-none');
   });
 
-  it('2. becomes translucent immediately after scrolling beyond threshold', () => {
+  it('2. stays translucent (adds only a shadow) after scrolling beyond threshold', () => {
     renderNavbar();
     const header = screen.getByRole('banner');
 
@@ -45,9 +46,10 @@ describe('PublicNavbar', () => {
       fireEvent.scroll(window);
     });
 
-    expect(header.className).toContain('bg-white/75');
-    expect(header.className).toContain('backdrop-blur-2xl');
-    expect(header.className).toContain('border-white/60');
+    expect(header.className).toContain('bg-white/50');
+    expect(header.className).toContain('backdrop-blur-md');
+    expect(header.className).toContain('border-white/40');
+    expect(header.className).toContain('shadow-sm');
   });
 
   it('3. cleans up scroll listener on unmount', () => {
