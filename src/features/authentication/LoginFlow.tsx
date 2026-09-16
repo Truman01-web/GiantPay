@@ -89,9 +89,9 @@ export function LoginFlow() {
         : null;
 
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-xl shadow-slate-900/10">
       <CardContent>
-        <h1 className="text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Sign in to GiantPay</h1>
+        <h1 className="text-[length:var(--text-h2)] font-extrabold tracking-tight text-[var(--color-navy-900)]">Sign in to GiantPay</h1>
         <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Manage payments, links and reports.</p>
 
         {errorMessage && (
@@ -120,7 +120,7 @@ export function LoginFlow() {
             </Link>
           </div>
 
-          <Button type="submit" loading={login.isPending} className="mt-1">
+          <Button type="submit" loading={login.isPending} className="mt-1 rounded-xl">
             Sign in
           </Button>
         </form>

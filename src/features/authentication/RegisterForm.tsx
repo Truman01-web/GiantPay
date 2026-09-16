@@ -45,10 +45,10 @@ export function RegisterForm() {
 
   if (submitted) {
     return (
-      <Card>
+      <Card className="rounded-2xl shadow-xl shadow-slate-900/10">
         <CardContent className="text-center">
           <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--color-green-600)]" aria-hidden="true" />
-          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Check your email</h1>
+          <h1 className="mt-3 text-[length:var(--text-h2)] font-extrabold tracking-tight text-[var(--color-navy-900)]">Check your email</h1>
           <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
             We&apos;ve sent a verification link to confirm your account. Once verified, you can sign in and start your merchant application.
           </p>
@@ -60,9 +60,9 @@ export function RegisterForm() {
   const errorMessage = register_.error instanceof ApiError ? register_.error.message : register_.error ? 'Registration failed. Please try again.' : null;
 
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-xl shadow-slate-900/10">
       <CardContent>
-        <h1 className="text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Create your GiantPay account</h1>
+        <h1 className="text-[length:var(--text-h2)] font-extrabold tracking-tight text-[var(--color-navy-900)]">Create your GiantPay account</h1>
         <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Start with sandbox access — production activates after review.</p>
 
         {errorMessage && (
@@ -107,7 +107,7 @@ export function RegisterForm() {
           </label>
           {errors.acceptTerms && <p className="text-[length:var(--text-help)] text-[var(--color-red-600)]">{errors.acceptTerms.message}</p>}
 
-          <Button type="submit" loading={register_.isPending} className="mt-1">
+          <Button type="submit" loading={register_.isPending} className="mt-1 rounded-xl">
             Create account
           </Button>
         </form>
