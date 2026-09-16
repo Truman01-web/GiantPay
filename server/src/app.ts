@@ -131,15 +131,17 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   });
 
   const bounded=async(work:Promise<unknown>)=>Promise.race([work,new Promise((_,reject)=>setTimeout(()=>reject(new Error('dependency timeout')),config.HEALTH_CHECK_TIMEOUT_MS))]);
+  const dependency=async(name:'postgresql'|'redis',work:Promise<unknown>)=>{try{await bounded(work);operationalMetrics.increment('dependency_checks_total',{dependency:name,outcome:'available'});}catch(error){operationalMetrics.increment('dependency_checks_total',{dependency:name,outcome:'unavailable'});throw error;}};
+  const readiness=async()=>{await Promise.all([dependency('postgresql',db.query('SELECT 1')),dependency('redis',rateLimits.ping())]);if(!workersReady())throw new Error('workers unavailable');};
   app.get('/v1/health/live', async () => ({ status: 'alive' }));
   app.get('/v1/health/ready', async (_request, reply) => {
-    try { await bounded(Promise.all([db.query('SELECT 1'),rateLimits.ping()])); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ready' }; }
+    try { await readiness(); return { status: 'ready' }; }
     catch { return reply.code(503).send({ status: 'unavailable' }); }
   });
   app.get('/health/live', async () => ({ status: 'alive' }));
-  app.get('/health/ready', async (_request,reply) => {try{await bounded(Promise.all([db.query('SELECT 1'),rateLimits.ping()]));if(!workersReady())throw new Error('workers unavailable');return {status:'ready'};}catch{return reply.code(503).send({status:'unavailable'});}});
+  app.get('/health/ready', async (_request,reply) => {try{await readiness();return {status:'ready'};}catch{return reply.code(503).send({status:'unavailable'});}});
   app.get('/v1/health', async (_request, reply) => {
-    try { await Promise.all([db.query('SELECT 1'),rateLimits.ping()]); if(!workersReady())throw new Error('workers unavailable'); return { status: 'ok' }; }
+    try { await readiness(); return { status: 'ok' }; }
     catch { return reply.code(503).send({ status: 'unavailable' }); }
   });
 
@@ -246,7 +248,7 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   });
   app.get('/v1/payment-status/:reference',async(request,reply)=>{const {reference}=z.object({reference:z.string()}).parse(request.params);const r=await db.query(`SELECT p.*,m.name merchant_name FROM payments p JOIN merchants m ON m.id=p.merchant_id WHERE reference=$1`,[reference]);if(!r.rowCount)return reply.code(404).send(apiError(request,'NOT_FOUND','Unknown payment reference.'));const x=r.rows[0];return {reference:x.reference,status:x.status==='SUCCEEDED'?'SUCCESS':x.status,amount:money(x.gross_minor,x.currency),merchantDisplayName:x.merchant_name,merchantReference:x.merchant_reference,confirmedAt:x.status==='SUCCEEDED'?x.updated_at:null};});
 
-  app.post('/v1/webhooks/providers/sandbox', { bodyLimit: 64 * 1024 }, async (request, reply) => {
+  app.post('/v1/webhooks/providers/sandbox', { bodyLimit: 64 * 1024, preHandler:operationalControlGuard(db,'WEBHOOK_DELIVERY_PAUSED') }, async (request, reply) => {
     const rawBody = request.rawWebhookBody ?? Buffer.alloc(0);
     let event;
     try {

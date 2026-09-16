@@ -41,6 +41,7 @@ export type Config = z.infer<typeof schema>;
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
   const config = schema.parse(source);
+  if (config.NODE_ENV === 'production' && !/[?&]sslmode=(require|verify-ca|verify-full)(?:&|$)/i.test(config.DATABASE_URL)) throw new Error('DATABASE_URL must require TLS in production');
   if (config.NODE_ENV === 'production' && (!config.WEBHOOK_SECRET_KEY || config.WEBHOOK_ALLOW_HTTP_DEVELOPMENT)) throw new Error('Production webhook secret key and HTTPS-only mode are required');
   if (config.NODE_ENV === 'production' && (!config.REDIS_URL || !config.REDIS_URL.startsWith('rediss://'))) throw new Error('REDIS_URL must use TLS in production');
   if (config.NODE_ENV === 'production' && !config.TRUSTED_PROXIES.trim()) throw new Error('TRUSTED_PROXIES is required in production');

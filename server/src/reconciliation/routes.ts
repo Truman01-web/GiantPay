@@ -83,7 +83,7 @@ export async function registerReconciliationRoutes(
       (r) => `${r.actor?.merchantId}:${r.actor?.id}`,
     );
   const reconRead = [auth, requirePermission('reconciliation:read')],
-    reconWrite = [auth, requirePermission('reconciliation:manage'), mutate],
+    reconWrite = [auth, requirePermission('reconciliation:manage'), mutate, operationalControlGuard(db,'SETTLEMENT_PROCESSING_PAUSED')],
     settleRead = [auth, requirePermission('settlements:read')],
     settleWrite = [auth, requirePermission('settlements:manage'), mutate, operationalControlGuard(db,'SETTLEMENT_PROCESSING_PAUSED')];
   app.post('/v1/reconciliation/runs', { preHandler: reconWrite }, async (request, reply) => {

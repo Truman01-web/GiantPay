@@ -34,7 +34,10 @@ and session controls are documented in [docs/team-access-security.md](docs/team-
 Production-readiness foundations, operational controls, private metrics,
 incident procedures, recovery runbooks, and the Phase 10 acceptance matrix are
 documented in [docs/production-readiness.md](docs/production-readiness.md) and
-[docs/phase10-test-matrix.md](docs/phase10-test-matrix.md).
+[docs/production-readiness-test-matrix.md](docs/production-readiness-test-matrix.md).
+Operational outage, backlog, worker, emergency-control, credential-compromise,
+disaster-recovery, observability, and hosting procedures are in
+[docs/operations-recovery-runbook.md](docs/operations-recovery-runbook.md).
 
 ## Toolchain and verification
 
