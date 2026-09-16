@@ -42,17 +42,18 @@ export default function LandingPage() {
           <div className="flex w-max items-center gap-12 sm:gap-16 animate-marquee-ltr motion-reduce:animate-none" aria-label="Planned payment methods">
             {[0, 1].map((copy) =>
               methods.map(([name, initial, , logo]) => (
-                <div key={`${copy}-${name}`} aria-hidden={copy === 1} className="flex items-center gap-3">
+                <div key={`${copy}-${name}`} aria-hidden={copy === 1} className="flex items-center">
                   {logo ? (
                     <img
                       src={logo}
                       alt={copy === 1 ? '' : `${name} logo`}
-                      className="h-7 w-auto object-contain sm:h-8"
+                      className="h-8 w-auto object-contain sm:h-9"
                     />
                   ) : (
-                    <span className="text-lg font-extrabold text-[#1B4FD8]">{initial}</span>
+                    <span className="text-lg font-extrabold text-[#1B4FD8]" title={copy === 1 ? undefined : name}>
+                      {initial}
+                    </span>
                   )}
-                  <span className="whitespace-nowrap text-sm font-semibold text-slate-700">{name}</span>
                 </div>
               ))
             )}

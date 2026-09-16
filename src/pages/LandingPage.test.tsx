@@ -43,7 +43,7 @@ describe('LandingPage Hero Section & Brand Assets', () => {
     expect(secondaryCta).toHaveAttribute('href', '/developers');
   });
 
-  it('10. renders all required payment methods without emojis', () => {
+  it('10. renders payment method logos without emojis or name labels', () => {
     const { container } = renderLandingPage();
     const textContent = container.textContent || '';
 
@@ -53,15 +53,17 @@ describe('LandingPage Hero Section & Brand Assets', () => {
     expect(textContent).not.toContain('💳');
     expect(textContent).not.toContain('🏦');
 
-    // Verify required text labels ("Airtel Money" also appears in the
-    // floating transaction-card mockup, and the payment-methods strip now
-    // renders a duplicate, aria-hidden copy for a seamless left-to-right
-    // loop, so none of these are guaranteed unique on the page)
-    expect(screen.getAllByText('Airtel Money').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('TNM Mpamba').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Visa').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Mastercard').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('National Switch / Bank Transfer').length).toBeGreaterThan(0);
+    // The payment-methods strip now renders logos only, with no visible
+    // name label beside them (name text still appears elsewhere on the
+    // page, e.g. "Airtel Money" in the floating transaction-card mockup,
+    // so this only checks the strip's own labels are gone).
+    expect(screen.queryByText('TNM Mpamba')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mastercard')).not.toBeInTheDocument();
+    expect(screen.queryByText('National Switch / Bank Transfer')).not.toBeInTheDocument();
+
+    // National Switch has no logo asset, so it still falls back to its
+    // initials ("NS") as bare text — the one exception to logos-only.
+    expect(screen.getAllByText('NS').length).toBeGreaterThan(0);
   });
 
   it('11. provides appropriate alternative text for official brand logos', () => {
