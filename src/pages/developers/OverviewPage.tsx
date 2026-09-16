@@ -7,42 +7,36 @@ const RESOURCES = [
     title: 'API Documentation',
     body: 'Base URL, authentication, request/response conventions, and error handling.',
     to: '/developers/api-documentation',
-    badge: 'Coming soon',
   },
   {
     icon: Send,
     title: 'Collections API',
     body: 'Initiate and manage programmatic payments — checkout sessions, payment links, refunds.',
     to: '/developers/collections-api',
-    badge: 'Planned',
   },
   {
     icon: Boxes,
     title: 'Disbursements API',
     body: 'Automate payouts to mobile wallets and bank accounts with idempotent transaction control.',
     to: '/developers/disbursements-api',
-    badge: 'Planned',
   },
   {
     icon: Webhook,
     title: 'Webhooks',
     body: 'Signed HMAC event delivery with retry behaviour and delivery history logs.',
     to: '/developers/webhooks-api',
-    badge: 'Coming soon',
   },
   {
     icon: Package,
     title: 'SDKs',
     body: 'Official client libraries for Node.js/TypeScript, PHP, and Python.',
     to: '/developers/sdks',
-    badge: 'Planned',
   },
   {
     icon: FlaskConical,
     title: 'Sandbox',
     body: 'A zero-risk test environment you can use today — no waitlist, no approval needed.',
     to: '/developers/sandbox',
-    badge: 'Available now',
   },
 ];
 
@@ -67,45 +61,42 @@ const STEPS = [
   },
 ];
 
-const BADGE_STYLE: Record<string, string> = {
-  'Coming soon': 'text-amber-600 bg-amber-50 border-amber-200',
-  Planned: 'text-slate-600 bg-slate-50 border-slate-200',
-  'Available now': 'text-emerald-600 bg-emerald-50 border-emerald-200',
-};
-
 export default function DeveloperOverviewPage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
       {/* Hero */}
-      <section
-        className="relative isolate overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28"
-        style={{ background: 'linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)' }}
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-20"
-          style={{ backgroundImage: 'radial-gradient(circle at 70% 40%, #1B4FD8 0%, transparent 60%)' }}
-        />
+      <section className="relative isolate overflow-hidden bg-white pt-24 pb-20 lg:pt-32 lg:pb-28">
+        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
+          <img
+            src="/hero-bg.jpg"
+            alt=""
+            className="h-full w-full object-cover object-[75%_center] opacity-45 sm:opacity-55"
+            style={{ filter: 'contrast(1.08) brightness(1.02)' }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/40" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white" />
+        </div>
+        <div aria-hidden className="grid-bg absolute inset-0 opacity-60" />
+        <div aria-hidden className="hero-glow absolute inset-0" />
+        <div aria-hidden className="blob-primary absolute left-[12%] top-1/4 h-80 w-80 rounded-full" />
+        <div aria-hidden className="blob-accent absolute bottom-[12%] right-[12%] h-72 w-72 rounded-full" />
         <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20"
+              className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-[#1B4FD8]"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Home
             </Link>
           </div>
           <div className="max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-blue-300">
-              Developers &middot; Overview
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
               Build on{' '}
-              <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">
                 GiantPay.
               </span>
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
               A unified REST API for accepting mobile money, cards, and bank transfers across Malawi — built
               sandbox-first, so you can start testing today, before you write a single line of integration code.
             </p>
@@ -118,7 +109,7 @@ export default function DeveloperOverviewPage() {
               </Link>
               <Link
                 to="/developers/sandbox"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
               >
                 Explore the sandbox
               </Link>
@@ -159,19 +150,14 @@ export default function DeveloperOverviewPage() {
             <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Everything you need to integrate</h2>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {RESOURCES.map(({ icon: Icon, title, body, to, badge }) => (
+            {RESOURCES.map(({ icon: Icon, title, body, to }) => (
               <Link
                 key={title}
                 to={to}
                 className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-[#1B4FD8]/30 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#1B4FD8]/15 bg-[#1B4FD8]/[.06]">
-                    <Icon className="h-5 w-5 text-[#1B4FD8]" />
-                  </div>
-                  <span className={['rounded-full border px-2.5 py-0.5 text-[10px] font-bold', BADGE_STYLE[badge]].join(' ')}>
-                    {badge}
-                  </span>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#1B4FD8]/15 bg-[#1B4FD8]/[.06]">
+                  <Icon className="h-5 w-5 text-[#1B4FD8]" />
                 </div>
                 <h3 className="mt-4 flex items-center gap-1.5 text-base font-bold text-slate-900">
                   {title}
