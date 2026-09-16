@@ -14,6 +14,14 @@ export const CompanyCompliancePage = lazy(() => import('@/pages/company/Complian
 export const CompanyContactPage = lazy(() => import('@/pages/company/ContactPage'));
 export const CompanyCareersPage = lazy(() => import('@/pages/company/CareersPage'));
 
+export const PublicDeveloperOverviewPage = lazy(() => import('@/pages/developers/OverviewPage'));
+export const PublicApiDocumentationPage = lazy(() => import('@/pages/developers/ApiDocumentationPage'));
+export const PublicCollectionsApiPage = lazy(() => import('@/pages/developers/CollectionsApiPage'));
+export const PublicDisbursementsApiPage = lazy(() => import('@/pages/developers/DisbursementsApiPage'));
+export const PublicWebhooksPage = lazy(() => import('@/pages/developers/WebhooksPage'));
+export const PublicSdksPage = lazy(() => import('@/pages/developers/SdksPage'));
+export const PublicSandboxPage = lazy(() => import('@/pages/developers/SandboxPage'));
+
 export const LoginPage = lazy(() => import('@/pages/LoginPage'));
 export const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
 export const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
