@@ -1,6 +1,22 @@
 @import 'tailwindcss';
 @import './app/theme/tokens.css';
 
+/* Landing-page reference palette (from files/tailwind.css).
+   This project uses Tailwind v4, where @import 'tailwindcss' replaces the
+   older @tailwind base/components/utilities directives. */
+:root {
+  --landing-background: #ffffff;
+  --landing-foreground: #0f172a;
+  --landing-primary: #1b4fd8;
+  --landing-secondary: #f1f5ff;
+  --landing-accent: #f59e0b;
+  --landing-muted: #f8faff;
+  --landing-border: #e2e8f0;
+  --landing-hero-teal: #38bdf8;
+  --landing-hero-orange: #f97316;
+  --landing-hero-red: #ef4444;
+}
+
 @layer base {
   * {
     border-color: var(--color-neutral-200);
@@ -36,6 +52,45 @@
 }
 
 @layer utilities {
+  .text-gradient-hero {
+    background: linear-gradient(135deg, #1b4fd8 0%, #3b82f6 50%, #38bdf8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero-glow {
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(27, 79, 216, 0.08) 0%, transparent 70%);
+  }
+
+  .blob-primary {
+    background: radial-gradient(circle, rgba(27, 79, 216, 0.12) 0%, rgba(56, 189, 248, 0.06) 50%, transparent 70%);
+    filter: blur(60px);
+  }
+
+  .blob-accent {
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, rgba(249, 115, 22, 0.05) 50%, transparent 70%);
+    filter: blur(80px);
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(226, 232, 240, 0.8) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(226, 232, 240, 0.8) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .payment-card-float { animation: paymentFloat 6s ease-in-out infinite; }
+  .payment-card-float-delay { animation: paymentFloat 6s ease-in-out 1.5s infinite; }
+  .payment-card-float-delay2 { animation: paymentFloat 6s ease-in-out 3s infinite; }
+
   .skip-link {
     position: absolute;
     left: -9999px;
@@ -51,6 +106,13 @@
     left: 0.75rem;
     top: 0.75rem;
   }
+}
+
+@keyframes paymentFloat {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-8px) rotate(0.5deg); }
+  50% { transform: translateY(-4px) rotate(-0.5deg); }
+  75% { transform: translateY(-12px) rotate(0.3deg); }
 }
 
 @keyframes flagWave {
@@ -111,16 +173,6 @@
   animation: wm-float 9s ease-in-out infinite;
 }
 
-/* ── Payment method logo marquee (left to right) ── */
-@keyframes marqueeLeftToRight {
-  from { transform: translateX(-50%); }
-  to   { transform: translateX(0%); }
-}
-
-.animate-marquee-ltr {
-  animation: marqueeLeftToRight 24s linear infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
@@ -131,3 +183,4 @@
     scroll-behavior: auto !important;
   }
 }
+
