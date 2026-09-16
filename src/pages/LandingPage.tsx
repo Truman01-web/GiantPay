@@ -23,7 +23,7 @@ export default function LandingPage() {
             e.currentTarget.src = HERO_BG_FALLBACK;
           }}
           alt=""
-          className="h-full w-full object-cover object-[88%_center] opacity-50 sm:opacity-60"
+          className="h-full w-full object-cover object-[75%_center] opacity-50 sm:opacity-60"
           style={{
             filter: 'contrast(1.08) brightness(1.02)',
           }}
