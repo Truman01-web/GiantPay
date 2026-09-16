@@ -67,6 +67,15 @@ linked opposite entries. A deferred PostgreSQL constraint trigger validates at
 commit that each entry contains at least two positive postings and balances
 debits and credits independently for every currency.
 
+## Production-readiness foundations
+
+Phase 10 adds minimal public liveness, dependency-backed readiness, private
+platform operations views, low-cardinality metrics, operational incidents,
+restrictive maker-checker controls, and bounded shutdown handling. These are
+operational foundations only: real payments, payouts, provider delivery,
+regulatory approval, high availability, and disaster recovery remain external
+production dependencies.
+
 ## Team integration rule
 
 Truman can continue working in `src/` while George works in `server/`. Merge the API contract first, use short-lived branches and rebase before opening a pull request. Do not edit the same generated lockfile from both branches. The shared contract is `server/openapi/giantpay-v1.yaml`; any request or response change must update that file in the same commit.

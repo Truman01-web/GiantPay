@@ -18,4 +18,12 @@ describe('configuration safety', () => {
   it('blocks sandbox in production', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production', WEBHOOK_SECRET_KEY:'k'.repeat(32), REDIS_URL:'rediss://cache.invalid', TRUSTED_PROXIES:'10.0.0.1', FRONTEND_ORIGIN:'https://app.invalid', COOKIE_SECURE:'true' })).toThrow(/forbidden/i);
   });
+
+  it('fails closed for unsafe production and external-provider configuration', () => {
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', WEBHOOK_SECRET_KEY:'k'.repeat(32), REDIS_URL:'redis://cache.invalid', TRUSTED_PROXIES:'10.0.0.1', FRONTEND_ORIGIN:'https://app.invalid', COOKIE_SECURE:'true' })).toThrow(/TLS/);
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', WEBHOOK_SECRET_KEY:'k'.repeat(32), REDIS_URL:'rediss://cache.invalid', TRUSTED_PROXIES:'10.0.0.1', FRONTEND_ORIGIN:'http://app.invalid', COOKIE_SECURE:'true' })).toThrow(/HTTPS/);
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production', WEBHOOK_SECRET_KEY:'k'.repeat(32), REDIS_URL:'rediss://cache.invalid', TRUSTED_PROXIES:'10.0.0.1', FRONTEND_ORIGIN:'https://app.invalid', COOKIE_SECURE:'false' })).toThrow(/COOKIE_SECURE/);
+    expect(() => loadConfig({ ...base, NODE_ENV: 'test', EXTERNAL_DELIVERY_ENABLED:'true' })).toThrow();
+    expect(() => loadConfig({ ...base, NODE_ENV: 'test', REAL_PAYOUTS_ENABLED:'true' })).toThrow();
+  });
 });

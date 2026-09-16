@@ -3,5 +3,5 @@ export class GracefulLifecycle{
  private closing:Promise<{timedOut:boolean}>|null=null;
  constructor(private dependencies:LifecycleDependency[],private timeoutMs:number){}
  shutdown(){if(this.closing)return this.closing;this.closing=this.run();return this.closing;}
- private async run(){for(const dependency of this.dependencies)await dependency.stopClaims?.();let timedOut=false;await Promise.race([Promise.allSettled(this.dependencies.map(x=>x.drain?.()??Promise.resolve())),new Promise<void>(resolve=>setTimeout(()=>{timedOut=true;resolve();},this.timeoutMs))]);await Promise.allSettled(this.dependencies.map(x=>x.close()));return {timedOut};}
+ private async run(){for(const dependency of this.dependencies)await dependency.stopClaims?.();let timedOut=false;let timer:ReturnType<typeof setTimeout>|undefined;try{await Promise.race([Promise.allSettled(this.dependencies.map(x=>x.drain?.()??Promise.resolve())),new Promise<void>(resolve=>{timer=setTimeout(()=>{timedOut=true;resolve();},this.timeoutMs);})]);}finally{if(timer)clearTimeout(timer);}await Promise.allSettled(this.dependencies.map(x=>x.close()));return {timedOut};}
 }

@@ -364,6 +364,108 @@ paths:
       responses:
         '200': { description: Database and essential workers are ready }
         '503': { description: A required dependency is unavailable }
+  /platform/operations/overview:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalOverview
+      responses: { '200': { description: Redacted operational counts }, '401': { $ref: '#/components/responses/Error' }, '403': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/metrics:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalMetrics
+      responses: { '200': { description: Private low-cardinality metrics }, '403': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/incidents:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: listOperationalIncidents
+      responses: { '200': { description: Incident list }, '403': { $ref: '#/components/responses/Error' } }
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: createOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Incident declared }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/incidents/{id}:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Incident detail }, '404': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/notes:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: addOperationalIncidentNote
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Note added }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/assign:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: assignOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Commander assigned }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/status:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: changeOperationalIncidentStatus
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: State changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/severity:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: changeOperationalIncidentSeverity
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Severity changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: listOperationalControls
+      responses: { '200': { description: Effective controls }, '403': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls/{key}:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalControl
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { '200': { description: Effective control }, '404': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls/{key}/proposals:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: proposeOperationalControl
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      responses: { '201': { description: Control proposed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/control-proposals/{id}/approve:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: approveOperationalControl
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Control approved }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } }
+  /platform/operations/control-proposals/{id}/reject:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: rejectOperationalControl
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Control rejected }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } }
   /auth/register:
     post:
       tags: [Authentication]
