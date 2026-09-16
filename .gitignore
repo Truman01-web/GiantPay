@@ -18,3 +18,5 @@ npm-debug.log*
 pnpm-debug.log*
 
 public/mockServiceWorker.js
+test-artifacts/
+scratch-*.mjs
