@@ -56,37 +56,31 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
         label: 'Developer Overview',
         to: '/developers/overview',
         description: 'Architecture, sandbox testing, and quickstart guides',
-        badge: 'Coming soon',
       },
       {
         label: 'API Documentation',
         to: '/developers/api-documentation',
         description: 'RESTful API specifications with cURL & TypeScript examples',
-        badge: 'Coming soon',
       },
       {
         label: 'Collections API',
         to: '/developers/collections-api',
         description: 'Initiate and manage programmatic payments',
-        badge: 'Planned',
       },
       {
         label: 'Disbursements API',
         to: '/developers/disbursements-api',
         description: 'Automate payouts with idempotent transaction control',
-        badge: 'Planned',
       },
       {
         label: 'Webhooks',
         to: '/developers/webhooks-api',
         description: 'Signed HMAC event delivery with delivery history logs',
-        badge: 'Coming soon',
       },
       {
         label: 'SDKs',
         to: '/developers/sdks',
         description: 'Official client libraries for modern languages',
-        badge: 'Planned',
       },
       {
         label: 'Sandbox',
