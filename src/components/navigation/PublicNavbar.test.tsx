@@ -32,7 +32,7 @@ describe('PublicNavbar', () => {
     const header = screen.getByRole('banner');
     expect(header).toBeInTheDocument();
     expect(header.className).toContain('bg-white/50');
-    expect(header.className).toContain('backdrop-blur-md');
+    expect(header.className).toContain('backdrop-blur-lg');
     expect(header.className).toContain('border-white/40');
     expect(header.className).toContain('shadow-none');
   });
@@ -47,7 +47,7 @@ describe('PublicNavbar', () => {
     });
 
     expect(header.className).toContain('bg-white/50');
-    expect(header.className).toContain('backdrop-blur-md');
+    expect(header.className).toContain('backdrop-blur-lg');
     expect(header.className).toContain('border-white/40');
     expect(header.className).toContain('shadow-sm');
   });

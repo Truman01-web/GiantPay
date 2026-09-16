@@ -84,7 +84,7 @@ export function PublicNavbar() {
       role="banner"
       className={cn(
         'fixed top-0 inset-x-0 z-50 transition-all duration-200 ease-standard motion-reduce:transition-none',
-        'border-b border-white/40 bg-white/50 backdrop-blur-md',
+        'border-b border-white/40 bg-white/50 backdrop-blur-lg',
         isScrolled || mobileOpen ? 'shadow-sm shadow-slate-900/5' : 'shadow-none'
       )}
     >
