@@ -19,13 +19,11 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
         label: 'Payment Gateway',
         to: '/products/gateway',
         description: 'Core unified payment gateway for Malawian commerce',
-        badge: 'Planned',
       },
       {
         label: 'Collections',
         to: '/products/collections',
         description: 'Automated invoice and transaction collections',
-        badge: 'Planned',
       },
       {
         label: 'Payment Links',
@@ -41,7 +39,6 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
         label: 'Disbursements',
         to: '/products/disbursements',
         description: 'Bulk payouts to mobile wallets and bank accounts',
-        badge: 'Planned',
       },
     ],
   },
@@ -106,19 +103,16 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
         label: 'Mobile Money',
         to: '/services/mobile-money',
         description: 'Airtel Money and TNM Mpamba wallet support',
-        badge: 'Planned',
       },
       {
         label: 'Card Payments',
         to: '/services/card-payments',
         description: 'Visa and Mastercard transaction processing',
-        badge: 'Planned',
       },
       {
         label: 'Bank Transfers',
         to: '/services/bank-transfers',
         description: 'National Switch and direct interbank clearance',
-        badge: 'Planned',
       },
       {
         label: 'Merchant Tools',
@@ -149,7 +143,6 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
         label: 'Blog',
         to: '/resources/blog',
         description: 'Fintech insights and engineering updates in Malawi',
-        badge: 'Planned',
       },
       {
         label: 'System Status',
@@ -185,7 +178,6 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
         label: 'Careers',
         to: '/company/careers',
         description: 'Join the engineering and product team building GiantPay',
-        badge: 'Planned',
       },
     ],
   },

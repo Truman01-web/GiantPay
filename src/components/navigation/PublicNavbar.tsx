@@ -196,16 +196,9 @@ export function PublicNavbar() {
                               aria-current={isCurrent ? 'page' : undefined}
                               onClick={() => setActiveGroup(null)}
                             >
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-slate-800 group-hover:text-[#1B4FD8] transition-colors">
-                                  {item.label}
-                                </span>
-                                {item.badge && (
-                                  <span className="rounded-md bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </div>
+                              <span className="text-sm font-semibold text-slate-800 group-hover:text-[#1B4FD8] transition-colors">
+                                {item.label}
+                              </span>
                               {item.description && (
                                 <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">
                                   {item.description}
@@ -341,14 +334,7 @@ export function PublicNavbar() {
                             )}
                             aria-current={isCurrent ? 'page' : undefined}
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{item.label}</span>
-                              {item.badge && (
-                                <span className="rounded bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 text-[9px] font-semibold text-amber-300">
-                                  {item.badge}
-                                </span>
-                              )}
-                            </div>
+                            <span className="text-sm font-medium">{item.label}</span>
                             {item.description && (
                               <p className="text-[11px] text-white/50 line-clamp-1">{item.description}</p>
                             )}
