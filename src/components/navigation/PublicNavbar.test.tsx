@@ -45,9 +45,9 @@ describe('PublicNavbar', () => {
       fireEvent.scroll(window);
     });
 
-    expect(header.className).toContain('bg-[#061428]/85');
-    expect(header.className).toContain('backdrop-blur-md');
-    expect(header.className).toContain('border-white/10');
+    expect(header.className).toContain('bg-white/75');
+    expect(header.className).toContain('backdrop-blur-2xl');
+    expect(header.className).toContain('border-white/60');
   });
 
   it('3. cleans up scroll listener on unmount', () => {
