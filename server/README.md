@@ -31,6 +31,14 @@ They are sandbox operational records, not bank, provider, tax, or regulatory sta
 Merchant teams, database-backed roles, invitations, authenticator-app MFA, recovery,
 and session controls are documented in [docs/team-access-security.md](docs/team-access-security.md).
 
+Production-readiness foundations, operational controls, private metrics,
+incident procedures, recovery runbooks, and the Phase 10 acceptance matrix are
+documented in [docs/production-readiness.md](docs/production-readiness.md) and
+[docs/production-readiness-test-matrix.md](docs/production-readiness-test-matrix.md).
+Operational outage, backlog, worker, emergency-control, credential-compromise,
+disaster-recovery, observability, and hosting procedures are in
+[docs/operations-recovery-runbook.md](docs/operations-recovery-runbook.md).
+
 ## Toolchain and verification
 
 Use Node 22.19.0 (Node 20.19+ is also supported) and pnpm 10.17.1. The root

@@ -1,0 +1,23 @@
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
+import { loadConfig } from '../src/config.js';
+import { runMigrationGate } from '../src/release/migrationGate.js';
+
+const base={DATABASE_URL:'postgres://db.invalid/giantpay?sslmode=verify-full',REDIS_URL:'rediss://cache.invalid',PASSWORD_PEPPER:'pepper-not-a-real-secret-000000000',COOKIE_SECRET:'cookie-not-a-real-secret-000000000',SANDBOX_WEBHOOK_SECRET:'webhook-not-a-real-secret-00000000',WEBHOOK_SECRET_KEY:'key-not-a-real-secret-000000000000',TRUSTED_PROXIES:'10.0.0.0/8',COOKIE_SECURE:'true',FRONTEND_ORIGIN:'https://giantpay.mw',NODE_ENV:'production',DEPLOYMENT_ENVIRONMENT:'sandbox',PAYMENT_PROVIDER:'sandbox'};
+const file=(name:string)=>readFileSync(resolve(name),'utf8');
+
+describe('Phase 11 deployment controls',()=>{
+  it('uses a multi-stage non-root image with bounded health checking and no frontend copy',()=>{const docker=file('Dockerfile');expect(docker.match(/^FROM /gm)?.length).toBeGreaterThanOrEqual(3);expect(docker).toContain('USER 10001:10001');expect(docker).toContain('HEALTHCHECK');expect(docker).not.toMatch(/COPY\s+(src|public)\b/);});
+  it('separates migration, API, and every sandbox worker command',()=>{const compose=file('deploy/compose.sandbox.yml');for(const value of ['dist/migrate.js','WORKER_ROLE: outbox','WORKER_ROLE: webhook','WORKER_ROLE: notification','WORKER_ROLE: reconciliation','service_completed_successfully'])expect(compose).toContain(value);});
+  it('requires a read-only filesystem, bounded writable temp space, dropped capabilities, restart and resource policy',()=>{const compose=file('deploy/compose.sandbox.yml');for(const value of ['read_only: true','tmpfs:','cap_drop: [ALL]','no-new-privileges:true','restart: unless-stopped','limits:'])expect(compose).toContain(value);});
+  it('rejects missing secrets and unsafe production or sandbox provider configuration',()=>{expect(()=>loadConfig({NODE_ENV:'production'})).toThrow();expect(()=>loadConfig({...base,PAYMENT_PROVIDER:'live'})).toThrow(/sandbox/i);expect(()=>loadConfig({...base,EXTERNAL_DELIVERY_ENABLED:'true'})).toThrow();expect(()=>loadConfig({...base,REAL_PAYOUTS_ENABLED:'true'})).toThrow();});
+  it('accepts an explicitly bounded sandbox configuration',()=>expect(loadConfig(base)).toMatchObject({DEPLOYMENT_ENVIRONMENT:'sandbox',PAYMENT_PROVIDER:'sandbox',EXTERNAL_DELIVERY_ENABLED:false,REAL_PAYOUTS_ENABLED:false}));
+  it('reads mounted secrets without revealing them in file errors',()=>{const dir=mkdtempSync(join(tmpdir(),'giantpay-secrets-'));const path=join(dir,'cookie');writeFileSync(path,'mounted-cookie-secret-with-adequate-length');try{expect(loadConfig({...base,COOKIE_SECRET:undefined,COOKIE_SECRET_FILE:path}).COOKIE_SECRET).toBe('mounted-cookie-secret-with-adequate-length');expect(()=>loadConfig({...base,DATABASE_URL:undefined,DATABASE_URL_FILE:join(dir,'missing')})).toThrow('Unable to read mounted secret for DATABASE_URL');}finally{rmSync(dir,{recursive:true,force:true});}});
+  it('blocks application startup when the migration gate fails',async()=>{const start=vi.fn();await expect(runMigrationGate(async()=>{throw new Error('migration failed');},start)).rejects.toThrow('migration failed');expect(start).not.toHaveBeenCalled();});
+  it('starts exactly once after a successful migration gate',async()=>{const start=vi.fn();await runMigrationGate(async()=>1,start);expect(start).toHaveBeenCalledOnce();});
+  it('documents TLS termination and only forwards trusted proxy headers',()=>{const nginx=file('deploy/nginx-api.giantpay.mw.conf');expect(nginx).toContain('ssl_protocols TLSv1.2 TLSv1.3');expect(nginx).toContain('X-Forwarded-Proto https');expect(nginx).toContain('proxy_connect_timeout 3s');});
+  it('keeps tests, source maps, environment files and frontend assets out of the image context',()=>{const ignored=file('Dockerfile.dockerignore');for(const value of ['server/test','server/dist','**/*.env*','src','public'])expect(ignored).toContain(value);});
+  it('keeps rollback and recovery guidance consistent with forward-only financial history',()=>{const docs=file('docs/sandbox-deployment-release.md');expect(docs).toContain('Never reverse or delete financial, ledger, audit, or outbox history');expect(docs).toContain('restore drill');expect(docs).toContain('shared cPanel');});
+});

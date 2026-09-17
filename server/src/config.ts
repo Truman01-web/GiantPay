@@ -1,8 +1,10 @@
 import 'dotenv/config';
+import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  DEPLOYMENT_ENVIRONMENT: z.enum(['local', 'sandbox', 'production']).default('local'),
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1),
@@ -37,16 +39,38 @@ const schema = z.object({
   REAL_PAYOUTS_ENABLED: z.literal('false').default('false').transform(()=>false),
 });
 
-export type Config = z.infer<typeof schema>;
+export type Config = Omit<z.output<typeof schema>, 'DEPLOYMENT_ENVIRONMENT'> & { DEPLOYMENT_ENVIRONMENT?: 'local' | 'sandbox' | 'production' };
 
-export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
-  const config = schema.parse(source);
+const mountedSecrets = ['DATABASE_URL', 'REDIS_URL', 'PASSWORD_PEPPER', 'COOKIE_SECRET', 'SANDBOX_WEBHOOK_SECRET', 'WEBHOOK_SECRET_KEY'] as const;
+
+export function resolveMountedSecrets(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const resolved = { ...source };
+  for (const name of mountedSecrets) {
+    const file = source[`${name}_FILE`];
+    if (!file) continue;
+    if (source[name]) throw new Error(`${name} and ${name}_FILE cannot both be set`);
+    let value: string;
+    try { value = readFileSync(file, 'utf8').trim(); }
+    catch { throw new Error(`Unable to read mounted secret for ${name}`); }
+    if (!value) throw new Error(`Mounted secret for ${name} is empty`);
+    resolved[name] = value;
+  }
+  return resolved;
+}
+
+export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<typeof schema> {
+  const resolved = resolveMountedSecrets(source);
+  if (resolved.NODE_ENV === 'production' && !resolved.DEPLOYMENT_ENVIRONMENT) resolved.DEPLOYMENT_ENVIRONMENT = 'production';
+  const config = schema.parse(resolved);
+  if (config.NODE_ENV === 'production' && !/[?&]sslmode=(require|verify-ca|verify-full)(?:&|$)/i.test(config.DATABASE_URL)) throw new Error('DATABASE_URL must require TLS in production');
   if (config.NODE_ENV === 'production' && (!config.WEBHOOK_SECRET_KEY || config.WEBHOOK_ALLOW_HTTP_DEVELOPMENT)) throw new Error('Production webhook secret key and HTTPS-only mode are required');
   if (config.NODE_ENV === 'production' && (!config.REDIS_URL || !config.REDIS_URL.startsWith('rediss://'))) throw new Error('REDIS_URL must use TLS in production');
   if (config.NODE_ENV === 'production' && !config.TRUSTED_PROXIES.trim()) throw new Error('TRUSTED_PROXIES is required in production');
   if (config.NODE_ENV === 'production' && config.COOKIE_SECURE === false) throw new Error('COOKIE_SECURE must not be false in production');
   if (config.NODE_ENV === 'production' && new URL(config.FRONTEND_ORIGIN).protocol !== 'https:') throw new Error('FRONTEND_ORIGIN must use HTTPS in production');
-  if (config.NODE_ENV === 'production' && config.PAYMENT_PROVIDER === 'sandbox') throw new Error('PAYMENT_PROVIDER=sandbox is forbidden in production');
+  if (config.DEPLOYMENT_ENVIRONMENT === 'production' && config.PAYMENT_PROVIDER === 'sandbox') throw new Error('PAYMENT_PROVIDER=sandbox is forbidden for production payment deployment');
+  if (config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.PAYMENT_PROVIDER !== 'sandbox') throw new Error('Sandbox deployment requires PAYMENT_PROVIDER=sandbox');
+  if (config.NODE_ENV === 'production' && config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.FRONTEND_ORIGIN !== 'https://giantpay.mw') throw new Error('Sandbox deployment FRONTEND_ORIGIN must be https://giantpay.mw');
   if (config.NODE_ENV === 'production' && [config.PASSWORD_PEPPER,config.COOKIE_SECRET,config.SANDBOX_WEBHOOK_SECRET].some(value=>/^(.)\1+$/.test(value))) throw new Error('Development-only secrets are forbidden in production');
   return config;
 }

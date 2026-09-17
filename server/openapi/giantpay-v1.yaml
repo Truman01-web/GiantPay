@@ -120,9 +120,9 @@ paths:
     post:
       operationId: retryNotificationDelivery
       tags: [Platform notifications]
-      summary: Request an authorized retry without bypassing disabled providers
+      summary: Request an authorized retry without bypassing disabled providers or active controls
       parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
-      responses: { '200': { description: Retry accepted }, '409': { description: 'Provider disabled, stale state, or idempotency conflict' } }
+      responses: { '200': { description: Retry accepted }, '409': { description: 'Provider disabled, stale state, or idempotency conflict' }, '503': { description: Notification processing is paused or control state cannot be verified } }
   /platform/notification-templates:
     get:
       operationId: listNotificationTemplates
@@ -364,6 +364,109 @@ paths:
       responses:
         '200': { description: Database and essential workers are ready }
         '503': { description: A required dependency is unavailable }
+  /platform/operations/overview:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalOverview
+      responses: { '200': { description: Redacted operational counts }, '401': { $ref: '#/components/responses/Error' }, '403': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/metrics:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalMetrics
+      responses: { '200': { description: Private low-cardinality metrics }, '403': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/incidents:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: listOperationalIncidents
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses: { '200': { description: Incident list }, '403': { $ref: '#/components/responses/Error' } }
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: createOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Incident declared }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/incidents/{id}:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Incident detail }, '404': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/notes:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: addOperationalIncidentNote
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Note added }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/assign:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: assignOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Commander assigned }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/status:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: changeOperationalIncidentStatus
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: State changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/severity:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: changeOperationalIncidentSeverity
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Severity changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: listOperationalControls
+      responses: { '200': { description: Effective controls }, '403': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls/{key}:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalControl
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { '200': { description: Effective control }, '404': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls/{key}/proposals:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: proposeOperationalControl
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      responses: { '201': { description: Control proposed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/control-proposals/{id}/approve:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: approveOperationalControl
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Control approved }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } }
+  /platform/operations/control-proposals/{id}/reject:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: rejectOperationalControl
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Control rejected }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } }
   /auth/register:
     post:
       tags: [Authentication]
@@ -657,7 +760,8 @@ paths:
         over `<X-GiantPay-Timestamp>.<raw request body>` using `SANDBOX_WEBHOOK_SECRET`.
         The timestamp is Unix seconds and must be within the configured tolerance. Valid
         duplicate events are acknowledged without repeating state changes. Event-ID reuse
-        with a different payload is rejected as suspicious.
+        with a different payload is rejected as suspicious. An approved webhook-processing
+        pause is enforced before payload processing; unverifiable control state fails closed.
       parameters:
         - name: X-GiantPay-Timestamp
           in: header
@@ -683,6 +787,7 @@ paths:
                 properties:
                   accepted: { const: true }
                   duplicate: { type: boolean }
+        '503': { description: Webhook processing is paused or control state cannot be verified }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
@@ -809,9 +914,9 @@ paths:
       operationId: startReconciliationRun
       tags: [Reconciliation]
       security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
-      description: Starts deterministic sandbox reconciliation. Requires `reconciliation:manage` and Idempotency-Key.
+      description: Starts deterministic sandbox reconciliation. Requires `reconciliation:manage`, Idempotency-Key, and no approved settlement/reconciliation processing pause.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
-      responses: { '201': { description: Completed or existing restart-safe run }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+      responses: { '201': { description: Completed or existing restart-safe run }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' }, '503': { description: Processing is paused or control state cannot be verified } }
   /reconciliation/runs/{id}:
     get:
       operationId: getReconciliationRun
