@@ -1,0 +1,50 @@
+x-app: &app
+  image: giantpay-api:${RELEASE_VERSION:?set RELEASE_VERSION}
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp/giantpay:size=64m,mode=1770]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  stop_grace_period: 20s
+  environment: &environment
+    NODE_ENV: production
+    DEPLOYMENT_ENVIRONMENT: sandbox
+    HOST: 0.0.0.0
+    FRONTEND_ORIGIN: https://giantpay.mw
+    TRUSTED_PROXIES: ${TRUSTED_PROXIES:?set trusted proxy CIDRs}
+    COOKIE_SECURE: "true"
+    PAYMENT_PROVIDER: sandbox
+    EXTERNAL_DELIVERY_ENABLED: "false"
+    REAL_PAYOUTS_ENABLED: "false"
+    DATABASE_URL_FILE: /run/secrets/database_url
+    REDIS_URL_FILE: /run/secrets/redis_url
+    PASSWORD_PEPPER_FILE: /run/secrets/password_pepper
+    COOKIE_SECRET_FILE: /run/secrets/cookie_secret
+    SANDBOX_WEBHOOK_SECRET_FILE: /run/secrets/sandbox_webhook_secret
+    WEBHOOK_SECRET_KEY_FILE: /run/secrets/webhook_secret_key
+  secrets: [database_url, redis_url, password_pepper, cookie_secret, sandbox_webhook_secret, webhook_secret_key]
+  deploy:
+    resources:
+      limits: {cpus: "1.0", memory: 768M}
+      reservations: {cpus: "0.25", memory: 256M}
+services:
+  migrate:
+    <<: *app
+    restart: "no"
+    command: [node, dist/migrate.js]
+  api:
+    <<: *app
+    command: [node, dist/launch.js, api]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    ports: [127.0.0.1:4000:4000]
+  outbox-worker: {<<: *app, command: [node, dist/launch.js, worker], environment: {<<: *environment, WORKER_ROLE: outbox}, depends_on: {migrate: {condition: service_completed_successfully}}}
+  webhook-worker: {<<: *app, command: [node, dist/launch.js, worker], environment: {<<: *environment, WORKER_ROLE: webhook}, depends_on: {migrate: {condition: service_completed_successfully}}}
+  notification-worker: {<<: *app, command: [node, dist/launch.js, worker], environment: {<<: *environment, WORKER_ROLE: notification}, depends_on: {migrate: {condition: service_completed_successfully}}}
+  reconciliation-worker: {<<: *app, command: [node, dist/launch.js, worker], environment: {<<: *environment, WORKER_ROLE: reconciliation}, depends_on: {migrate: {condition: service_completed_successfully}}}
+secrets:
+  database_url: {file: ${SECRETS_DIR:?set SECRETS_DIR}/database_url}
+  redis_url: {file: ${SECRETS_DIR:?set SECRETS_DIR}/redis_url}
+  password_pepper: {file: ${SECRETS_DIR:?set SECRETS_DIR}/password_pepper}
+  cookie_secret: {file: ${SECRETS_DIR:?set SECRETS_DIR}/cookie_secret}
+  sandbox_webhook_secret: {file: ${SECRETS_DIR:?set SECRETS_DIR}/sandbox_webhook_secret}
+  webhook_secret_key: {file: ${SECRETS_DIR:?set SECRETS_DIR}/webhook_secret_key}
