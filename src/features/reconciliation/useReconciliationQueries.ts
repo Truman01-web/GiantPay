@@ -21,8 +21,8 @@ export function useReconciliationRun(id: string | undefined) {
 export function useUpdateException(runId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { exceptionId: string; status: ReconciliationExceptionStatus; note?: string }) =>
-      reconciliationApi.updateException(runId!, payload.exceptionId, { status: payload.status, note: payload.note }),
+    mutationFn: (payload: { exceptionId: string; status: ReconciliationExceptionStatus; note?: string; evidenceRef?: string }) =>
+      reconciliationApi.updateException(payload.exceptionId, { status: payload.status, reason: payload.note, evidenceRef: payload.evidenceRef }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reconciliation', 'run', runId] });
       queryClient.invalidateQueries({ queryKey: ['reconciliation', 'runs'] });

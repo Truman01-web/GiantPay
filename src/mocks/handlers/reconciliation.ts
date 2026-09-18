@@ -18,11 +18,10 @@ export function resetReconciliationMockState(): void {
 }
 
 const VALID_NEXT_STATUS: Record<ReconciliationExceptionStatus, ReconciliationExceptionStatus[]> = {
-  OPEN: ['INVESTIGATING', 'ESCALATED'],
-  INVESTIGATING: ['ACTION_REQUIRED', 'RESOLVED', 'ESCALATED'],
-  ACTION_REQUIRED: ['RESOLVED', 'ESCALATED'],
+  OPEN: ['UNDER_REVIEW'],
+  UNDER_REVIEW: ['RESOLVED', 'DISMISSED'],
   RESOLVED: [],
-  ESCALATED: ['INVESTIGATING'],
+  DISMISSED: [],
 };
 
 export const reconciliationHandlers = [
@@ -31,23 +30,29 @@ export const reconciliationHandlers = [
     const page = Number(url.searchParams.get('page') ?? '1');
     const pageSize = Number(url.searchParams.get('pageSize') ?? '20');
     const start = (page - 1) * pageSize;
-    const items = runs.map(({ exceptions: _exceptions, ...rest }) => rest);
+    const items = runs.map((run) => ({ ...run, sourceCount: run.totalRecords }));
     return HttpResponse.json({ data: items.slice(start, start + pageSize), page, pageSize, total: items.length });
   }),
 
   http.get(`${base}/reconciliation/runs/:id`, ({ params }) => {
     const run = runs.find((r) => r.id === params.id);
     if (!run) return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Reconciliation run not found.' } }, { status: 404 });
-    return HttpResponse.json(run);
+    return HttpResponse.json({ ...run, sourceCount: run.totalRecords });
   }),
 
-  http.patch(`${base}/reconciliation/runs/:runId/exceptions/:exceptionId`, async ({ params, request }) => {
-    const run = runs.find((r) => r.id === params.runId);
-    if (!run) return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Reconciliation run not found.' } }, { status: 404 });
-    const exception = run.exceptions.find((e) => e.id === params.exceptionId);
+  http.get(`${base}/reconciliation/exceptions`, () => HttpResponse.json({ data: runs.flatMap((run) => run.exceptions.map((e) => ({ id: e.id, run_id: run.id, classification: e.type, source_reference: e.transactionReference, evidence: { internalId: e.transactionId, expected: e.expected, observed: e.observed, difference: e.difference }, claimed_by: e.owner?.id ?? null, status: e.status, created_at: e.createdAt }))), page: 1, pageSize: 100, total: runs.reduce((sum, run) => sum + run.exceptions.length, 0) })),
+
+  http.get(`${base}/reconciliation/exceptions/:exceptionId`, ({ params }) => {
+    const exception = runs.flatMap((run) => run.exceptions).find((e) => e.id === params.exceptionId);
+    if (!exception) return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Exception not found.' } }, { status: 404 });
+    return HttpResponse.json({ id: exception.id, run_id: exception.runId, classification: exception.type, source_reference: exception.transactionReference, evidence: { internalId: exception.transactionId, expected: exception.expected, observed: exception.observed, difference: exception.difference }, claimed_by: exception.owner?.id ?? null, status: exception.status, created_at: exception.createdAt });
+  }),
+
+  http.post(`${base}/reconciliation/exceptions/:exceptionId/review`, async ({ params, request }) => {
+    const exception = runs.flatMap((run) => run.exceptions).find((e) => e.id === params.exceptionId);
     if (!exception) return HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Exception not found.' } }, { status: 404 });
 
-    const body = (await request.json()) as { status: ReconciliationExceptionStatus; note?: string };
+    const body = (await request.json()) as { status: ReconciliationExceptionStatus; reason?: string };
     const allowed = VALID_NEXT_STATUS[exception.status];
     if (!allowed.includes(body.status)) {
       return HttpResponse.json(
@@ -57,13 +62,13 @@ export const reconciliationHandlers = [
     }
 
     exception.status = body.status;
-    if (body.note?.trim()) {
-      exception.notes.push({ id: `note_${Math.random().toString(36).slice(2, 9)}`, author: 'You', text: body.note.trim(), createdAt: new Date().toISOString() });
+    if (body.reason?.trim()) {
+      exception.notes.push({ id: `note_${Math.random().toString(36).slice(2, 9)}`, author: 'You', text: body.reason.trim(), createdAt: new Date().toISOString() });
     }
     if (!exception.owner) {
       exception.owner = { id: 'usr_owner_01', name: 'Chikondi Banda' };
     }
 
-    return HttpResponse.json(exception);
+    return HttpResponse.json({ accepted: true });
   }),
 ];

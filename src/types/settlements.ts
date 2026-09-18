@@ -1,38 +1,20 @@
-import type { Money } from '@/lib/money';
-
-/**
- * A settlement batches confirmed payments into a payout to the merchant's
- * settlement destination. This is always a distinct, later concept from
- * payment success — see Payment.settlementState in types/payments.ts,
- * which a payment carries independently of its own PaymentStatus.
- */
-export type SettlementStatus = 'PENDING' | 'AVAILABLE' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-
-export type SettlementDestinationType = 'BANK_ACCOUNT' | 'MOBILE_MONEY';
+export type SettlementStatus = 'DRAFT' | 'AWAITING_APPROVAL' | 'APPROVED' | 'EXPORTED' | 'CANCELLED';
 
 export interface SettlementListItem {
   id: string;
-  reference: string;
-  amount: Money;
+  currency: string;
   periodStart: string;
   periodEnd: string;
   status: SettlementStatus;
-  /** Already masked by the backend — the frontend never has the full
-   * account/mobile number for a settlement destination. */
-  destinationMasked: string;
+  grossMinor: string;
+  refundsMinor: string;
+  feesMinor: string;
+  netMinor: string;
   createdAt: string;
-  completedAt: string | null;
-  transactionCount: number;
+  approvedAt: string | null;
+  exportedAt: string | null;
+  externalTransferExecuted: false;
+  sandboxOnly: true;
 }
 
-export interface SettlementTransaction {
-  id: string;
-  reference: string;
-  amount: Money;
-  createdAt: string;
-}
-
-export interface Settlement extends SettlementListItem {
-  destinationType: SettlementDestinationType;
-  transactions: SettlementTransaction[];
-}
+export type Settlement = SettlementListItem;

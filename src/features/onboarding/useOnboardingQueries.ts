@@ -23,6 +23,6 @@ export function useSubmitOnboarding() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => merchantsApi.submitOnboarding(),
-    onSuccess: (data) => queryClient.setQueryData(QUERY_KEY, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
   });
 }

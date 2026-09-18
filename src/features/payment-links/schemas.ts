@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createPaymentLinkSchema = z
   .object({
     name: z.string().min(2, 'Give this link a name'),
-    mode: z.enum(['FIXED', 'CUSTOMER_ENTERED']),
+    mode: z.literal('FIXED'),
     amountMinor: z.number().int().positive().nullable(),
     currency: z.string().min(1),
     description: z.string().max(500).optional(),
@@ -20,6 +20,10 @@ export const createPaymentLinkSchema = z
   .refine((data) => data.reusable || (data.maxSuccessfulPayments == null || data.maxSuccessfulPayments === 1), {
     message: 'A single-use link accepts only one successful payment',
     path: ['maxSuccessfulPayments'],
+  })
+  .refine((data) => !data.expiresAt || new Date(`${data.expiresAt}T23:59:59.999`).getTime() > Date.now(), {
+    message: 'Choose a future expiry date',
+    path: ['expiresAt'],
   });
 
 export type CreatePaymentLinkFormValues = z.infer<typeof createPaymentLinkSchema>;

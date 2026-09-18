@@ -70,7 +70,7 @@ export interface PaymentListItem {
   updatedAt: string;
 }
 
-export type PaymentLinkMode = 'FIXED' | 'CUSTOMER_ENTERED';
+export type PaymentLinkMode = 'FIXED';
 
 export interface PaymentLink {
   id: string;
