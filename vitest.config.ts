@@ -5,6 +5,11 @@ export default mergeConfig(
   viteConfig,
   defineConfig({
     test: {
+      env: {
+        VITE_API_URL: 'http://localhost:4000',
+        VITE_APP_ENV: 'test',
+        VITE_USE_MOCK_API: 'true',
+      },
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/tests/setup.ts'],

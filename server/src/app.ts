@@ -83,6 +83,12 @@ export async function buildApp(config: Config, db: Db, provider: PaymentProvider
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
   app.decorateRequest('actor', null);
   app.decorateRequest('rawWebhookBody', undefined);
+  app.addHook('onRequest', async (request, reply) => {
+    const origin = request.headers.origin;
+    if (origin && origin !== config.FRONTEND_ORIGIN) {
+      return reply.code(403).send(apiError(request, 'ORIGIN_REJECTED', 'Request origin is not allowed.'));
+    }
+  });
   app.addHook('onClose',async()=>{await rateLimits.close();});
   app.addHook('onRequest',async(request,reply)=>{reply.header('X-Request-Id',request.id);const value=request.headers.traceparent;if(typeof value==='string'&&/^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/.test(value)){request.traceId=value.slice(3,35);reply.header('traceparent',value);}});
   const requestStarted=new WeakMap<object,number>();

@@ -4,6 +4,7 @@ import { ApiError, GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE } from './errors
 export interface RequestOptions {
   signal?: AbortSignal;
   idempotencyKey?: string;
+  timeoutMs?: number;
 }
 
 interface RawErrorBody {
@@ -12,6 +13,7 @@ interface RawErrorBody {
     message?: string;
     fields?: Record<string, string>;
     requestId?: string;
+    traceId?: string;
   };
 }
 
@@ -62,6 +64,7 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
     message: body.error?.message ?? GENERIC_ERROR_MESSAGE,
     fields: body.error?.fields,
     requestId: body.error?.requestId ?? response.headers.get('x-request-id') ?? undefined,
+    traceId: body.error?.traceId ?? response.headers.get('traceparent')?.split('-')[1] ?? undefined,
   });
 }
 
@@ -72,6 +75,15 @@ async function request<T>(
   options?: RequestOptions,
 ): Promise<T> {
   const url = `${env.apiUrl}/v1${path}`;
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(options?.signal?.reason);
+  if (options?.signal?.aborted) abortFromCaller();
+  else options?.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options?.timeoutMs ?? 15_000);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -79,13 +91,19 @@ async function request<T>(
       credentials: 'include',
       headers: buildHeaders(body !== undefined, options, method),
       body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: options?.signal,
+      signal: controller.signal,
     });
   } catch (cause) {
+    if (timedOut) {
+      throw new ApiError({ status: 0, code: 'TIMEOUT', message: 'The request timed out. Please try again.' });
+    }
     if (options?.signal?.aborted) {
       throw cause;
     }
     throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE });
+  } finally {
+    clearTimeout(timeout);
+    options?.signal?.removeEventListener('abort', abortFromCaller);
   }
 
   if (response.status === 401) {
