@@ -1,5 +1,7 @@
 import type { MfaChallenge, Session } from '@/types/auth';
 import { apiClient } from './client';
+import { env } from '@/app/config/env';
+import { ApiError } from './errors';
 
 export interface LoginRequest {
   email: string;
@@ -20,7 +22,9 @@ export const authApi = {
     apiClient.post<{ session: Session }>('/auth/mfa/verify', payload),
 
   resendMfa: (payload: { challengeId: string }) =>
-    apiClient.post<{ mfaChallenge: MfaChallenge }>('/auth/mfa/resend', payload),
+    env.useMockApi
+      ? apiClient.post<{ mfaChallenge: MfaChallenge }>('/auth/mfa/resend', payload)
+      : Promise.reject(new ApiError({ status: 503, code: 'FEATURE_UNAVAILABLE', message: 'MFA resend is not available in the sandbox API.' })),
 
   logout: () => apiClient.post<void>('/auth/logout'),
 

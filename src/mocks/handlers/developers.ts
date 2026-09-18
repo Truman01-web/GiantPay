@@ -29,7 +29,7 @@ const mockWebhooks: WebhookEndpoint[] = [
   {
     id: 'wh_01j7wh123',
     url: 'https://example-merchant.mw/api/giantpay-webhook',
-    events: ['payment.status.changed', 'refund.status.changed'],
+    events: ['payment.succeeded', 'payment.failed'],
     enabled: true,
     secretMasked: 'whsec_••••••••••••••••3a9f',
     createdAt: new Date(Date.now() - 15 * 86400000).toISOString(),
@@ -64,8 +64,7 @@ const mockWebhooks: WebhookEndpoint[] = [
 export const developersHandlers = [
   http.get(`${BASE_URL}/developer/api-keys`, () => {
     return HttpResponse.json({
-      items: mockApiKeys,
-      total: mockApiKeys.length,
+      data: mockApiKeys,
     });
   }),
 
@@ -95,8 +94,7 @@ export const developersHandlers = [
 
   http.get(`${BASE_URL}/developer/webhooks`, () => {
     return HttpResponse.json({
-      items: mockWebhooks,
-      total: mockWebhooks.length,
+      data: mockWebhooks.map(({ secretMasked, ...webhook }) => ({ ...webhook, secret: secretMasked })),
     });
   }),
 

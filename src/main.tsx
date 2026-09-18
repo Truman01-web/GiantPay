@@ -8,7 +8,11 @@ async function prepare() {
   if (!env.useMockApi) return;
   const { worker } = await import('./mocks/browser');
   try {
-    await worker.start({ onUnhandledRequest: 'bypass' });
+    await worker.start({
+      onUnhandledRequest(request, print) {
+        if (new URL(request.url).origin === new URL(env.apiUrl).origin) print.error();
+      },
+    });
   } catch (error) {
     // public/mockServiceWorker.js is generated (git-ignored) — `pnpm dev`
     // regenerates it automatically via the `predev` script, but fail loud

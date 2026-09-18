@@ -2,6 +2,7 @@ import type { Paginated } from '@/types/common';
 import type { ReconciliationException, ReconciliationExceptionStatus, ReconciliationRun, ReconciliationRunListItem } from '@/types/reconciliation';
 import { apiClient } from './client';
 import { ApiError } from './errors';
+import { env } from '@/app/config/env';
 
 function isValidException(value: unknown): value is ReconciliationException {
   if (!value || typeof value !== 'object') return false;
@@ -28,6 +29,9 @@ export const reconciliationApi = {
     exceptionId: string,
     payload: { status: ReconciliationExceptionStatus; note?: string },
   ): Promise<ReconciliationException> => {
+    if (!env.useMockApi) {
+      throw new ApiError({ status: 503, code: 'FEATURE_UNAVAILABLE', message: 'Exception updates require the Phase 12 review-workflow adapter.' });
+    }
     const result = await apiClient.patch<unknown>(`/reconciliation/runs/${runId}/exceptions/${exceptionId}`, payload);
     if (!isValidException(result)) {
       throw new ApiError({ status: 0, code: 'INVALID_RESPONSE', message: 'The update could not be confirmed. Please try again.' });

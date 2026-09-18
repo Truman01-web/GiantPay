@@ -1,32 +1,43 @@
 const rawEnv = import.meta.env;
 
 function required(name: string, value: string | undefined): string {
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
 }
 
-const useMockApi = rawEnv.VITE_USE_MOCK_API === 'true';
-const appEnv = rawEnv.VITE_APP_ENV || 'development';
-
-// Gate on our own VITE_APP_ENV rather than Vite's built-in PROD flag: a
-// `vite build` also produces the e2e-test and staging bundles (so they can
-// run against a realistic, minified preview server), and those are allowed
-// to use mocks. Only the actual production environment must never combine
-// a production build with a mocked backend — fail loudly at startup rather
-// than silently serving fake financial data to real users.
-if (useMockApi && appEnv === 'production') {
-  throw new Error(
-    'VITE_USE_MOCK_API=true with VITE_APP_ENV=production. Refusing to start — see docs/frontend-security.md.',
-  );
+function normalizeApiUrl(value: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error('VITE_API_URL must be an absolute HTTP(S) URL.');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error('VITE_API_URL must be a credential-free HTTP(S) origin with no query or fragment.');
+  }
+  return parsed.toString().replace(/\/$/, '');
 }
 
+const mockAllowedEnvironments = new Set(['development', 'test', 'e2e']);
+
+export function validateFrontendEnv(source: { VITE_API_URL?: string; VITE_APP_ENV?: string; VITE_USE_MOCK_API?: string }) {
+  const useMockApi = source.VITE_USE_MOCK_API === 'true';
+  const appEnv = source.VITE_APP_ENV || 'development';
+  if (useMockApi && !mockAllowedEnvironments.has(appEnv)) {
+    throw new Error(
+      `VITE_USE_MOCK_API=true is forbidden in VITE_APP_ENV=${appEnv}. Mocks are restricted to local development and tests.`,
+    );
+  }
+  return { apiUrl: normalizeApiUrl(required('VITE_API_URL', source.VITE_API_URL)), appEnv, useMockApi };
+}
+
+const validated = validateFrontendEnv(rawEnv);
+
 export const env = {
-  apiUrl: required('VITE_API_URL', rawEnv.VITE_API_URL),
+  apiUrl: validated.apiUrl,
   appName: rawEnv.VITE_APP_NAME || 'GiantPay',
-  appEnv,
-  useMockApi,
+  appEnv: validated.appEnv,
+  useMockApi: validated.useMockApi,
   sentryDsn: rawEnv.VITE_SENTRY_DSN || null,
   isProd: Boolean(rawEnv.PROD),
   isDev: Boolean(rawEnv.DEV),

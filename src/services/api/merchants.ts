@@ -1,6 +1,13 @@
 import type { OnboardingDraft } from '@/types/onboarding';
 import { apiClient } from './client';
 import { ApiError } from './errors';
+import { env } from '@/app/config/env';
+
+function requireAggregateOnboardingAdapter(): void {
+  if (!env.useMockApi) {
+    throw new ApiError({ status: 503, code: 'FEATURE_UNAVAILABLE', message: 'Onboarding is temporarily unavailable while the granular sandbox workflow is connected.' });
+  }
+}
 
 export interface UploadDocumentResult {
   id: string;
@@ -19,18 +26,26 @@ function isValidUploadResult(value: unknown): value is UploadDocumentResult {
 }
 
 export const merchantsApi = {
-  getOnboarding: (options?: { signal?: AbortSignal }) =>
-    apiClient.get<OnboardingDraft>('/merchants/onboarding', options),
+  getOnboarding: (options?: { signal?: AbortSignal }) => {
+    requireAggregateOnboardingAdapter();
+    return apiClient.get<OnboardingDraft>('/merchants/onboarding', options);
+  },
 
-  saveOnboardingDraft: (payload: Partial<OnboardingDraft>) =>
-    apiClient.patch<OnboardingDraft>('/merchants/onboarding', payload),
+  saveOnboardingDraft: (payload: Partial<OnboardingDraft>) => {
+    requireAggregateOnboardingAdapter();
+    return apiClient.patch<OnboardingDraft>('/merchants/onboarding', payload);
+  },
 
-  submitOnboarding: () => apiClient.post<OnboardingDraft>('/merchants/onboarding/submit'),
+  submitOnboarding: () => {
+    requireAggregateOnboardingAdapter();
+    return apiClient.post<OnboardingDraft>('/merchants/onboarding/submit');
+  },
 
   uploadDocument: async (
     payload: { category: string; file: File },
     options?: { signal?: AbortSignal; onProgress?: (percent: number) => void },
   ): Promise<UploadDocumentResult> => {
+    requireAggregateOnboardingAdapter();
     const form = new FormData();
     form.append('category', payload.category);
     form.append('file', payload.file);

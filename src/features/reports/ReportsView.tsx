@@ -251,22 +251,22 @@ export function ReportsView() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 title="Gross Volume"
-                value={<AmountDisplay amountMinor={summary.totalVolumeMinor} currency={summary.currency} />}
+                value={<AmountDisplay amountMinor={Number(summary.grossPaymentMinor)} currency={summary.currency} />}
                 subtitle="Aggregated transaction value"
               />
               <StatCard
                 title="Total Transactions"
-                value={summary.totalTransactions.toLocaleString()}
+                value={summary.successfulPaymentCount.toLocaleString()}
                 subtitle="Completed processing events"
               />
               <StatCard
                 title="Calculated Platform Fees"
-                value={<AmountDisplay amountMinor={summary.totalFeesMinor} currency={summary.currency} />}
+                value={<AmountDisplay amountMinor={Number(summary.feeMinor)} currency={summary.currency} />}
                 subtitle="Calculated gateway fees"
               />
               <StatCard
                 title="Net Sandbox Settlement"
-                value={<AmountDisplay amountMinor={summary.netSettlementMinor} currency={summary.currency} />}
+                value={<AmountDisplay amountMinor={Number(summary.netMerchantMinor)} currency={summary.currency} />}
                 subtitle="Simulated batch ledger balance"
               />
             </div>
@@ -330,11 +330,11 @@ export function ReportsView() {
                         {new Date(exp.periodStart).toLocaleDateString()} – {new Date(exp.periodEnd).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">{exp.rowCount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-[var(--color-neutral-500)]">{(exp.fileSizeBytes / 1024).toFixed(1)} KB</td>
+                      <td className="px-4 py-3 text-[var(--color-neutral-500)]">{exp.rowCount.toLocaleString()} rows</td>
                       <td className="px-4 py-3 font-mono text-[11px] text-[var(--color-neutral-500)]">
                         <div className="flex items-center gap-1">
-                          <span>{exp.sha256Hash.slice(0, 12)}...</span>
-                          <CopyButton value={exp.sha256Hash} />
+                          <span>{exp.contentSha256.slice(0, 12)}...</span>
+                          <CopyButton value={exp.contentSha256} />
                         </div>
                       </td>
                       <td className="px-4 py-3">

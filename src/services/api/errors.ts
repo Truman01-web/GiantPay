@@ -9,6 +9,7 @@ export class ApiError extends Error {
   readonly status: number;
   readonly fields?: Record<string, string>;
   readonly requestId?: string;
+  readonly traceId?: string;
 
   constructor(params: {
     code: string;
@@ -16,6 +17,7 @@ export class ApiError extends Error {
     status: number;
     fields?: Record<string, string>;
     requestId?: string;
+    traceId?: string;
   }) {
     super(params.message);
     this.name = 'ApiError';
@@ -23,6 +25,7 @@ export class ApiError extends Error {
     this.status = params.status;
     this.fields = params.fields;
     this.requestId = params.requestId;
+    this.traceId = params.traceId;
   }
 
   get isUnauthorized(): boolean {
