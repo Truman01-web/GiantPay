@@ -16,7 +16,11 @@ COPY server/src server/src
 COPY server/migrations server/migrations
 COPY server/openapi server/openapi
 COPY server/scripts server/scripts
-RUN pnpm --dir server run build && RELEASE_VERSION=$RELEASE_VERSION GIT_SHA=$GIT_SHA SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH RELEASE_OUTPUT_DIR=/workspace/server/release pnpm --dir server run release:metadata && pnpm --filter giantpay-api deploy --prod /opt/giantpay
+RUN pnpm --dir server run build && RELEASE_VERSION=$RELEASE_VERSION GIT_SHA=$GIT_SHA SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH RELEASE_OUTPUT_DIR=/workspace/server/release pnpm --dir server run release:metadata
+RUN mkdir -p /opt/giantpay
+COPY server/package.json server/package-lock.json /opt/giantpay/
+RUN cd /opt/giantpay && npm ci --omit=dev --no-audit --no-fund && \
+    find /opt/giantpay -type f \( -name '*.map' -o -name '.env*' \) -delete
 RUN cp -R server/dist server/migrations server/openapi /opt/giantpay/
 RUN cp -R server/release /opt/giantpay/release
 
