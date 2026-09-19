@@ -24,7 +24,7 @@ export function RegisterForm() {
   const [registration, setRegistration] = useState<RegistrationResult | null>(null);
   const [verified, setVerified] = useState(false);
   const [code, setCode] = useState('');
-  const [now, setNow] = useState(Date.now());
+  const [retrySeconds, setRetrySeconds] = useState(0);
   const registerMutation = useRegisterMutation();
   const verifyOtp = useRegistrationOtpVerifyMutation();
   const resendOtp = useRegistrationOtpResendMutation();
@@ -46,10 +46,13 @@ export function RegisterForm() {
   });
 
   useEffect(() => {
-    if (!registration?.resendAvailableAt) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    if (retrySeconds <= 0) return;
+    const timer = window.setInterval(
+      () => setRetrySeconds((value) => Math.max(0, value - 1)),
+      1000,
+    );
     return () => window.clearInterval(timer);
-  }, [registration?.resendAvailableAt]);
+  }, [retrySeconds]);
 
   if (verified)
     return (
@@ -76,9 +79,6 @@ export function RegisterForm() {
     );
 
   if (registration) {
-    const retrySeconds = registration.resendAvailableAt
-      ? Math.max(0, Math.ceil((new Date(registration.resendAvailableAt).getTime() - now) / 1000))
-      : 0;
     const deliveryConfirmed = Boolean(
       registration.delivery.available && registration.delivery.queued && registration.challengeId,
     );
@@ -114,7 +114,9 @@ export function RegisterForm() {
                   try {
                     await verifyOtp.mutateAsync({ challengeId: registration.challengeId, code });
                     setVerified(true);
-                  } catch {}
+                  } catch (error) {
+                    void error;
+                  }
                 }}
               >
                 <FormField
@@ -154,8 +156,10 @@ export function RegisterForm() {
                     });
                     setRegistration(next);
                     setCode('');
-                    setNow(Date.now());
-                  } catch {}
+                    setRetrySeconds(next.resendAvailableAt ? 60 : 0);
+                  } catch (error) {
+                    void error;
+                  }
                 }}
               >
                 {retrySeconds > 0
@@ -213,13 +217,15 @@ export function RegisterForm() {
           className="mt-5 flex flex-col gap-4"
           onSubmit={handleSubmit(async (values) => {
             try {
-              setRegistration(
-                await registerMutation.mutateAsync({
-                  ...values,
-                  phone: normalizeMalawiPhone(values.phone),
-                }),
-              );
-            } catch {}
+              const result = await registerMutation.mutateAsync({
+                ...values,
+                phone: normalizeMalawiPhone(values.phone),
+              });
+              setRegistration(result);
+              setRetrySeconds(result.resendAvailableAt ? 60 : 0);
+            } catch (error) {
+              void error;
+            }
           })}
           noValidate
         >
