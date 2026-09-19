@@ -23,9 +23,9 @@ describe('createPaymentLinkSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('does not require an amount for a CUSTOMER_ENTERED link', () => {
+  it('rejects the unsupported CUSTOMER_ENTERED mode', () => {
     const result = createPaymentLinkSchema.safeParse({ ...base, mode: 'CUSTOMER_ENTERED', amountMinor: null });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it('rejects a single-use link with more than one max successful payment', () => {

@@ -40,7 +40,8 @@ suite('team access database controls', () => {
           !x.startsWith('012_') &&
           !x.startsWith('013_') &&
           !x.startsWith('014_') &&
-          !x.startsWith('015_'),
+          !x.startsWith('015_') &&
+          !x.startsWith('016_'),
       )
       .sort())
       await db.query(await readFile(resolve('migrations', name), 'utf8'));

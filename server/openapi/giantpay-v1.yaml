@@ -484,6 +484,46 @@ paths:
           }
         '422': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/registration/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyRegistrationOtp
+      description: Verifies a single-use six-digit registration email code. Codes expire after ten minutes and are limited to five attempts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeId, code]
+              properties:
+                challengeId: { type: string, minLength: 32 }
+                code: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200': { description: Registration email verified }
+        '401': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/registration/resend:
+    post:
+      tags: [Authentication]
+      operationId: resendRegistrationOtp
+      description: Invalidates the active registration code and queues a replacement only when a delivery adapter is available. A 60-second cooldown and rate limits apply.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeId]
+              properties:
+                challengeId: { type: string, minLength: 32 }
+      responses:
+        '202': { description: Request accepted with explicit delivery availability }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/login:
     post:
       tags: [Authentication]

@@ -82,10 +82,10 @@ describe('ReconciliationRunDetail', () => {
     // Dialog closes and the row now reflects the backend-confirmed new
     // status — never assumed successful just because the button was clicked.
     await waitFor(() => expect(screen.queryByText('Update exception')).not.toBeInTheDocument());
-    expect(await screen.findByText('Investigating')).toBeInTheDocument();
+    expect(await screen.findByText('Under review')).toBeInTheDocument();
   });
 
-  it('requires a note before resolving or escalating', async () => {
+  it('requires a note before resolving or dismissing', async () => {
     // OPEN only ever offers "investigate" or "escalate" (see
     // NEXT_STATUS_OPTIONS in schemas.ts) — "Resolve" only becomes
     // available from INVESTIGATING, so this drives that transition first
@@ -101,7 +101,7 @@ describe('ReconciliationRunDetail', () => {
     await screen.findByText('Update exception');
     await userEvent.click(screen.getByRole('button', { name: /save update/i })); // default = "Start investigating", no note needed
     await waitFor(() => expect(screen.queryByText('Update exception')).not.toBeInTheDocument());
-    await screen.findByText('Investigating');
+    await screen.findByText('Under review');
 
     await userEvent.click(screen.getAllByRole('button', { name: /^update$/i })[0]);
     await screen.findByText('Update exception');
@@ -117,7 +117,7 @@ describe('ReconciliationRunDetail', () => {
     const exception = withExceptions.exceptions.find((e) => e.status === 'OPEN')!;
 
     server.use(
-      http.patch(`${base}/reconciliation/runs/${withExceptions.id}/exceptions/${exception.id}`, () =>
+      http.post(`${base}/reconciliation/exceptions/${exception.id}/review`, () =>
         HttpResponse.json({ error: { code: 'INTERNAL', message: 'boom' } }, { status: 500 }),
       ),
     );

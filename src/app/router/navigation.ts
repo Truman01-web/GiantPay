@@ -52,9 +52,9 @@ export const MERCHANT_NAV: NavGroup[] = [
   {
     label: 'Organization',
     items: [
-      { label: 'Team', to: '/team', icon: Users, permission: 'team:manage' },
+      { label: 'Team', to: '/team', icon: Users, permission: 'team:read' },
       { label: 'Support', to: '/support', icon: LifeBuoy, permission: 'support:read' },
-      { label: 'Settings', to: '/settings', icon: Settings, permission: 'settings:manage' },
+      { label: 'Settings', to: '/settings', icon: Settings, permission: 'security:manage:self' },
     ],
   },
 ];

@@ -1,6 +1,6 @@
 export type ReconciliationRunStatus = 'RUNNING' | 'COMPLETED' | 'FAILED';
 
-export type ReconciliationExceptionStatus = 'OPEN' | 'INVESTIGATING' | 'ACTION_REQUIRED' | 'RESOLVED' | 'ESCALATED';
+export type ReconciliationExceptionStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'DISMISSED';
 
 export type ReconciliationExceptionType =
   | 'AMOUNT_MISMATCH'
@@ -46,6 +46,7 @@ export interface ReconciliationException {
   status: ReconciliationExceptionStatus;
   createdAt: string;
   notes: ReconciliationExceptionNote[];
+  evidenceRef?: string | null;
 }
 
 export interface ReconciliationRun extends ReconciliationRunListItem {

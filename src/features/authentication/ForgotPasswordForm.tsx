@@ -29,10 +29,10 @@ export function ForgotPasswordForm() {
       <Card>
         <CardContent className="text-center">
           <Mail className="mx-auto h-10 w-10 text-[var(--color-blue-600)]" aria-hidden="true" />
-          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Check your email</h1>
+          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Request accepted</h1>
           {/* Deliberately does not confirm whether the account exists. */}
           <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
-            If an account exists for that address, we&apos;ve sent instructions to reset your password.
+            If an account exists for that address, the request was accepted. External email delivery is not enabled in this sandbox.
           </p>
           <Link to="/login" className="mt-4 inline-block text-[length:var(--text-label)] font-medium text-[var(--color-blue-600)] hover:underline">
             Back to sign in
@@ -46,14 +46,14 @@ export function ForgotPasswordForm() {
     <Card>
       <CardContent>
         <h1 className="text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Reset your password</h1>
-        <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Enter your email and we&apos;ll send you a reset link.</p>
+        <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Enter your email to request a password reset.</p>
 
         <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
           <FormField label="Email address" required error={errors.email?.message}>
             {(fp) => <Input type="email" autoComplete="email" invalid={Boolean(errors.email)} {...fp} {...register('email')} />}
           </FormField>
           <Button type="submit" loading={forgotPassword.isPending}>
-            Send reset link
+            Request password reset
           </Button>
         </form>
 
