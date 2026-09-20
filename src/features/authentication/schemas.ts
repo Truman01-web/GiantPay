@@ -24,7 +24,7 @@ export const registerSchema = z
       .string()
       .min(1, 'Phone number is required')
       .regex(/^\+265\s?\d{2,3}\s?\d{3}\s?\d{3,4}$/, 'Enter a valid Malawi phone number, e.g. +265 991 234 567'),
-    password: z.string().min(10, 'Use at least 10 characters'),
+    password: z.string().min(12, 'Use at least 12 characters'),
     confirmPassword: z.string().min(1, 'Confirm your password'),
     acceptTerms: z.boolean().refine((v) => v === true, { message: 'You must accept the Terms and Privacy Policy' }),
   })
@@ -41,7 +41,7 @@ export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export const resetPasswordSchema = z
   .object({
-    password: z.string().min(10, 'Use at least 10 characters'),
+    password: z.string().min(12, 'Use at least 12 characters'),
     confirmPassword: z.string().min(1, 'Confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {

@@ -1,4 +1,4 @@
-# Phase 12 frontend/backend integration matrix
+# Phase 13 merchant workflow contract matrix
 
 The implemented backend routes and `server/openapi/giantpay-v1.yaml` are authoritative. MSW is a test/local-development transport only. A gap is never filled with mock data in real mode.
 
@@ -14,9 +14,9 @@ The implemented backend routes and `server/openapi/giantpay-v1.yaml` are authori
 | Payment links | `paymentLinksApi` | `/v1/payment-links*` | read/manage permissions | Page/pageSize; create idempotent | Compatible |
 | Refunds | `refundsApi` | `/v1/refunds*` | read/request permissions | Backend ceiling and maker-checker state; create idempotent | Compatible |
 | Refund approval | `adminApi` | `/v1/admin/refunds/*` | Platform refund permission | Controlled decision | UI intentionally unavailable pending platform adapter |
-| Reconciliation | `reconciliationApi` | `/v1/reconciliation/runs*`, `/exceptions/:id/review` | reconciliation permissions | Page/pageSize; backend transition rules | List transport exists; detail and legacy PATCH mutation require adapters |
-| Settlements | `settlementsApi` | `/v1/settlements*` | settlement permissions | Sandbox-only batch evidence; controlled actions | Reads compatible; actions intentionally unavailable |
-| Onboarding | `merchantsApi` | Granular `/v1/merchants/onboarding/*` | onboarding permissions | Profiles, principals, evidence, questionnaire, revisions | Aggregate mock-era PATCH/upload adapter remains a gap |
+| Reconciliation | `reconciliationApi` | `/v1/reconciliation/runs*`, `/exceptions*`, `/exceptions/:id/review`, `/adjustments*`, `/ledger/integrity` | `reconciliation:read/manage/approve`, `ledger:integrity` | Separate exception fetches; review and adjustment proposal use fresh idempotency keys; maker-checker remains server enforced | Phase 13 contract adapter completed; adjustment controls are service-ready but not exposed as full screens |
+| Settlements | `settlementsApi` | `/v1/settlements*` | `settlements:read/manage/approve` | Integer minor-unit strings; sandbox-only batches; create/cancel idempotent; independent approval server enforced | Phase 13 contract and read screens aligned; full action UI remains pending |
+| Onboarding | `merchantsApi` | Granular `/v1/merchants/onboarding/*` | `onboarding:read/write/submit` | Route methods cover profile, principals, questionnaire `2026-01`, evidence metadata, submit, information response, resubmit and history | Partial: granular route methods are available, but complete snapshot adaptation and wizard UI for every section remain pending |
 | Team/roles | `teamApi` | `/v1/team/*`, `/v1/roles*` | team/role permissions | Backend role IDs and `data` pages | Backend supported; UI intentionally unavailable pending adapter |
 | API keys | `developersApi` | `/v1/developer/api-keys*` | `developer.apiKeys:manage` | `payments:read` scope; plaintext key once | Adapter implemented |
 | Webhooks | `developersApi` | `/v1/developer/webhooks*` | `developer.webhooks:manage` | Name, HTTPS URL, backend event enum; secret once | Adapter implemented |
@@ -27,7 +27,9 @@ The implemented backend routes and `server/openapi/giantpay-v1.yaml` are authori
 ## Known implementation/OpenAPI differences
 
 - Phase 7-11 team, support, operations, dispute and notification routes are implemented and integration-tested but are not yet comprehensively represented in OpenAPI. OpenAPI must be expanded before treating them as a public contract.
-- Aggregate onboarding and the reconciliation exception PATCH route are MSW-era shapes and do not match the granular backend. Real mode never falls back to MSW for them.
+- Secure binary evidence storage is not configured. Real mode registers metadata only and explicitly rejects the legacy upload action; it never fabricates upload success.
+- Customer-entered payment links remain planned because the backend accepts fixed amounts only. Date-only expiry values are converted from local end-of-day to ISO UTC.
+- TOTP challenges cannot be resent. Registration and password recovery state only that requests were accepted because external email delivery is disabled.
 - API keys currently expose only the backend-declared `payments:read` sandbox scope.
 - External email/SMS, real payouts and live payment providers remain disabled.
 

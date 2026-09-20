@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/feedback/Alert';
 import { ApiError } from '@/services/api/errors';
-import { useMfaVerifyMutation, useResendMfaMutation } from './useAuthMutations';
+import { useMfaVerifyMutation } from './useAuthMutations';
 import type { MfaChallenge } from '@/types/auth';
 
 function useCountdown(targetIso: string) {
@@ -20,15 +20,13 @@ function useCountdown(targetIso: string) {
 }
 
 export function MfaChallengeForm({ challenge, onVerified }: { challenge: MfaChallenge; onVerified: () => void }) {
-  const [current, setCurrent] = useState(challenge);
+  const [current] = useState(challenge);
   const [digits, setDigits] = useState<string[]>(Array(current.codeLength).fill(''));
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const verify = useMfaVerifyMutation();
-  const resend = useResendMfaMutation();
 
   const expiresInMs = useCountdown(current.expiresAt);
-  const resendInMs = useCountdown(current.resendAvailableAt);
   const expired = expiresInMs <= 0;
 
   const code = digits.join('');
@@ -67,13 +65,6 @@ export function MfaChallengeForm({ challenge, onVerified }: { challenge: MfaChal
     }
   }
 
-  async function handleResend() {
-    const result = await resend.mutateAsync({ challengeId: current.challengeId });
-    setCurrent(result.mfaChallenge);
-    setDigits(Array(result.mfaChallenge.codeLength).fill(''));
-    inputRefs.current[0]?.focus();
-  }
-
   const errorMessage =
     verify.error instanceof ApiError
       ? verify.error.message
@@ -91,7 +82,7 @@ export function MfaChallengeForm({ challenge, onVerified }: { challenge: MfaChal
 
         {expired && (
           <div className="mt-4">
-            <Alert variant="warning">This code has expired. Request a new one below.</Alert>
+            <Alert variant="warning">This TOTP challenge has expired. Sign in again to start a new challenge.</Alert>
           </div>
         )}
         {!expired && errorMessage && (
@@ -131,17 +122,9 @@ export function MfaChallengeForm({ challenge, onVerified }: { challenge: MfaChal
           Verify
         </Button>
 
-        <div className="mt-4 flex items-center justify-between text-[length:var(--text-label)]">
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={resendInMs > 0 || resend.isPending}
-            className="font-medium text-[var(--color-blue-600)] hover:underline disabled:text-[var(--color-neutral-400)] disabled:no-underline"
-          >
-            {resendInMs > 0 ? `Resend available in ${Math.ceil(resendInMs / 1000)}s` : 'Resend code'}
-          </button>
-          <span className="text-[var(--color-neutral-500)]">Lost access? Use a recovery code.</span>
-        </div>
+        <p className="mt-4 text-[length:var(--text-label)] text-[var(--color-neutral-500)]">
+          Authenticator-app TOTP codes cannot be resent. Open your authenticator app for the current code.
+        </p>
       </CardContent>
     </Card>
   );

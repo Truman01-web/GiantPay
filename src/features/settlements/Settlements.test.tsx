@@ -29,18 +29,18 @@ function renderApp(initialPath: string) {
 describe('SettlementsList', () => {
   it('lists real settlements derived from confirmed payments', async () => {
     renderApp('/settlements');
-    await waitFor(() => expect(screen.getByText(MOCK_SETTLEMENTS[0].reference)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(MOCK_SETTLEMENTS[0].id)).toBeInTheDocument());
   });
 
   it('navigates to the detail page on row click', async () => {
     renderApp('/settlements');
-    const reference = MOCK_SETTLEMENTS[0].reference;
+    const reference = MOCK_SETTLEMENTS[0].id;
     await waitFor(() => expect(screen.getByText(reference)).toBeInTheDocument());
 
     await userEvent.click(screen.getByText(reference));
     await waitFor(() => expect(screen.getAllByText(reference).length).toBeGreaterThan(0));
     // Detail-only content proves we actually navigated, not just re-rendered the list.
-    expect(await screen.findByText('Included transactions')).toBeInTheDocument();
+    expect(await screen.findByText(/sandbox accounting record only/i)).toBeInTheDocument();
   });
 
   it('shows an empty state when there are no settlements', async () => {
@@ -58,10 +58,10 @@ describe('SettlementsList', () => {
 
 describe('SettlementDetail', () => {
   it('shows payment-vs-settlement distinction messaging for a non-completed settlement', async () => {
-    const pending = MOCK_SETTLEMENTS.find((s) => s.status !== 'COMPLETED');
+    const pending = MOCK_SETTLEMENTS.find((s) => s.status !== 'EXPORTED');
     if (!pending) return; // dataset is date-dependent; skip if today's seed has none
     renderApp(`/settlements/${pending.id}`);
-    expect(await screen.findByText(/separate payout step/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no external bank or mobile-money transfer/i)).toBeInTheDocument();
   });
 
   it('shows a not-found error for an unknown settlement id', async () => {

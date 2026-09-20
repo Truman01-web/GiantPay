@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
@@ -32,15 +32,15 @@ export function UpdateExceptionDialog({
     setValue,
     formState: { errors },
   } = useForm<UpdateExceptionFormValues>({
-    resolver: zodResolver(updateExceptionSchema),
-    defaultValues: { status: options[0]?.value ?? exception.status, note: '' },
+    resolver: zodResolver(updateExceptionSchema) as Resolver<UpdateExceptionFormValues>,
+    defaultValues: { status: (options[0]?.value ?? 'UNDER_REVIEW') as UpdateExceptionFormValues['status'], note: '', evidenceRef: '' },
   });
 
   const selectedStatus = watch('status');
 
   async function onSubmit(values: UpdateExceptionFormValues) {
     try {
-      await updateException.mutateAsync({ exceptionId: exception.id, status: values.status, note: values.note || undefined });
+      await updateException.mutateAsync({ exceptionId: exception.id, status: values.status, note: values.note || undefined, evidenceRef: values.evidenceRef || undefined });
       onSuccess();
     } catch {
       // Surfaced via updateException.error below.
@@ -93,11 +93,17 @@ export function UpdateExceptionDialog({
 
           <FormField
             label="Note"
-            required={selectedStatus === 'RESOLVED' || selectedStatus === 'ESCALATED'}
+            required={selectedStatus === 'RESOLVED' || selectedStatus === 'DISMISSED'}
             error={errors.note?.message}
           >
             {(fp) => <Textarea rows={3} placeholder="What did you find, or what changed?" {...fp} {...register('note')} />}
           </FormField>
+
+          {(selectedStatus === 'RESOLVED' || selectedStatus === 'DISMISSED') && (
+            <FormField label="Evidence reference" required error={errors.evidenceRef?.message}>
+              {(fp) => <input className="h-10 rounded-[var(--radius-sm)] border border-[var(--color-neutral-300)] px-3" {...fp} {...register('evidenceRef')} />}
+            </FormField>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

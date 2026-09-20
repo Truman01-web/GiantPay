@@ -40,7 +40,9 @@ suite('team access database controls', () => {
           !x.startsWith('012_') &&
           !x.startsWith('013_') &&
           !x.startsWith('014_') &&
-          !x.startsWith('015_'),
+          !x.startsWith('015_') &&
+          !x.startsWith('016_') &&
+          !x.startsWith('017_'),
       )
       .sort())
       await db.query(await readFile(resolve('migrations', name), 'utf8'));
@@ -68,6 +70,9 @@ suite('team access database controls', () => {
     );
     await db.query(
       await readFile(resolve('migrations/015_production_readiness_observability.sql'), 'utf8'),
+    );
+    await db.query(
+      await readFile(resolve('migrations/017_team_member_created_at.sql'), 'utf8'),
     );
     await db.query(
       `INSERT INTO users(id,merchant_id,name,email,normalized_email,password_hash,role,permissions,status) VALUES('invitee','m1','Invitee','invitee@test.invalid','invitee@test.invalid','x','VIEWER','{}','REMOVED')`,
@@ -137,7 +142,8 @@ suite('team access database controls', () => {
   it('isolates members and denies API keys through human-session guards', async () => {
     const own = await app.inject({ url: '/v1/team/members', headers: headers('one-token') });
     expect(own.statusCode, own.body).toBe(200);
-    expect(own.json().data.every((x: any) => x.id !== 'u2')).toBe(true);
+    expect(own.json().items.every((x: { id: string }) => x.id !== 'u2')).toBe(true);
+    expect(own.json().items.find((member: { id: string }) => member.id === 'u1')).toMatchObject({ roleId: expect.any(String), role: 'Owner', mfaEnabled: false });
     expect(
       (await app.inject({ url: '/v1/team/members/u2', headers: headers('one-token') })).statusCode,
     ).toBe(404);
@@ -225,6 +231,14 @@ suite('team access database controls', () => {
       payload: { name: 'Auditor', permissions: ['reports:read'] },
     });
     expect(made.statusCode, made.body).toBe(201);
+    const duplicate = await app.inject({
+      method: 'POST',
+      url: '/v1/roles',
+      headers: { ...headers('one-token'), 'content-type': 'application/json' },
+      payload: { name: 'Auditor', permissions: ['reports:read'] },
+    });
+    expect(duplicate.statusCode, duplicate.body).toBe(409);
+    expect(duplicate.json().error.code).toBe('ROLE_NAME_EXISTS');
     expect(
       (
         await app.inject({

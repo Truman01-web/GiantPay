@@ -43,7 +43,7 @@ export function OnboardingWizard() {
 
   return (
     <div>
-      <PageHeader title="Complete your merchant application" description="This information is reviewed by GiantPay before sandbox and production access are granted." />
+      <PageHeader title="Complete your merchant application" description="This is reviewed internally for sandbox access only; it is not regulatory, bank, network, or provider approval." />
       <Card>
         <CardContent>
           <StepProgress currentStep={currentStep} />

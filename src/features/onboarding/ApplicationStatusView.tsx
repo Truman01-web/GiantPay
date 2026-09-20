@@ -8,7 +8,7 @@ const NEXT_ACTION: Record<string, string> = {
   SUBMITTED: 'GiantPay has received your application and will begin review shortly.',
   UNDER_REVIEW: 'Our team is reviewing your application. This typically takes a few business days.',
   INFORMATION_REQUIRED: 'We need more information before we can continue. Check your email for details.',
-  APPROVED: 'Your application is approved. Sandbox access is available now, with production access enabled per your account settings.',
+  APPROVED: 'Approved for internal sandbox use only. This is not regulatory, bank, network, provider, or production approval.',
   REJECTED: 'Your application was not approved. Contact support for details.',
   SUSPENDED: 'Your merchant account is currently suspended. Contact support to resolve this.',
 };

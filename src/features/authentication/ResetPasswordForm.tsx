@@ -65,7 +65,7 @@ export function ResetPasswordForm() {
         )}
 
         <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <FormField label="New password" required help="At least 10 characters" error={errors.password?.message}>
+          <FormField label="New password" required help="At least 12 characters" error={errors.password?.message}>
             {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.password)} {...fp} {...register('password')} />}
           </FormField>
           <FormField label="Confirm new password" required error={errors.confirmPassword?.message}>

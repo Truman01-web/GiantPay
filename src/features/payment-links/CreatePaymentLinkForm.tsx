@@ -48,7 +48,7 @@ export function CreatePaymentLinkForm() {
         currency: values.currency,
         description: values.description || undefined,
         customerReference: values.customerReference || undefined,
-        expiresAt: values.expiresAt || undefined,
+        expiresAt: values.expiresAt ? new Date(`${values.expiresAt}T23:59:59.999`).toISOString() : undefined,
         reusable: values.reusable,
         maxSuccessfulPayments: values.reusable ? (values.maxSuccessfulPayments ?? undefined) : 1,
         redirectUrl: values.redirectUrl || undefined,
@@ -66,7 +66,7 @@ export function CreatePaymentLinkForm() {
           <CardContent className="text-center">
             <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--color-green-600)]" aria-hidden="true" />
             <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Payment link created</h1>
-            <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Share this link to start collecting payments.</p>
+            <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Share this link to test sandbox payment collection.</p>
 
             <div className="mt-5 flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-3">
               <span className="truncate text-[length:var(--text-label)] text-[var(--color-neutral-700)]">{created.url}</span>
@@ -118,9 +118,9 @@ export function CreatePaymentLinkForm() {
                       <label className="flex items-center gap-2 text-[length:var(--text-body)] text-[var(--color-neutral-900)]">
                         <RadioGroupItem value="FIXED" /> Fixed amount
                       </label>
-                      <label className="flex items-center gap-2 text-[length:var(--text-body)] text-[var(--color-neutral-900)]">
-                        <RadioGroupItem value="CUSTOMER_ENTERED" /> Customer enters amount
-                      </label>
+                      <span className="flex items-center gap-2 text-[length:var(--text-body)] text-[var(--color-neutral-400)]" aria-disabled="true">
+                        Customer enters amount (planned)
+                      </span>
                     </RadioGroup>
                   </fieldset>
                 )}
@@ -167,7 +167,7 @@ export function CreatePaymentLinkForm() {
                 </FormField>
               )}
 
-              <FormField label="Expiry date" optional error={errors.expiresAt?.message}>
+              <FormField label="Expiry date" optional help="Expires at 23:59:59 in your local timezone; the API receives UTC." error={errors.expiresAt?.message}>
                 {(fp) => <Input type="date" {...fp} {...register('expiresAt')} />}
               </FormField>
 
