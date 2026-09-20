@@ -135,7 +135,17 @@ paths:
       tags: [Merchant support]
       summary: List the authenticated merchant's support cases
       security: [{ cookieSession: [] }]
-      responses: {'200': {description: Tenant-scoped cases}, '401': {$ref: '#/components/responses/Error'}}
+      parameters:
+        - {name: search, in: query, schema: {type: string, maxLength: 160}, description: 'Case reference, subject, GiantPay transaction reference, merchant reference, or approved customer reference.'}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/SupportStatus'}}
+        - {name: priority, in: query, schema: {$ref: '#/components/schemas/SupportPriority'}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+        - {name: sort, in: query, schema: {type: string, enum: [updatedAt, createdAt], default: updatedAt}}
+        - {name: direction, in: query, schema: {type: string, enum: [asc, desc], default: desc}}
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+      responses: {'200': {description: Tenant-scoped cases, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCasePage'}}}}, '401': {$ref: '#/components/responses/Error'}, '422': {$ref: '#/components/responses/Error'}}
     post:
       operationId: createMerchantSupportCase
       tags: [Merchant support]
@@ -143,7 +153,8 @@ paths:
       description: Requires support:write, CSRF, and Idempotency-Key. Do not include passwords, OTPs, secrets, or complete payment credentials.
       security: [{ cookieSession: [] }]
       parameters: [{name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
-      responses: {'201': {description: Durable case}, '409': {$ref: '#/components/responses/Error'}}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateSupportCase'}}}}
+      responses: {'201': {description: Durable case, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCase'}}}}, '409': {$ref: '#/components/responses/Error'}, '422': {$ref: '#/components/responses/Error'}}
   /support/cases/{id}:
     get:
       operationId: getMerchantSupportCase
@@ -151,7 +162,7 @@ paths:
       summary: View a tenant-owned case and public messages; internal notes are never returned
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
-      responses: {'200': {description: Public case view}, '404': {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: Public case view, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCaseDetail'}}}}, '404': {$ref: '#/components/responses/Error'}}
   /support/cases/{id}/replies:
     post:
       operationId: createMerchantSupportReply
@@ -159,6 +170,7 @@ paths:
       summary: Add an idempotent public merchant reply
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportMessageInput'}}}}
       responses: {'201': {description: Public reply}, '404': {$ref: '#/components/responses/Error'}}
   /support/cases/{id}/status:
     post:
@@ -175,7 +187,23 @@ paths:
       summary: List support cases across merchants with stable filtering
       description: Human platform session with platform.support.read only; API keys and merchant sessions are denied.
       security: [{ cookieSession: [] }]
-      responses: {'200': {description: Redacted support cases}, '403': {$ref: '#/components/responses/Error'}}
+      parameters:
+        - {name: search, in: query, schema: {type: string, maxLength: 160}}
+        - {name: merchantId, in: query, schema: {type: string}}
+        - {name: assignedTo, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/SupportStatus'}}
+        - {name: priority, in: query, schema: {$ref: '#/components/schemas/SupportPriority'}}
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+      responses: {'200': {description: Redacted support cases, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCasePage'}}}}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/support/assignees:
+    get:
+      operationId: listPlatformSupportAssignees
+      tags: [Platform administration]
+      summary: List active platform staff explicitly eligible for support assignment
+      description: Requires platform.support.assign and returns only safe identifiers and display names.
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Eligible support assignees}, '403': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}:
     get:
       operationId: getPlatformSupportCase
@@ -183,7 +211,7 @@ paths:
       summary: View public messages, private internal notes, and append-only history
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
-      responses: {'200': {description: Authorized staff view}, '404': {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: Authorized staff view with internal activity, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCaseDetail'}}}}, '404': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/replies:
     post:
       operationId: createPlatformSupportReply
@@ -191,6 +219,7 @@ paths:
       summary: Add an idempotent public staff reply
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportMessageInput'}}}}
       responses: {'201': {description: Public reply}, '403': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/internal-notes:
     post:
@@ -199,6 +228,7 @@ paths:
       summary: Add an idempotent private staff note that is never merchant-visible
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportMessageInput'}}}}
       responses: {'201': {description: Internal note recorded}, '403': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/assign:
     post:
@@ -207,6 +237,7 @@ paths:
       summary: Assign or reassign eligible active platform staff
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportAssignmentInput'}}}}
       responses: {'200': {description: Assignment recorded}, '409': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/status:
     post:
@@ -216,6 +247,7 @@ paths:
       security: [{ cookieSession: [] }]
       description: Requires Idempotency-Key and expectedStatus. Identical retries replay the durable response; changed input conflicts. Includes resolution, closure, and reopening.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportStatusInput'}}}}
       responses: {'200': {description: Transition recorded}, '409': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/priority:
     post:
@@ -225,6 +257,7 @@ paths:
       security: [{ cookieSession: [] }]
       description: Requires Idempotency-Key and expectedPriority for exactly-one-winner concurrency.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportPriorityInput'}}}}
       responses: {'200': {description: Priority history recorded}, '409': {$ref: '#/components/responses/Error'}}
   /platform/merchants:
     get:
@@ -1261,6 +1294,46 @@ components:
       description: Normalized error response
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   schemas:
+    SupportStatus: {type: string, enum: [OPEN, IN_PROGRESS, WAITING_ON_MERCHANT, WAITING_FOR_INTERNAL, ESCALATED, RESOLVED, CLOSED]}
+    SupportPriority: {type: string, enum: [LOW, NORMAL, HIGH, URGENT]}
+    SupportCategory: {type: string, enum: [ACCOUNT, ONBOARDING, PAYMENT, REFUND, SETTLEMENT, RECONCILIATION, API_INTEGRATION, WEBHOOK, SECURITY, OTHER]}
+    SupportMessageInput: {type: object, additionalProperties: false, required: [message], properties: {message: {type: string, minLength: 1, maxLength: 10000}}}
+    CreateSupportCase:
+      type: object
+      additionalProperties: false
+      required: [category, subject, message]
+      properties: {category: {$ref: '#/components/schemas/SupportCategory'}, subject: {type: string, minLength: 3, maxLength: 160}, message: {type: string, minLength: 1, maxLength: 10000}, transactionId: {type: string}}
+    SupportAssignmentInput: {type: object, additionalProperties: false, required: [staffId, reason], properties: {staffId: {type: string}, expectedAssigneeId: {type: [string, 'null']}, reason: {type: string, minLength: 3, maxLength: 1000}}}
+    SupportStatusInput: {type: object, additionalProperties: false, required: [status, expectedStatus, reason], properties: {status: {$ref: '#/components/schemas/SupportStatus'}, expectedStatus: {$ref: '#/components/schemas/SupportStatus'}, reason: {type: string, minLength: 3, maxLength: 1000, description: Required resolution summary when status is RESOLVED.}}}
+    SupportPriorityInput: {type: object, additionalProperties: false, required: [priority, expectedPriority, reason], properties: {priority: {$ref: '#/components/schemas/SupportPriority'}, expectedPriority: {$ref: '#/components/schemas/SupportPriority'}, reason: {type: string, minLength: 3, maxLength: 1000}}}
+    SupportCase:
+      type: object
+      required: [id, reference, merchantId, category, subject, status, priority, createdAt, updatedAt]
+      properties:
+        id: {type: string}
+        reference: {type: string}
+        merchantId: {type: string}
+        category: {$ref: '#/components/schemas/SupportCategory'}
+        subject: {type: string}
+        status: {$ref: '#/components/schemas/SupportStatus'}
+        priority: {$ref: '#/components/schemas/SupportPriority'}
+        assignedOwner: {type: [object, 'null'], additionalProperties: false, properties: {id: {type: string}, name: {type: string}}}
+        linkedTransaction: {type: [object, 'null'], additionalProperties: false, properties: {id: {type: string}, reference: {type: string}, merchantReference: {type: [string, 'null']}, status: {type: string}}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        escalatedAt: {type: [string, 'null'], format: date-time}
+        resolvedAt: {type: [string, 'null'], format: date-time}
+        closedAt: {type: [string, 'null'], format: date-time}
+        resolutionSummary: {type: [string, 'null']}
+    SupportActivity:
+      type: object
+      required: [id, type, visibility, actorId, body, createdAt]
+      properties: {id: {type: string}, type: {type: string, enum: [MESSAGE, NOTE, STATUS, ASSIGNMENT, PRIORITY]}, visibility: {type: string, enum: [MERCHANT, INTERNAL]}, actorId: {type: string}, body: {type: string}, from: {type: [string, 'null']}, to: {type: [string, 'null']}, createdAt: {type: string, format: date-time}}
+    SupportCaseDetail:
+      allOf:
+        - {$ref: '#/components/schemas/SupportCase'}
+        - {type: object, required: [description, timeline], properties: {description: {type: string}, timeline: {type: array, items: {$ref: '#/components/schemas/SupportActivity'}}}}
+    SupportCasePage: {type: object, required: [data, total, nextCursor], properties: {data: {type: array, items: {$ref: '#/components/schemas/SupportCase'}}, total: {type: integer, minimum: 0}, nextCursor: {type: [string, 'null']}}}
     CreateDisputeInput:
       type: object
       required: [paymentId, source, reasonCategory, amountMinor, currency, summary]

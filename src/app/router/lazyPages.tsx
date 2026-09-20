@@ -49,6 +49,10 @@ export const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsP
 export const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 export const TeamPage = lazy(() => import('@/pages/TeamPage'));
 export const RolesPage = lazy(() => import('@/pages/RolesPage'));
+export const SupportPage = lazy(() => import('@/pages/SupportPage'));
+export const SupportDetailPage = lazy(() => import('@/pages/SupportDetailPage'));
+export const AdminSupportPage = lazy(() => import('@/pages/admin/AdminSupportPage'));
+export const AdminSupportDetailPage = lazy(() => import('@/pages/admin/AdminSupportDetailPage'));
 
 export const DeveloperDashboardPage = lazy(() => import('@/pages/DeveloperDashboardPage'));
 export const DeveloperApiKeysPage = lazy(() => import('@/pages/DeveloperApiKeysPage'));
