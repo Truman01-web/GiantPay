@@ -8,6 +8,7 @@ const mockMembers = [
     id: 'usr_01j7usr001',
     name: 'Chikondi Banda',
     email: 'chikondi.banda@kambazapay.mw',
+    roleId: 'role_owner',
     role: 'Owner',
     status: 'ACTIVE',
     mfaEnabled: true,
@@ -18,6 +19,7 @@ const mockMembers = [
     id: 'usr_01j7usr002',
     name: 'Grace Phiri',
     email: 'grace.phiri@kambazapay.mw',
+    roleId: 'role_viewer',
     role: 'Viewer',
     status: 'ACTIVE',
     mfaEnabled: false,
@@ -30,6 +32,7 @@ const mockInvitations = [
   {
     id: 'inv_01j7inv001',
     email: 'finance@kambazapay.mw',
+    roleId: 'role_finance',
     role: 'Finance',
     status: 'PENDING',
     expiresAt: new Date(Date.now() + 72 * 3600000).toISOString(),
@@ -58,6 +61,7 @@ const mockRoles = [
       'roles:manage',
     ],
     systemRole: true,
+    status: 'ACTIVE',
     memberCount: 1,
   },
   {
@@ -71,6 +75,7 @@ const mockRoles = [
       'developer.webhooks:manage',
     ],
     systemRole: true,
+    status: 'ACTIVE',
     memberCount: 0,
   },
   {
@@ -86,6 +91,7 @@ const mockRoles = [
       'reports:export',
     ],
     systemRole: true,
+    status: 'ACTIVE',
     memberCount: 0,
   },
   {
@@ -94,6 +100,7 @@ const mockRoles = [
     description: 'Read-only access to transactions and payment statuses',
     permissions: ['payments:read'],
     systemRole: true,
+    status: 'ACTIVE',
     memberCount: 1,
   },
 ];
@@ -112,9 +119,11 @@ export const teamHandlers = [
   }),
 
   http.patch(`${BASE_URL}/team/members/:id/role`, async ({ params, request }) => {
-    const body = (await request.json()) as { role: string };
+    const body = (await request.json()) as { roleId: string };
     const member = mockMembers.find((m) => m.id === params.id) || mockMembers[0];
-    member.role = body.role;
+    const role = mockRoles.find((candidate) => candidate.id === body.roleId);
+    member.roleId = body.roleId;
+    member.role = role?.name ?? member.role;
     return HttpResponse.json(member);
   }),
 
@@ -144,11 +153,13 @@ export const teamHandlers = [
   }),
 
   http.post(`${BASE_URL}/team/invitations`, async ({ request }) => {
-    const body = (await request.json()) as { email: string; role: string };
+    const body = (await request.json()) as { email: string; roleId: string };
+    const role = mockRoles.find((candidate) => candidate.id === body.roleId);
     const newInv = {
       id: `inv_${crypto.randomUUID().slice(0, 8)}`,
       email: body.email,
-      role: body.role,
+      roleId: body.roleId,
+      role: role?.name ?? 'Custom role',
       status: 'PENDING',
       expiresAt: new Date(Date.now() + 72 * 3600000).toISOString(),
       createdAt: new Date().toISOString(),
@@ -185,6 +196,7 @@ export const teamHandlers = [
       description: body.description || '',
       permissions: body.permissions || [],
       systemRole: false,
+      status: 'ACTIVE',
       memberCount: 0,
     };
     mockRoles.push(newRole);

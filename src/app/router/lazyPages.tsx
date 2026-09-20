@@ -47,6 +47,8 @@ export const ReconciliationRunDetailPage = lazy(() => import('@/pages/Reconcilia
 export const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 export const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
 export const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
+export const TeamPage = lazy(() => import('@/pages/TeamPage'));
+export const RolesPage = lazy(() => import('@/pages/RolesPage'));
 
 export const DeveloperDashboardPage = lazy(() => import('@/pages/DeveloperDashboardPage'));
 export const DeveloperApiKeysPage = lazy(() => import('@/pages/DeveloperApiKeysPage'));

@@ -43,8 +43,22 @@ const viewInvite = (x: any) => ({
   id: x.id,
   email: x.normalized_email,
   roleId: x.role_id,
+  role: x.role_name,
   status: x.status,
   expiresAt: x.expires_at,
+  createdAt: x.created_at,
+});
+export const invitationResponse = (row: any, token: string, nodeEnvironment: string) =>
+  nodeEnvironment === 'production' ? viewInvite(row) : { ...viewInvite(row), deliveryToken: token };
+const viewMember = (x: any) => ({
+  id: x.id,
+  name: x.name,
+  email: x.email,
+  roleId: x.role_id,
+  role: x.role_name,
+  status: x.status,
+  mfaEnabled: Boolean(x.mfa_enabled),
+  lastLoginAt: x.last_login_at,
   createdAt: x.created_at,
 });
 async function ownerGuard(c: any, merchant: string, user: string) {
@@ -161,11 +175,11 @@ export async function registerTeamRoutes(
   app.get('/v1/team/members', { preHandler: teamRead }, async (r) => {
     const q = page.parse(r.query),
       x = await db.query(
-        `SELECT u.id,u.name,u.email,u.status,mr.id role_id,mr.name role_name,count(*) OVER() total FROM users u LEFT JOIN user_role_assignments a ON a.user_id=u.id AND a.merchant_id=u.merchant_id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE u.merchant_id=$1 ORDER BY u.name,u.id LIMIT $2 OFFSET $3`,
+        `SELECT u.id,u.name,u.email,u.status,u.created_at,mr.id role_id,mr.name role_name,(mfa.verified_at IS NOT NULL) mfa_enabled,max(s.last_seen_at) last_login_at,count(*) OVER() total FROM users u LEFT JOIN user_role_assignments a ON a.user_id=u.id AND a.merchant_id=u.merchant_id LEFT JOIN merchant_roles mr ON mr.id=a.role_id LEFT JOIN mfa_enrollments mfa ON mfa.user_id=u.id LEFT JOIN sessions s ON s.user_id=u.id WHERE u.merchant_id=$1 GROUP BY u.id,mr.id,mr.name,mfa.verified_at ORDER BY u.name,u.id LIMIT $2 OFFSET $3`,
         [r.actor!.merchantId, q.pageSize, (q.page - 1) * q.pageSize],
       );
     return {
-      data: x.rows,
+      items: x.rows.map(viewMember),
       total: Number(x.rows[0]?.total ?? 0),
       page: q.page,
       pageSize: q.pageSize,
@@ -173,11 +187,11 @@ export async function registerTeamRoutes(
   });
   app.get('/v1/team/members/:id', { preHandler: teamRead }, async (r, p) => {
     const x = await db.query(
-      `SELECT u.id,u.name,u.email,u.status,mr.id role_id,mr.name role_name FROM users u LEFT JOIN user_role_assignments a ON a.user_id=u.id AND a.merchant_id=u.merchant_id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE u.id=$1 AND u.merchant_id=$2`,
+      `SELECT u.id,u.name,u.email,u.status,u.created_at,mr.id role_id,mr.name role_name,(mfa.verified_at IS NOT NULL) mfa_enabled,max(s.last_seen_at) last_login_at FROM users u LEFT JOIN user_role_assignments a ON a.user_id=u.id AND a.merchant_id=u.merchant_id LEFT JOIN merchant_roles mr ON mr.id=a.role_id LEFT JOIN mfa_enrollments mfa ON mfa.user_id=u.id LEFT JOIN sessions s ON s.user_id=u.id WHERE u.id=$1 AND u.merchant_id=$2 GROUP BY u.id,mr.id,mr.name,mfa.verified_at`,
       [(r.params as any).id, r.actor!.merchantId],
     );
     return x.rowCount
-      ? x.rows[0]
+      ? viewMember(x.rows[0])
       : p.code(404).send(apiError(r, 'MEMBER_NOT_FOUND', 'Team member not found.'));
   });
   app.patch('/v1/team/members/:id/role', { preHandler: teamWrite }, async (r, p) => {
@@ -226,7 +240,7 @@ export async function registerTeamRoutes(
           `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'MEMBER_ROLE_CHANGED','user',$4)`,
           [newId('aud'), r.actor!.id, r.actor!.merchantId, member.id],
         );
-        return { id: member.id, roleId: role.id };
+        return viewMember((await c.query(`SELECT u.id,u.name,u.email,u.status,u.created_at,mr.id role_id,mr.name role_name,(mfa.verified_at IS NOT NULL) mfa_enabled,max(s.last_seen_at) last_login_at FROM users u LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id LEFT JOIN mfa_enrollments mfa ON mfa.user_id=u.id LEFT JOIN sessions s ON s.user_id=u.id WHERE u.id=$1 GROUP BY u.id,mr.id,mr.name,mfa.verified_at`, [member.id])).rows[0]);
       });
     } catch (e: any) {
       if (e.code === 'FINAL_OWNER_PROTECTED')
@@ -299,11 +313,11 @@ export async function registerTeamRoutes(
   app.get('/v1/team/invitations', { preHandler: teamRead }, async (r) => {
     const q = page.parse(r.query),
       x = await db.query(
-        `SELECT *,count(*) OVER() total FROM team_invitations WHERE merchant_id=$1 AND status='PENDING' ORDER BY created_at DESC,id DESC LIMIT $2 OFFSET $3`,
+        `SELECT i.*,r.name role_name,count(*) OVER() total FROM team_invitations i JOIN merchant_roles r ON r.id=i.role_id AND r.merchant_id=i.merchant_id WHERE i.merchant_id=$1 AND i.status='PENDING' ORDER BY i.created_at DESC,i.id DESC LIMIT $2 OFFSET $3`,
         [r.actor!.merchantId, q.pageSize, (q.page - 1) * q.pageSize],
       );
     return {
-      data: x.rows.map(viewInvite),
+      items: x.rows.map(viewInvite),
       total: Number(x.rows[0]?.total ?? 0),
       page: q.page,
       pageSize: q.pageSize,
@@ -316,7 +330,7 @@ export async function registerTeamRoutes(
     try {
       const row = await transaction(db, async (c) => {
         const role = await c.query(
-          `SELECT 1 FROM merchant_roles WHERE id=$1 AND merchant_id=$2 AND status='ACTIVE'`,
+          `SELECT name FROM merchant_roles WHERE id=$1 AND merchant_id=$2 AND status='ACTIVE'`,
           [b.roleId, r.actor!.merchantId],
         );
         if (!role.rowCount)
@@ -360,10 +374,10 @@ export async function registerTeamRoutes(
           `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'INVITATION_CREATED','team_invitation',$4)`,
           [newId('aud'), r.actor!.id, r.actor!.merchantId, id],
         );
-        return created;
+        return { ...created, role_name: role.rows[0].name };
       });
       p.code(201);
-      return { ...viewInvite(row), deliveryToken: token };
+      return invitationResponse(row, token, config.NODE_ENV);
     } catch (e: any) {
       if (e.code === '23505' || e.code === 'DUPLICATE_PENDING_INVITATION')
         return p
@@ -379,7 +393,7 @@ export async function registerTeamRoutes(
   app.post('/v1/team/invitations/:id/cancel', { preHandler: teamWrite }, async (r, p) => {
     const result = await transaction(db, async (c) => {
       const x = await c.query(
-        `SELECT * FROM team_invitations WHERE id=$1 AND merchant_id=$2 FOR UPDATE`,
+        `SELECT i.*,r.name role_name FROM team_invitations i JOIN merchant_roles r ON r.id=i.role_id AND r.merchant_id=i.merchant_id WHERE i.id=$1 AND i.merchant_id=$2 FOR UPDATE OF i`,
         [(r.params as any).id, r.actor!.merchantId],
       );
       if (!x.rowCount) return null;
@@ -395,7 +409,7 @@ export async function registerTeamRoutes(
         `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'INVITATION_CANCELLED','team_invitation',$4)`,
         [newId('aud'), r.actor!.id, r.actor!.merchantId, changed.id],
       );
-      return changed;
+      return { ...changed, role_name: x.rows[0].role_name };
     });
     return !result
       ? p.code(404).send(apiError(r, 'INVITATION_NOT_FOUND', 'Invitation not found.'))
@@ -409,7 +423,7 @@ export async function registerTeamRoutes(
     const token = newToken();
     const row = await transaction(db, async (c) => {
       const x = await c.query(
-        `SELECT * FROM team_invitations WHERE id=$1 AND merchant_id=$2 FOR UPDATE`,
+        `SELECT i.*,r.name role_name FROM team_invitations i JOIN merchant_roles r ON r.id=i.role_id AND r.merchant_id=i.merchant_id WHERE i.id=$1 AND i.merchant_id=$2 FOR UPDATE OF i`,
         [(r.params as any).id, r.actor!.merchantId],
       );
       if (!x.rowCount) return { error: 'NOT_FOUND' };
@@ -441,13 +455,13 @@ export async function registerTeamRoutes(
         `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'INVITATION_RESENT','team_invitation',$4)`,
         [newId('aud'), r.actor!.id, r.actor!.merchantId, changed.id],
       );
-      return { row: changed };
+      return { row: { ...changed, role_name: x.rows[0].role_name } };
     });
     if ('error' in row)
       return row.error === 'NOT_FOUND'
         ? p.code(404).send(apiError(r, 'INVITATION_NOT_FOUND', 'Invitation not found.'))
         : p.code(409).send(apiError(r, 'INVITATION_ALREADY_USED', 'Invitation cannot be resent.'));
-    return { ...viewInvite(row.row), deliveryToken: token };
+    return invitationResponse(row.row, token, config.NODE_ENV);
   });
   app.post('/v1/team/invitations/accept', async (r, p) => {
     const b = z.object({ token: z.string().min(32), email: z.string().trim().pipe(z.email()) }).parse(r.body),
@@ -509,7 +523,7 @@ export async function registerTeamRoutes(
       'SELECT * FROM merchant_roles WHERE merchant_id=$1 ORDER BY system_role DESC,name,id',
       [r.actor!.merchantId],
     );
-    return x.rows.map(viewRole);
+    return { items: x.rows.map(viewRole), total: x.rowCount ?? 0 };
   });
   app.post('/v1/roles', { preHandler: roleWrite }, async (r, p) => {
     const b = z
@@ -529,29 +543,26 @@ export async function registerTeamRoutes(
     } catch {
       return p.code(422).send(apiError(r, 'UNKNOWN_PERMISSION', 'Role permissions are invalid.'));
     }
-    const x = await transaction(db, async (c) => {
-      const created = (
+    try {
+      const x = await transaction(db, async (c) => {
+        const created = (
+          await c.query(
+            `INSERT INTO merchant_roles(id,merchant_id,name,normalized_name,description,permissions,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+            [newId('role'), r.actor!.merchantId, b.name, b.name.toLowerCase(), b.description, permissions, r.actor!.id],
+          )
+        ).rows[0];
         await c.query(
-          `INSERT INTO merchant_roles(id,merchant_id,name,normalized_name,description,permissions,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-          [
-            newId('role'),
-            r.actor!.merchantId,
-            b.name,
-            b.name.toLowerCase(),
-            b.description,
-            permissions,
-            r.actor!.id,
-          ],
-        )
-      ).rows[0];
-      await c.query(
-        `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'ROLE_CREATED','merchant_role',$4)`,
-        [newId('aud'), r.actor!.id, r.actor!.merchantId, created.id],
-      );
-      return created;
-    });
-    p.code(201);
-    return viewRole(x);
+          `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'ROLE_CREATED','merchant_role',$4)`,
+          [newId('aud'), r.actor!.id, r.actor!.merchantId, created.id],
+        );
+        return created;
+      });
+      p.code(201);
+      return viewRole(x);
+    } catch (error: any) {
+      if (error.code === '23505') return p.code(409).send(apiError(r, 'ROLE_NAME_EXISTS', 'A role with this name already exists.'));
+      throw error;
+    }
   });
   app.patch('/v1/roles/:id', { preHandler: roleWrite }, async (r, p) => {
     const b = z
@@ -574,7 +585,9 @@ export async function registerTeamRoutes(
     } catch {
       return p.code(422).send(apiError(r, 'UNKNOWN_PERMISSION', 'Role permissions are invalid.'));
     }
-    const row = await transaction(db, async (c) => {
+    let row;
+    try {
+      row = await transaction(db, async (c) => {
       const x = await c.query(
         'SELECT * FROM merchant_roles WHERE id=$1 AND merchant_id=$2 FOR UPDATE',
         [(r.params as any).id, r.actor!.merchantId],
@@ -599,7 +612,11 @@ export async function registerTeamRoutes(
         [newId('aud'), r.actor!.id, r.actor!.merchantId, changed.id],
       );
       return { row: changed };
-    });
+      });
+    } catch (error: any) {
+      if (error.code === '23505') return p.code(409).send(apiError(r, 'ROLE_NAME_EXISTS', 'A role with this name already exists.'));
+      throw error;
+    }
     return !row
       ? p.code(404).send(apiError(r, 'ROLE_NOT_FOUND', 'Role not found.'))
       : 'system' in row

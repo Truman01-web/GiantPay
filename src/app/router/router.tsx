@@ -49,6 +49,8 @@ import {
   SettingsPage,
   SecuritySettingsPage,
   ReportsPage,
+  TeamPage,
+  RolesPage,
   DeveloperDashboardPage,
   DeveloperApiKeysPage,
   DeveloperWebhooksPage,
@@ -268,10 +270,7 @@ export const router = createBrowserRouter([
         path: '/team',
         element: (
           <RequirePermission permission="team:read">
-            <FeatureComingSoon
-              title="Team"
-              description="Invite teammates and manage access — on the roadmap."
-            />
+            <TeamPage />
           </RequirePermission>
         ),
       },
@@ -279,7 +278,7 @@ export const router = createBrowserRouter([
         path: '/roles',
         element: (
           <RequirePermission permission="roles:read">
-            <FeatureComingSoon title="Roles & permissions" />
+            <RolesPage />
           </RequirePermission>
         ),
       },
