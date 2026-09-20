@@ -72,6 +72,7 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     label: 'Operations',
     items: [
+      { label: 'Support', to: '/admin/support', icon: LifeBuoy, permission: 'platform.support.read' },
       { label: 'Transactions', to: '/admin/transactions', icon: Receipt },
       { label: 'Refund approvals', to: '/admin/refunds/pending', icon: RotateCcw },
       { label: 'Settlements', to: '/admin/settlements', icon: Landmark },

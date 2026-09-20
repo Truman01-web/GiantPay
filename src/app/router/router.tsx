@@ -51,6 +51,10 @@ import {
   ReportsPage,
   TeamPage,
   RolesPage,
+  SupportPage,
+  SupportDetailPage,
+  AdminSupportPage,
+  AdminSupportDetailPage,
   DeveloperDashboardPage,
   DeveloperApiKeysPage,
   DeveloperWebhooksPage,
@@ -290,10 +294,7 @@ export const router = createBrowserRouter([
         path: '/support',
         element: (
           <RequirePermission permission="support:read">
-            <FeatureComingSoon
-              title="Support"
-              description="Support case tracking is on the roadmap."
-            />
+            <SupportPage />
           </RequirePermission>
         ),
       },
@@ -301,7 +302,7 @@ export const router = createBrowserRouter([
         path: '/support/:id',
         element: (
           <RequirePermission permission="support:read">
-            <FeatureComingSoon title="Support case" />
+            <SupportDetailPage />
           </RequirePermission>
         ),
       },
@@ -314,6 +315,22 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
+      {
+        path: '/admin/support',
+        element: (
+          <RequirePermission permission="platform.support.read">
+            <AdminSupportPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/support/:id',
+        element: (
+          <RequirePermission permission="platform.support.read">
+            <AdminSupportDetailPage />
+          </RequirePermission>
+        ),
+      },
       {
         path: '/admin',
         element: (

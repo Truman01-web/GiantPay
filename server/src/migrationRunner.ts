@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import type { Db } from './db.js';
 import { transaction } from './db.js';
 
-export const EXPECTED_MIGRATIONS=['001_initial.sql','002_refund_decisions.sql','003_refund_decider.sql','004_provider_webhooks.sql','005_ledger_outbox.sql','006_developer_platform.sql','007_security_hardening.sql','008_reconciliation_settlement.sql','009_reporting_operations.sql','010_team_access_security.sql','011_merchant_onboarding_compliance.sql','012_platform_administration_support.sql','013_disputes_chargebacks.sql','014_notifications_communications.sql','015_production_readiness_observability.sql','016_registration_email_otp.sql','017_team_member_created_at.sql'] as const;
+export const EXPECTED_MIGRATIONS=['001_initial.sql','002_refund_decisions.sql','003_refund_decider.sql','004_provider_webhooks.sql','005_ledger_outbox.sql','006_developer_platform.sql','007_security_hardening.sql','008_reconciliation_settlement.sql','009_reporting_operations.sql','010_team_access_security.sql','011_merchant_onboarding_compliance.sql','012_platform_administration_support.sql','013_disputes_chargebacks.sql','014_notifications_communications.sql','015_production_readiness_observability.sql','016_registration_email_otp.sql','017_team_member_created_at.sql','018_support_case_management.sql'] as const;
 
 export async function applyMigrations(db:Db,directory=resolve('migrations')) {
   const names=(await readdir(directory)).filter(x=>x.endsWith('.sql')).sort();
