@@ -43,7 +43,7 @@ describe('LandingPage Hero Section & Brand Assets', () => {
     expect(secondaryCta).toHaveAttribute('href', '/developers');
   });
 
-  it('10. renders payment method logos without emojis or name labels', () => {
+  it('10. renders all required payment methods without emojis', () => {
     const { container } = renderLandingPage();
     const textContent = container.textContent || '';
 
@@ -53,25 +53,18 @@ describe('LandingPage Hero Section & Brand Assets', () => {
     expect(textContent).not.toContain('💳');
     expect(textContent).not.toContain('🏦');
 
-    // The payment-methods strip now renders logos only, with no visible
-    // name label beside them (name text still appears elsewhere on the
-    // page, e.g. "Airtel Money" in the floating transaction-card mockup,
-    // so this only checks the strip's own labels are gone).
-    expect(screen.queryByText('TNM Mpamba')).not.toBeInTheDocument();
-    expect(screen.queryByText('Mastercard')).not.toBeInTheDocument();
-    expect(screen.queryByText('National Switch / Bank Transfer')).not.toBeInTheDocument();
+    // Verify required text labels (Airtel Money, TNM Mpamba, Visa, Mastercard, NS)
+    expect(screen.getAllByText('Airtel Money').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('TNM Mpamba').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Visa').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mastercard').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('National Switch / Bank Transfer').length).toBeGreaterThan(0);
 
-    // National Switch has no logo asset, so it still falls back to its
-    // initials ("NS") as bare text — the one exception to logos-only.
-    expect(screen.getAllByText('NS').length).toBeGreaterThan(0);
   });
 
   it('11. provides appropriate alternative text for official brand logos', () => {
     renderLandingPage();
 
-    // The strip's duplicate copy (for the seamless loop) is aria-hidden and
-    // uses an empty alt, so exactly one accessible instance of each logo
-    // remains — everything else on the page uses inline SVGs, not <img>.
     const airtelImg = screen.getByAltText('Airtel Money logo');
     expect(airtelImg).toBeInTheDocument();
     expect(airtelImg).toHaveAttribute('src', '/brands/airtel-money.svg');

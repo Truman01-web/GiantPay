@@ -8,6 +8,7 @@ import { Input, PasswordInput } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { FormField } from '@/components/forms/FormField';
 import { Alert } from '@/components/feedback/Alert';
+import { Logo } from '@/components/navigation/Logo';
 import { ApiError } from '@/services/api/errors';
 import { safeRedirectPath } from '@/lib/safeRedirect';
 import { env } from '@/app/config/env';
@@ -15,6 +16,7 @@ import { loginSchema, type LoginFormValues } from './schemas';
 import { useLoginMutation } from './useAuthMutations';
 import { MfaChallengeForm } from './MfaChallengeForm';
 import type { MfaChallenge } from '@/types/auth';
+
 
 interface DemoAccountSummary {
   email: string;
@@ -89,16 +91,37 @@ export function LoginFlow() {
         : null;
 
   return (
-    <Card className="rounded-2xl shadow-xl shadow-slate-900/10">
-      <CardContent>
-        <h1 className="text-[length:var(--text-h2)] font-extrabold tracking-tight text-[var(--color-navy-900)]">Sign in to GiantPay</h1>
-        <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Manage payments, links and reports.</p>
+    <Card className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/75 sm:bg-white/80 backdrop-blur-2xl shadow-2xl shadow-blue-950/15">
+      {/* Top radiant system brand bar */}
+      <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#1B4FD8] via-sky-400 to-indigo-600" />
+
+      <CardContent className="p-6 sm:p-8">
+        {/* GiantPay Logo inside the form card */}
+        <div className="mb-6 flex flex-col items-center justify-center text-center">
+          <Link
+            to="/"
+            className="group flex flex-col items-center gap-2 rounded-xl p-1 transition-transform hover:scale-[1.02] focus-visible:outline-2 focus-visible:outline-blue-500"
+            aria-label="GiantPay Home"
+          >
+            <Logo variant="full" />
+          </Link>
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-blue-200/60 bg-blue-50/80 px-3 py-0.5 text-[11px] font-semibold text-[#1B4FD8]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#1B4FD8] animate-pulse" />
+            Merchant &amp; Developer Portal
+          </div>
+        </div>
+
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Sign in to GiantPay</h1>
+          <p className="mt-1 text-sm text-slate-500">Manage your transactions, payment links, and live settlements.</p>
+        </div>
 
         {errorMessage && (
           <div className="mt-4">
             <Alert variant="danger">{errorMessage}</Alert>
           </div>
         )}
+
 
         <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
           <FormField label="Email address" required error={errors.email?.message}>
@@ -120,9 +143,14 @@ export function LoginFlow() {
             </Link>
           </div>
 
-          <Button type="submit" loading={login.isPending} className="mt-1 rounded-xl">
+          <Button
+            type="submit"
+            loading={login.isPending}
+            className="mt-2 h-11 w-full rounded-xl bg-gradient-to-r from-[#1B4FD8] via-blue-600 to-[#103bb0] font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:brightness-110 active:scale-[0.99]"
+          >
             Sign in
           </Button>
+
         </form>
 
         <p className="mt-5 text-center text-[length:var(--text-label)] text-[var(--color-neutral-600)]">

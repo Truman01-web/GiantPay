@@ -18,6 +18,7 @@ export default mergeConfig(
       // per file — spawning is slow on constrained/sandboxed hosts and was
       // causing worker-startup timeouts.
       isolate: false,
+      fileParallelism: false,
       testTimeout: 15000,
       coverage: {
         provider: 'v8',

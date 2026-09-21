@@ -83,9 +83,10 @@ export function PublicNavbar() {
       ref={navRef}
       role="banner"
       className={cn(
-        'fixed top-0 inset-x-0 z-50 transition-all duration-200 ease-standard motion-reduce:transition-none',
-        'border-b border-white/40 bg-white/50 backdrop-blur-lg',
-        isScrolled || mobileOpen ? 'shadow-sm shadow-slate-900/5' : 'shadow-none'
+        'fixed top-0 inset-x-0 z-50 transition-all duration-300 ease-in-out motion-reduce:transition-none',
+        isScrolled || mobileOpen
+          ? 'border-b border-slate-200/80 bg-white/80 backdrop-blur-xl shadow-sm shadow-slate-900/5'
+          : 'border-b border-transparent bg-transparent shadow-none backdrop-blur-none'
       )}
     >
       <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">

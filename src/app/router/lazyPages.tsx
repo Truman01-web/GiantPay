@@ -47,9 +47,11 @@ export const ReconciliationRunDetailPage = lazy(() => import('@/pages/Reconcilia
 export const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 export const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
 export const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
-export const TeamPage = lazy(() => import('@/pages/TeamPage'));
-export const RolesPage = lazy(() => import('@/pages/RolesPage'));
-export const SupportPage = lazy(() => import('@/pages/SupportPage'));
+
+// Merchant-area pages (team, roles, support)
+export const TeamPage = lazy(() => import('@/pages/merchant/TeamPage'));
+export const RolesPage = lazy(() => import('@/pages/merchant/RolesPage'));
+export const SupportPage = lazy(() => import('@/pages/merchant/SupportPage'));
 export const SupportDetailPage = lazy(() => import('@/pages/SupportDetailPage'));
 export const AdminSupportPage = lazy(() => import('@/pages/admin/AdminSupportPage'));
 export const AdminSupportDetailPage = lazy(() => import('@/pages/admin/AdminSupportDetailPage'));
@@ -58,3 +60,11 @@ export const DeveloperDashboardPage = lazy(() => import('@/pages/DeveloperDashbo
 export const DeveloperApiKeysPage = lazy(() => import('@/pages/DeveloperApiKeysPage'));
 export const DeveloperWebhooksPage = lazy(() => import('@/pages/DeveloperWebhooksPage'));
 export const DeveloperWebhookDetailPage = lazy(() => import('@/pages/DeveloperWebhookDetailPage'));
+
+// Admin feature pages
+export const AdminHomePage = lazy(() => import('@/pages/AdminHomePage'));
+export const MerchantApplicationsListPage = lazy(() => import('@/pages/MerchantApplicationsListPage'));
+export const MerchantApplicationDetailPage = lazy(() => import('@/pages/MerchantApplicationDetailPage'));
+export const PendingRefundApprovalsPage = lazy(() => import('@/pages/PendingRefundApprovalsPage'));
+export const AuditLogsPage = lazy(() => import('@/pages/AuditLogsPage'));
+export const SystemHealthPage = lazy(() => import('@/pages/SystemHealthPage'));

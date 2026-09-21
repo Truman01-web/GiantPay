@@ -59,6 +59,12 @@ import {
   DeveloperApiKeysPage,
   DeveloperWebhooksPage,
   DeveloperWebhookDetailPage,
+  AdminHomePage,
+  MerchantApplicationsListPage,
+  MerchantApplicationDetailPage,
+  PendingRefundApprovalsPage,
+  AuditLogsPage,
+  SystemHealthPage,
 } from './lazyPages';
 
 export const router = createBrowserRouter([
@@ -334,27 +340,24 @@ export const router = createBrowserRouter([
       {
         path: '/admin',
         element: (
-          <RequirePermission anyOf={['platform.health.read', 'platform.merchants.read']}>
-            <FeatureComingSoon
-              title="Admin home"
-              description="Platform-wide health and activity summary — on the roadmap."
-            />
+          <RequirePermission anyOf={['admin.platform:manage', 'admin.merchants:review']}>
+            <AdminHomePage />
           </RequirePermission>
         ),
       },
       {
         path: '/admin/merchant-applications',
         element: (
-          <RequirePermission permission="compliance:read">
-            <FeatureComingSoon title="Merchant applications" />
+          <RequirePermission permission="admin.merchants:review">
+            <MerchantApplicationsListPage />
           </RequirePermission>
         ),
       },
       {
         path: '/admin/merchant-applications/:id',
         element: (
-          <RequirePermission permission="compliance:read">
-            <FeatureComingSoon title="Merchant application" />
+          <RequirePermission permission="admin.merchants:review">
+            <MerchantApplicationDetailPage />
           </RequirePermission>
         ),
       },
@@ -401,11 +404,8 @@ export const router = createBrowserRouter([
       {
         path: '/admin/refunds/pending',
         element: (
-          <RequirePermission permission="platform.refunds.read">
-            <FeatureComingSoon
-              title="Refund approvals"
-              description="Maker-checker refund approval queue — on the roadmap."
-            />
+          <RequirePermission permission="admin.refunds:approve">
+            <PendingRefundApprovalsPage />
           </RequirePermission>
         ),
       },
@@ -469,7 +469,7 @@ export const router = createBrowserRouter([
         path: '/admin/audit-logs',
         element: (
           <RequirePermission permission="platform.audit.read">
-            <FeatureComingSoon title="Audit logs" />
+            <AuditLogsPage />
           </RequirePermission>
         ),
       },
@@ -501,7 +501,7 @@ export const router = createBrowserRouter([
         path: '/admin/system-health',
         element: (
           <RequirePermission permission="platform.health.read">
-            <FeatureComingSoon title="System health" />
+            <SystemHealthPage />
           </RequirePermission>
         ),
       },
