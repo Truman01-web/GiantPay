@@ -67,16 +67,30 @@
   }
 
   .hero-glow {
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(27, 79, 216, 0.08) 0%, transparent 70%);
+    background: radial-gradient(
+      ellipse 80% 60% at 50% 0%,
+      rgba(27, 79, 216, 0.08) 0%,
+      transparent 70%
+    );
   }
 
   .blob-primary {
-    background: radial-gradient(circle, rgba(27, 79, 216, 0.12) 0%, rgba(56, 189, 248, 0.06) 50%, transparent 70%);
+    background: radial-gradient(
+      circle,
+      rgba(27, 79, 216, 0.12) 0%,
+      rgba(56, 189, 248, 0.06) 50%,
+      transparent 70%
+    );
     filter: blur(60px);
   }
 
   .blob-accent {
-    background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, rgba(249, 115, 22, 0.05) 50%, transparent 70%);
+    background: radial-gradient(
+      circle,
+      rgba(245, 158, 11, 0.1) 0%,
+      rgba(249, 115, 22, 0.05) 50%,
+      transparent 70%
+    );
     filter: blur(80px);
   }
 
@@ -87,9 +101,15 @@
     background-size: 48px 48px;
   }
 
-  .payment-card-float { animation: paymentFloat 6s ease-in-out infinite; }
-  .payment-card-float-delay { animation: paymentFloat 6s ease-in-out 1.5s infinite; }
-  .payment-card-float-delay2 { animation: paymentFloat 6s ease-in-out 3s infinite; }
+  .payment-card-float {
+    animation: paymentFloat 6s ease-in-out infinite;
+  }
+  .payment-card-float-delay {
+    animation: paymentFloat 6s ease-in-out 1.5s infinite;
+  }
+  .payment-card-float-delay2 {
+    animation: paymentFloat 6s ease-in-out 3s infinite;
+  }
 
   .skip-link {
     position: absolute;
@@ -109,10 +129,19 @@
 }
 
 @keyframes paymentFloat {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  25% { transform: translateY(-8px) rotate(0.5deg); }
-  50% { transform: translateY(-4px) rotate(-0.5deg); }
-  75% { transform: translateY(-12px) rotate(0.3deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  25% {
+    transform: translateY(-8px) rotate(0.5deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(-0.5deg);
+  }
+  75% {
+    transform: translateY(-12px) rotate(0.3deg);
+  }
 }
 
 @keyframes flagWave {
@@ -145,12 +174,20 @@
 
 /* ── Hero watermark crossfade ── */
 @keyframes heroBgFadeIn {
-  0%   { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 @keyframes heroBgFadeOut {
-  0%   { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .hero-watermark {
@@ -164,23 +201,72 @@
 }
 
 @keyframes wm-float {
-  0%   { transform: translateY(0px) scale(1); }
-  50%  { transform: translateY(-14px) scale(1.03); }
-  100% { transform: translateY(0px) scale(1); }
+  0% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-14px) scale(1.03);
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+  }
 }
 
 .wm-float {
   animation: wm-float 9s ease-in-out infinite;
 }
 
-/* ── Payment method logo strip (left to right) ── */
-@keyframes marqueeLeftToRight {
-  from { transform: translateX(-50%); }
-  to   { transform: translateX(0%); }
+/* ── Infinite Marquee Ticker ── */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
-.animate-marquee-ltr {
-  animation: marqueeLeftToRight 26s linear infinite;
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ── Rotating Orbital Logos ── */
+@keyframes giantpay-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes giantpay-counter-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-orbit-cw {
+  animation: giantpay-orbit 14s linear infinite;
+  transform-origin: center center;
+}
+
+.animate-orbit-counter {
+  animation: giantpay-counter-orbit 14s linear infinite;
+  transform-origin: center center;
+}
+
+.animate-pulse-subtle {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -193,4 +279,3 @@
     scroll-behavior: auto !important;
   }
 }
-

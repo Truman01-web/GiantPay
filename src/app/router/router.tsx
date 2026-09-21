@@ -60,14 +60,14 @@ import {
   DeveloperWebhookDetailPage,
   DeveloperDocumentationPage,
   AdminHomePage,
-  AdminApplicationsPage,
-  AdminApplicationDetailPage,
+  MerchantApplicationsListPage,
+  MerchantApplicationDetailPage,
   AdminMerchantsPage,
   AdminMerchantDetailPage,
   AdminTransactionsPage,
   AdminTransactionDetailPage,
   AdminRefundsPage,
-  AdminPendingRefundsPage,
+  PendingRefundApprovalsPage,
   AdminSettlementsPage,
   AdminReconciliationPage,
   AdminExceptionsPage,
@@ -75,11 +75,11 @@ import {
   AdminProvidersPage,
   AdminUsersPage,
   AdminRolesPage,
-  AdminAuditLogsPage,
+  AuditLogsPage,
   AdminIncidentsPage,
   AdminSecurityPage,
   AdminReportsPage,
-  AdminSystemHealthPage,
+  SystemHealthPage,
   AdminSettingsPage,
 } from './lazyPages';
 
@@ -381,16 +381,16 @@ export const router = createBrowserRouter([
       {
         path: '/admin/merchant-applications',
         element: (
-          <RequirePermission permission="compliance:read">
-            <AdminApplicationsPage />
+          <RequirePermission permission="compliance:review">
+            <MerchantApplicationsListPage />
           </RequirePermission>
         ),
       },
       {
         path: '/admin/merchant-applications/:id',
         element: (
-          <RequirePermission permission="compliance:read">
-            <AdminApplicationDetailPage />
+          <RequirePermission permission="compliance:review">
+            <MerchantApplicationDetailPage />
           </RequirePermission>
         ),
       },
@@ -437,8 +437,8 @@ export const router = createBrowserRouter([
       {
         path: '/admin/refunds/pending',
         element: (
-          <RequirePermission permission="platform.refunds.read">
-            <AdminPendingRefundsPage />
+          <RequirePermission permission="payments.refunds:approve">
+            <PendingRefundApprovalsPage />
           </RequirePermission>
         ),
       },
@@ -502,7 +502,7 @@ export const router = createBrowserRouter([
         path: '/admin/audit-logs',
         element: (
           <RequirePermission permission="platform.audit.read">
-            <AdminAuditLogsPage />
+            <AuditLogsPage />
           </RequirePermission>
         ),
       },
@@ -534,7 +534,7 @@ export const router = createBrowserRouter([
         path: '/admin/system-health',
         element: (
           <RequirePermission permission="platform.health.read">
-            <AdminSystemHealthPage />
+            <SystemHealthPage />
           </RequirePermission>
         ),
       },
