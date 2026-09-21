@@ -177,7 +177,18 @@ export default function TermsPage() {
     <div className="min-h-screen bg-slate-50/50">
       {/* Hero Header */}
       <section className="relative overflow-hidden text-white pt-28 pb-14 sm:pt-36 sm:pb-16 bg-[#061428]">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/40 to-[#061428]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
+          <img
+            src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=2000&q=80"
+            onError={(e) => {
+              e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=2000&q=80";
+            }}
+            alt=""
+            className="h-full w-full object-cover object-center opacity-25"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/85" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]" />
+        </div>
         <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6">
           <div className="mb-6">
             <Link

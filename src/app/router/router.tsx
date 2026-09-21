@@ -340,7 +340,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin',
         element: (
-          <RequirePermission anyOf={['admin.platform:manage', 'admin.merchants:review']}>
+          <RequirePermission anyOf={['platform.health.read', 'platform.merchants.read']}>
             <AdminHomePage />
           </RequirePermission>
         ),
@@ -348,7 +348,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin/merchant-applications',
         element: (
-          <RequirePermission permission="admin.merchants:review">
+          <RequirePermission permission="compliance:review">
             <MerchantApplicationsListPage />
           </RequirePermission>
         ),
@@ -356,7 +356,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin/merchant-applications/:id',
         element: (
-          <RequirePermission permission="admin.merchants:review">
+          <RequirePermission permission="compliance:review">
             <MerchantApplicationDetailPage />
           </RequirePermission>
         ),
@@ -404,7 +404,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin/refunds/pending',
         element: (
-          <RequirePermission permission="admin.refunds:approve">
+          <RequirePermission permission="payments.refunds:approve">
             <PendingRefundApprovalsPage />
           </RequirePermission>
         ),
