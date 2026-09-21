@@ -20,7 +20,11 @@ export interface RegistrationResult {
   maskedDestination?: string;
   expiresAt?: string;
   resendAvailableAt?: string;
-  delivery: { available: boolean; queued: boolean };
+  delivery: {
+    available: boolean;
+    queued: boolean;
+    errorCode?: 'DELIVERY_REJECTED' | 'DELIVERY_TIMEOUT' | 'DELIVERY_UNAVAILABLE';
+  };
 }
 
 export const authApi = {

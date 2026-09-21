@@ -498,9 +498,39 @@ export async function buildApp(
         ],
       );
     });
-    const queued =
-      registrationDelivery.available &&
-      (await registrationDelivery.queue({ challengeId, destination: body.email, code, expiresAt }));
+    const deliveryResult = await registrationDelivery.queue({
+      challengeId,
+      destination: body.email,
+      code,
+      expiresAt,
+    });
+    await db.query(
+      `UPDATE registration_email_challenges SET delivery_state=$1,delivery_provider=$2,delivery_attempted_at=$3,delivery_failure_code=$4 WHERE id=$5`,
+      [
+        deliveryResult.queued ? 'QUEUED' : registrationDelivery.available ? 'FAILED' : 'DISABLED',
+        deliveryResult.provider,
+        deliveryResult.attemptedAt,
+        deliveryResult.failureCode ?? null,
+        challengeId,
+      ],
+    );
+    await db.query(
+      `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id,metadata)
+       VALUES($1,$2,$3,'REGISTRATION_OTP_DELIVERY_ATTEMPTED','registration_challenge',$4,$5)`,
+      [
+        newId('aud'),
+        userId,
+        merchantId,
+        challengeId,
+        {
+          state: deliveryResult.queued ? 'QUEUED' : registrationDelivery.available ? 'FAILED' : 'DISABLED',
+          provider: deliveryResult.provider,
+          attemptedAt: deliveryResult.attemptedAt,
+          destination: maskEmail(body.email),
+          ...(deliveryResult.failureCode ? { failureCode: deliveryResult.failureCode } : {}),
+        },
+      ],
+    );
     return reply.code(202).send({
       accepted: true,
       verificationRequired: true,
@@ -510,7 +540,11 @@ export async function buildApp(
       resendAvailableAt: new Date(
         Date.now() + REGISTRATION_OTP_RESEND_SECONDS * 1000,
       ).toISOString(),
-      delivery: { available: registrationDelivery.available, queued },
+      delivery: {
+        available: registrationDelivery.available,
+        queued: deliveryResult.queued,
+        ...(deliveryResult.failureCode ? { errorCode: deliveryResult.failureCode } : {}),
+      },
     });
   });
   const loginIp = rateLimit(rateLimits, config, 'login:ip', 10, 900, clientIp),
@@ -935,7 +969,12 @@ export async function buildApp(
           `registration-otp:${nextId}`,
         ],
       );
-      return { cooldown: false, email: old.email };
+      return {
+        cooldown: false,
+        email: old.email,
+        userId: old.user_id,
+        merchantId: old.merchant_id,
+      };
     });
     if (!result)
       return reply
@@ -953,14 +992,39 @@ export async function buildApp(
           ),
         );
     }
-    const queued =
-      registrationDelivery.available &&
-      (await registrationDelivery.queue({
-        challengeId: nextId,
-        destination: result.email!,
-        code,
-        expiresAt,
-      }));
+    const deliveryResult = await registrationDelivery.queue({
+      challengeId: nextId,
+      destination: result.email!,
+      code,
+      expiresAt,
+    });
+    await db.query(
+      `UPDATE registration_email_challenges SET delivery_state=$1,delivery_provider=$2,delivery_attempted_at=$3,delivery_failure_code=$4 WHERE id=$5`,
+      [
+        deliveryResult.queued ? 'QUEUED' : registrationDelivery.available ? 'FAILED' : 'DISABLED',
+        deliveryResult.provider,
+        deliveryResult.attemptedAt,
+        deliveryResult.failureCode ?? null,
+        nextId,
+      ],
+    );
+    await db.query(
+      `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id,metadata)
+       VALUES($1,$2,$3,'REGISTRATION_OTP_DELIVERY_ATTEMPTED','registration_challenge',$4,$5)`,
+      [
+        newId('aud'),
+        result.userId,
+        result.merchantId,
+        nextId,
+        {
+          state: deliveryResult.queued ? 'QUEUED' : registrationDelivery.available ? 'FAILED' : 'DISABLED',
+          provider: deliveryResult.provider,
+          attemptedAt: deliveryResult.attemptedAt,
+          destination: maskEmail(result.email!),
+          ...(deliveryResult.failureCode ? { failureCode: deliveryResult.failureCode } : {}),
+        },
+      ],
+    );
     return reply.code(202).send({
       accepted: true,
       challengeId: nextId,
@@ -969,7 +1033,11 @@ export async function buildApp(
       resendAvailableAt: new Date(
         Date.now() + REGISTRATION_OTP_RESEND_SECONDS * 1000,
       ).toISOString(),
-      delivery: { available: registrationDelivery.available, queued },
+      delivery: {
+        available: registrationDelivery.available,
+        queued: deliveryResult.queued,
+        ...(deliveryResult.failureCode ? { errorCode: deliveryResult.failureCode } : {}),
+      },
     });
   });
   app.post(

@@ -14,7 +14,15 @@ x-app: &app
     TRUSTED_PROXIES: ${TRUSTED_PROXIES:?set trusted proxy CIDRs}
     COOKIE_SECURE: "true"
     PAYMENT_PROVIDER: sandbox
-    EXTERNAL_DELIVERY_ENABLED: "false"
+    EXTERNAL_DELIVERY_ENABLED: "${EXTERNAL_DELIVERY_ENABLED:-false}"
+    EMAIL_PROVIDER: "${EMAIL_PROVIDER:-smtp}"
+    SMTP_HOST: "${SMTP_HOST:-}"
+    SMTP_PORT: "${SMTP_PORT:-465}"
+    SMTP_SECURE: "${SMTP_SECURE:-true}"
+    SMTP_USER: "${SMTP_USER:-}"
+    SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+    SMTP_FROM: "${SMTP_FROM:-GiantPay <no-reply@giantpay.mw>}"
+    SMTP_TIMEOUT_MS: "${SMTP_TIMEOUT_MS:-5000}"
     REAL_PAYOUTS_ENABLED: "false"
     DATABASE_URL_FILE: /run/secrets/database_url
     REDIS_URL_FILE: /run/secrets/redis_url

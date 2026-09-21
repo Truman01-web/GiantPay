@@ -15,6 +15,7 @@ import { loginSchema, type LoginFormValues } from './schemas';
 import { useLoginMutation } from './useAuthMutations';
 import { MfaChallengeForm } from './MfaChallengeForm';
 import type { MfaChallenge } from '@/types/auth';
+import { useSessionStore } from '@/services/auth/sessionStore';
 
 interface DemoAccountSummary {
   email: string;
@@ -62,7 +63,13 @@ export function LoginFlow() {
     formState: { errors },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
-  const returnTo = safeRedirectPath(searchParams.get('returnTo'), '/dashboard');
+  const requestedReturnTo = searchParams.get('returnTo');
+  const destinationFor = (merchantId: string | null | undefined) =>
+    requestedReturnTo
+      ? safeRedirectPath(requestedReturnTo, '/dashboard')
+      : merchantId === null
+        ? '/admin'
+        : '/dashboard';
 
   async function onSubmit(values: LoginFormValues) {
     try {
@@ -70,7 +77,7 @@ export function LoginFlow() {
       if (result.status === 'MFA_REQUIRED' && result.mfaChallenge) {
         setChallenge(result.mfaChallenge);
       } else {
-        navigate(returnTo, { replace: true });
+        navigate(destinationFor(result.session?.user.merchantId), { replace: true });
       }
     } catch {
       // Surfaced via login.error below.
@@ -78,7 +85,7 @@ export function LoginFlow() {
   }
 
   if (challenge) {
-    return <MfaChallengeForm challenge={challenge} onVerified={() => navigate(returnTo, { replace: true })} />;
+    return <MfaChallengeForm challenge={challenge} onVerified={() => navigate(destinationFor(useSessionStore.getState().session?.user.merchantId), { replace: true })} />;
   }
 
   const errorMessage =

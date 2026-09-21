@@ -20,8 +20,25 @@ import {
   useRegistrationOtpVerifyMutation,
 } from './useAuthMutations';
 
+function secondsUntil(value?: string): number {
+  if (!value) return 0;
+  return Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 1000));
+}
+
+const RECOVERY_KEY = 'giantpay.registration.verification';
+function loadRegistrationRecovery(): RegistrationResult | null {
+  try {
+    const value = sessionStorage.getItem(RECOVERY_KEY);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as RegistrationResult;
+    return parsed.accepted && parsed.challengeId && parsed.delivery ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function RegisterForm() {
-  const [registration, setRegistration] = useState<RegistrationResult | null>(null);
+  const [registration, setRegistration] = useState<RegistrationResult | null>(loadRegistrationRecovery);
   const [verified, setVerified] = useState(false);
   const [code, setCode] = useState('');
   const [retrySeconds, setRetrySeconds] = useState(0);
@@ -53,6 +70,11 @@ export function RegisterForm() {
     );
     return () => window.clearInterval(timer);
   }, [retrySeconds]);
+
+  useEffect(() => {
+    if (registration?.challengeId) sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(registration));
+    else sessionStorage.removeItem(RECOVERY_KEY);
+  }, [registration]);
 
   if (verified)
     return (
@@ -94,18 +116,28 @@ export function RegisterForm() {
           <h1 className="text-[length:var(--text-h2)] font-extrabold text-[var(--color-navy-900)]">
             Verify your email
           </h1>
-          {deliveryConfirmed ? (
+          {registration.challengeId ? (
             <>
-              <p className="mt-2 text-[var(--color-neutral-600)]">
-                Enter the six-digit code queued for {registration.maskedDestination}. It expires in
-                10 minutes.
-              </p>
+              {deliveryConfirmed ? (
+                <p className="mt-2 text-[var(--color-neutral-600)]">
+                  Enter the six-digit code sent to {registration.maskedDestination}. It expires in
+                  10 minutes.
+                </p>
+              ) : (
+                <div className="mt-4">
+                  <Alert variant="warning">
+                    {registration.delivery.available
+                      ? `We could not send a code to ${registration.maskedDestination ?? 'your email'}. Check the address and try again after the cooldown.`
+                      : 'Email delivery is currently unavailable. No verification code was sent. You can retry after delivery is configured.'}
+                  </Alert>
+                </div>
+              )}
               {error && (
                 <div className="mt-4" role="alert">
                   <Alert variant="danger">{error}</Alert>
                 </div>
               )}
-              <form
+              {deliveryConfirmed && <form
                 className="mt-5 space-y-4"
                 onSubmit={async (event) => {
                   event.preventDefault();
@@ -113,6 +145,7 @@ export function RegisterForm() {
                     return;
                   try {
                     await verifyOtp.mutateAsync({ challengeId: registration.challengeId, code });
+                    sessionStorage.removeItem(RECOVERY_KEY);
                     setVerified(true);
                   } catch (error) {
                     void error;
@@ -141,7 +174,7 @@ export function RegisterForm() {
                 <Button type="submit" loading={verifyOtp.isPending} disabled={code.length !== 6}>
                   Verify email
                 </Button>
-              </form>
+              </form>}
               <Button
                 type="button"
                 variant="secondary"
@@ -156,7 +189,7 @@ export function RegisterForm() {
                     });
                     setRegistration(next);
                     setCode('');
-                    setRetrySeconds(next.resendAvailableAt ? 60 : 0);
+                    setRetrySeconds(secondsUntil(next.resendAvailableAt));
                   } catch (error) {
                     void error;
                   }
@@ -222,7 +255,7 @@ export function RegisterForm() {
                 phone: normalizeMalawiPhone(values.phone),
               });
               setRegistration(result);
-              setRetrySeconds(result.resendAvailableAt ? 60 : 0);
+              setRetrySeconds(secondsUntil(result.resendAvailableAt));
             } catch (error) {
               void error;
             }

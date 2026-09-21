@@ -26,7 +26,7 @@ export default function TermsPage() {
           <div className="text-xs font-semibold uppercase tracking-wider text-blue-300">Legal &amp; Governance</div>
           <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Terms of Service</h1>
           <p className="mt-2 text-sm text-white/60">
-            Placeholder content — replace with GiantPlus&apos;s approved terms before launch.
+            Terms and operating constraints for the GiantPay sandbox.
           </p>
         </div>
       </section>
@@ -39,8 +39,9 @@ export default function TermsPage() {
               requirements, fees, settlement, dispute handling and acceptable use.
             </p>
             <p>
-              This page is a structural placeholder in the frontend build. The final terms must be supplied and approved
-              by GiantPlus legal/compliance before production release.
+              Production terms have not yet been approved or published. GiantPlus legal and compliance approval is
+              required before production activation. Sandbox access does not activate live payment, payout, email, SMS,
+              settlement, or provider services.
             </p>
           </div>
         </div>

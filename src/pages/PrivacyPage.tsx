@@ -26,7 +26,7 @@ export default function PrivacyPage() {
           <div className="text-xs font-semibold uppercase tracking-wider text-blue-300">Legal &amp; Governance</div>
           <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Privacy Policy</h1>
           <p className="mt-2 text-sm text-white/60">
-            Placeholder content — replace with GiantPlus&apos;s approved privacy policy before launch.
+            Privacy and data-governance information for the GiantPay sandbox.
           </p>
         </div>
       </section>
@@ -39,9 +39,9 @@ export default function PrivacyPage() {
               payment services, meet KYC/KYB obligations, and comply with applicable Malawian financial regulation.
             </p>
             <p>
-              This page is a structural placeholder in the frontend build. The final policy text must be supplied and
-              approved by GiantPlus legal/compliance before production release — no privacy claims should be inferred
-              from this placeholder.
+              The production privacy policy is not yet published. GiantPlus legal and compliance approval is required
+              before production activation. Until that approval is recorded, this page describes sandbox processing
+              only and does not make production-service privacy claims.
             </p>
           </div>
         </div>

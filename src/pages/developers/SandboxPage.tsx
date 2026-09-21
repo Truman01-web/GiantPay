@@ -55,9 +55,8 @@ export default function SandboxPage() {
               </span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-              No waitlist, no manual approval, no real money. Register a merchant account and you&apos;re instantly
-              testing against realistic, deterministic sandbox data — before a real backend or the public API even
-              ships.
+              Register a merchant account, verify its email, and test against the deployed sandbox API. Sandbox
+              transactions are simulated and never move real money.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
@@ -70,7 +69,7 @@ export default function SandboxPage() {
                 to="/login"
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
               >
-                Try a demo account
+                Sign in
               </Link>
             </div>
           </div>
@@ -85,18 +84,17 @@ export default function SandboxPage() {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
             <p className="text-sm leading-relaxed text-slate-600">
-              The sandbox runs entirely against a set of deterministic, Malawi-realistic mock handlers served
-              in-browser — no real backend needs to be running, and no real money ever moves. Every trusted status
-              GiantPay shows you (checkout outcomes, settlement batches, reconciliation exceptions) comes from this
-              same mock layer, so the behaviour you see is the same shape a production integration will see.
+              The deployed sandbox uses the GiantPay backend and its isolated sandbox payment provider. The browser
+              does not fall back to mock records in real mode. No real money moves, and no live payout or provider
+              operation is inferred from a simulated outcome.
             </p>
             <p className="mt-4 text-sm leading-relaxed text-slate-600">
-              Demo sign-in accounts covering different roles (owner, viewer, platform admin) are available as
-              one-click quick-fill buttons on the{' '}
+              Local development can expose test-only quick-fill accounts when mock mode is explicitly enabled. Those
+              credentials and the test MFA code are excluded from deployed real-mode builds. Use the{' '}
               <Link to="/login" className="font-semibold text-[#1B4FD8] hover:underline">
                 sign-in page
               </Link>{' '}
-              — MFA code <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800">123456</code>.
+              {' '}page to authenticate with an account provisioned for the current environment.
             </p>
           </div>
         </div>

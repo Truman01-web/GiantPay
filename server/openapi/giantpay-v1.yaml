@@ -281,6 +281,14 @@ paths:
       summary: Search selected cross-merchant transaction fields without customer or credential data
       security: [{ cookieSession: [] }]
       responses: {'200': {description: Redacted transactions}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/transactions/{id}:
+    get:
+      operationId: getPlatformTransaction
+      tags: [Platform administration]
+      summary: View a safe transaction projection without customer or provider payloads
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Redacted transaction detail}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
   /platform/refunds:
     get:
       operationId: listPlatformRefunds
@@ -302,6 +310,28 @@ paths:
       summary: Read reconciliation exceptions without ledger mutation
       security: [{ cookieSession: [] }]
       responses: {'200': {description: Exception summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/reconciliation/exceptions/{id}:
+    get:
+      operationId: getPlatformReconciliationException
+      tags: [Platform administration]
+      summary: View reconciliation exception status and resolution metadata
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Exception detail}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+  /platform/users:
+    get:
+      operationId: listPlatformUsers
+      tags: [Platform administration]
+      summary: List platform staff without authentication secrets
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Safe platform user summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/roles:
+    get:
+      operationId: listPlatformRoles
+      tags: [Platform administration]
+      summary: List assigned platform roles and effective permissions
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Platform role summaries}, '403': {$ref: '#/components/responses/Error'}}
   /platform/audit-events:
     get:
       operationId: listPlatformAuditEvents
@@ -513,7 +543,7 @@ paths:
         '202':
           {
             description: Accepted,
-            content: { application/json: { schema: { $ref: '#/components/schemas/Accepted' } } },
+            content: { application/json: { schema: { $ref: '#/components/schemas/RegistrationAccepted' } } },
           }
         '422': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
@@ -554,7 +584,9 @@ paths:
               properties:
                 challengeId: { type: string, minLength: 32 }
       responses:
-        '202': { description: Request accepted with explicit delivery availability }
+        '202':
+          description: Request accepted with explicit delivery availability
+          content: { application/json: { schema: { $ref: '#/components/schemas/RegistrationAccepted' } } }
         '422': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/login:
@@ -1348,6 +1380,23 @@ components:
       type: string
       enum: [TRANSACTION_ACTIVITY, REFUND_ACTIVITY, PLATFORM_FEES, MERCHANT_LEDGER, RECONCILIATION_RESULTS, SANDBOX_SETTLEMENT_SUMMARIES]
     Accepted: { type: object, required: [accepted], properties: { accepted: { const: true } } }
+    RegistrationAccepted:
+      type: object
+      required: [accepted, delivery]
+      properties:
+        accepted: { const: true }
+        verificationRequired: { type: boolean }
+        challengeId: { type: string, minLength: 32 }
+        maskedDestination: { type: string }
+        expiresAt: { type: string, format: date-time }
+        resendAvailableAt: { type: string, format: date-time }
+        delivery:
+          type: object
+          required: [available, queued]
+          properties:
+            available: { type: boolean }
+            queued: { type: boolean }
+            errorCode: { type: string, enum: [DELIVERY_REJECTED, DELIVERY_TIMEOUT, DELIVERY_UNAVAILABLE] }
     Money:
       {
         type: object,

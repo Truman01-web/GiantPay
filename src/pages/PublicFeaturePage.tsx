@@ -45,7 +45,7 @@ export default function PublicFeaturePage({
           title = foundItem.label;
           category = group.label;
           description = foundItem.description ?? `Explore ${foundItem.label} on GiantPay.`;
-          isPlanned = foundItem.badge === 'Planned' || foundItem.badge === 'Coming soon';
+          isPlanned = foundItem.badge === 'Planned';
           break;
         }
       }
