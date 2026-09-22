@@ -1,8 +1,10 @@
 import argon2 from 'argon2';
 import { createDb } from './db.js';
 import { loadConfig } from './config.js';
+import { assertSeedingAllowed } from './seedGuard.js';
 
 const config = loadConfig();
+assertSeedingAllowed(config);
 const db = createDb(config.DATABASE_URL);
 const permissions = [
   'payments:read', 'payments.links:manage', 'payments.refunds:request', 'payments.refunds:approve',

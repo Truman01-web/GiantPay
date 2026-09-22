@@ -163,7 +163,7 @@ function ClassifyRiskDialog({
         <fieldset className="mb-4 flex flex-col gap-2">
           <legend className="sr-only">Risk level</legend>
           {levels.map((lvl) => (
-            <label
+            <div
               key={lvl.value}
               className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border p-3 transition-colors ${
                 riskLevel === lvl.value
@@ -172,6 +172,8 @@ function ClassifyRiskDialog({
               }`}
             >
               <input
+                id={`risk-level-${lvl.value}`}
+                aria-label={`${lvl.label} risk level`}
                 type="radio"
                 className="mt-0.5"
                 name="riskLevel"
@@ -183,7 +185,7 @@ function ClassifyRiskDialog({
                 <span className="font-medium text-[var(--color-neutral-900)]">{lvl.label}</span>
                 <p className="text-[length:var(--text-help)] text-[var(--color-neutral-600)]">{lvl.desc}</p>
               </div>
-            </label>
+            </div>
           ))}
         </fieldset>
         <FormField label="Note (optional)">

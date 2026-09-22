@@ -283,8 +283,9 @@ export default function SupportPage() {
             ) : (
               <form onSubmit={handleCreateTicket} className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">Subject</label>
+                  <label htmlFor="support-subject" className="block text-xs font-bold uppercase tracking-wider text-slate-600">Subject</label>
                   <Input
+                    id="support-subject"
                     required
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
@@ -295,10 +296,11 @@ export default function SupportPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">Category</label>
+                    <label htmlFor="support-category" className="block text-xs font-bold uppercase tracking-wider text-slate-600">Category</label>
                     <select
+                      id="support-category"
                       value={category}
-                      onChange={(e) => setCategory(e.target.value as any)}
+                      onChange={(e) => setCategory(e.target.value as SupportTicket['category'])}
                       className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
                     >
                       <option value="Settlement">Settlement &amp; Payout</option>
@@ -309,10 +311,11 @@ export default function SupportPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">Priority</label>
+                    <label htmlFor="support-priority" className="block text-xs font-bold uppercase tracking-wider text-slate-600">Priority</label>
                     <select
+                      id="support-priority"
                       value={priority}
-                      onChange={(e) => setPriority(e.target.value as any)}
+                      onChange={(e) => setPriority(e.target.value as SupportTicket['priority'])}
                       className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
                     >
                       <option value="Low">Low (General Inquiry)</option>
@@ -324,10 +327,11 @@ export default function SupportPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                  <label htmlFor="support-description" className="block text-xs font-bold uppercase tracking-wider text-slate-600">
                     Description &amp; Context
                   </label>
                   <textarea
+                    id="support-description"
                     required
                     rows={4}
                     value={message}

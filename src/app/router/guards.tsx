@@ -52,6 +52,19 @@ export function RequirePermission({
 /** Keeps an authenticated user off the auth screens (login/register/etc). */
 export function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
   const status = useSessionStatus();
-  if (status === 'authenticated') return <Navigate to="/dashboard" replace />;
+  const session = useSession();
+  if (status === 'authenticated') return <Navigate to={session?.user.merchantId === null ? '/admin' : '/dashboard'} replace />;
   return children;
+}
+
+export function RequireMerchant({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  return session?.user.merchantId ? children : <PermissionDenied />;
+}
+
+export function RequirePlatformAdmin({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  return session?.user.role === 'PLATFORM_ADMIN' && session.user.merchantId === null
+    ? children
+    : <PermissionDenied />;
 }

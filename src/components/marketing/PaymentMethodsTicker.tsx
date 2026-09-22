@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- shared payment metadata is consumed by public feature pages. */
 export interface PaymentMethodItem {
   name: string;
   badge: string;
@@ -7,7 +8,6 @@ export interface PaymentMethodItem {
   bgTone: string;
   description: string;
 }
-
 export const PAYMENT_METHODS: PaymentMethodItem[] = [
   {
     name: 'Airtel Money',
@@ -83,7 +83,9 @@ export function PaymentMethodsTicker() {
               ) : (
                 <div className="flex flex-col items-center leading-none">
                   <span className="font-extrabold tracking-tight text-indigo-700">NS</span>
-                  <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-500">SWITCH</span>
+                  <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-500">
+                    SWITCH
+                  </span>
                 </div>
               )}
             </div>
@@ -92,9 +94,7 @@ export function PaymentMethodsTicker() {
               <span className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-[#1B4FD8] transition-colors truncate block">
                 {item.name}
               </span>
-              <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">
-                {item.description}
-              </p>
+              <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">{item.description}</p>
             </div>
           </div>
         ))}
@@ -119,7 +119,9 @@ export function PaymentMethodsTicker() {
               ) : (
                 <div className="flex flex-col items-center leading-none">
                   <span className="font-extrabold tracking-tight text-indigo-700">NS</span>
-                  <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-500">SWITCH</span>
+                  <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-500">
+                    SWITCH
+                  </span>
                 </div>
               )}
             </div>
@@ -128,9 +130,7 @@ export function PaymentMethodsTicker() {
               <span className="text-sm font-bold tracking-tight text-slate-800 group-hover:text-[#1B4FD8] transition-colors truncate block">
                 {item.name}
               </span>
-              <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">
-                {item.description}
-              </p>
+              <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">{item.description}</p>
             </div>
           </div>
         ))}
@@ -138,4 +138,3 @@ export function PaymentMethodsTicker() {
     </div>
   );
 }
-

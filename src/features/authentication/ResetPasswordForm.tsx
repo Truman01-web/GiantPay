@@ -34,7 +34,10 @@ export function ResetPasswordForm() {
           <Alert variant="danger" title="This reset link is invalid">
             Request a new password reset link and try again.
           </Alert>
-          <Link to="/forgot-password" className="mt-4 inline-block text-sm font-semibold text-[#1B4FD8] hover:underline">
+          <Link
+            to="/forgot-password"
+            className="mt-4 inline-block text-sm font-semibold text-[#1B4FD8] hover:underline"
+          >
             Request a new link
           </Link>
         </CardContent>
@@ -73,8 +76,12 @@ export function ResetPasswordForm() {
         </div>
 
         <div className="text-center sm:text-left">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Set a new password</h1>
-          <p className="mt-1 text-sm text-slate-500">Choose a secure password for your GiantPay account.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            Set a new password
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Choose a secure password for your GiantPay account.
+          </p>
         </div>
 
         {errorMessage && (
@@ -84,11 +91,30 @@ export function ResetPasswordForm() {
         )}
 
         <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <FormField label="New password" required help="At least 12 characters" error={errors.password?.message}>
-            {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.password)} {...fp} {...register('password')} />}
+          <FormField
+            label="New password"
+            required
+            help="At least 12 characters"
+            error={errors.password?.message}
+          >
+            {(fp) => (
+              <PasswordInput
+                autoComplete="new-password"
+                invalid={Boolean(errors.password)}
+                {...fp}
+                {...register('password')}
+              />
+            )}
           </FormField>
           <FormField label="Confirm new password" required error={errors.confirmPassword?.message}>
-            {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.confirmPassword)} {...fp} {...register('confirmPassword')} />}
+            {(fp) => (
+              <PasswordInput
+                autoComplete="new-password"
+                invalid={Boolean(errors.confirmPassword)}
+                {...fp}
+                {...register('confirmPassword')}
+              />
+            )}
           </FormField>
           <Button
             type="submit"
@@ -102,4 +128,3 @@ export function ResetPasswordForm() {
     </Card>
   );
 }
-

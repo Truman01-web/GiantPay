@@ -217,6 +217,10 @@ export default function TermsPage() {
       {/* Main Content */}
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <div className="space-y-8">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm leading-relaxed text-amber-950">
+            These terms currently govern sandbox use only. Production terms still require GiantPlus legal and compliance
+            approval, and sandbox access does not activate live payment, payout, email, SMS, settlement, or provider services.
+          </div>
           {sections.map((section) => (
             <div
               key={section.id}

@@ -751,7 +751,7 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
           </div>
 
           <div className="rounded-xl bg-slate-800/70 p-3 border border-white/5">
-            <label className="block text-[10px] font-bold uppercase text-slate-400">Phone Number</label>
+            <p className="block text-[10px] font-bold uppercase text-slate-400">Phone Number</p>
             <p className="mt-1 text-sm font-semibold text-white">+265 99 123 4567</p>
           </div>
 

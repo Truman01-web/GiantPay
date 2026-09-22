@@ -3,12 +3,20 @@ import { loadConfig } from './config.js';
 import { createDb } from './db.js';
 import { GracefulLifecycle, ShutdownCoordinator } from './operations/lifecycle.js';
 import { RedisRateLimitStore } from './rateLimit.js';
+import { createRegistrationOtpDelivery } from './smtpRegistrationOtp.js';
 
 const config = loadConfig();
 const db = createDb(config.DATABASE_URL);
 const rateLimits = config.REDIS_URL ? await RedisRateLimitStore.connect(config.REDIS_URL) : undefined;
 let accepting = true;
-const app = await buildApp(config, db, undefined, () => accepting, rateLimits);
+const app = await buildApp(
+  config,
+  db,
+  undefined,
+  () => accepting,
+  rateLimits,
+  createRegistrationOtpDelivery(config),
+);
 const lifecycle = new GracefulLifecycle([
   { name: 'http', stopClaims: () => { accepting = false; }, close: () => app.close() },
   { name: 'redis', close: () => rateLimits?.close() ?? Promise.resolve() },

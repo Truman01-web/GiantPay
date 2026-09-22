@@ -34,9 +34,12 @@ export function ForgotPasswordForm() {
             <Logo variant="full" />
           </div>
           <Mail className="mx-auto h-12 w-12 text-[#1B4FD8]" aria-hidden="true" />
-          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">Check your email</h1>
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">
+            Check your email
+          </h1>
           <p className="mt-2 text-sm text-slate-600">
-            If an account exists for that address, we&apos;ve sent instructions to reset your password.
+            If an account exists for that address, we&apos;ve sent instructions to reset your
+            password.
           </p>
           <Link
             to="/login"
@@ -64,13 +67,25 @@ export function ForgotPasswordForm() {
         </div>
 
         <div className="text-center sm:text-left">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Reset your password</h1>
-          <p className="mt-1 text-sm text-slate-500">Enter your email and we&apos;ll send you a reset link.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            Reset your password
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Enter your email and we&apos;ll send you a reset link.
+          </p>
         </div>
 
         <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
           <FormField label="Email address" required error={errors.email?.message}>
-            {(fp) => <Input type="email" autoComplete="email" invalid={Boolean(errors.email)} {...fp} {...register('email')} />}
+            {(fp) => (
+              <Input
+                type="email"
+                autoComplete="email"
+                invalid={Boolean(errors.email)}
+                {...fp}
+                {...register('email')}
+              />
+            )}
           </FormField>
           <Button
             type="submit"
@@ -90,4 +105,3 @@ export function ForgotPasswordForm() {
     </Card>
   );
 }
-

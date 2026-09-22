@@ -5,6 +5,13 @@ export const REGISTRATION_OTP_TTL_MINUTES = 10;
 export const REGISTRATION_OTP_RESEND_SECONDS = 60;
 export const REGISTRATION_OTP_MAX_ATTEMPTS = 5;
 
+export type RegistrationOtpDeliveryResult = {
+  queued: boolean;
+  provider: 'disabled' | 'smtp' | 'test';
+  attemptedAt: string;
+  failureCode?: 'DELIVERY_REJECTED' | 'DELIVERY_TIMEOUT' | 'DELIVERY_UNAVAILABLE';
+};
+
 export interface RegistrationOtpDelivery {
   available: boolean;
   queue(input: {
@@ -12,13 +19,18 @@ export interface RegistrationOtpDelivery {
     destination: string;
     code: string;
     expiresAt: string;
-  }): Promise<boolean>;
+  }): Promise<RegistrationOtpDeliveryResult>;
 }
 
 export const disabledRegistrationOtpDelivery: RegistrationOtpDelivery = {
   available: false,
   async queue() {
-    return false;
+    return {
+      queued: false,
+      provider: 'disabled',
+      attemptedAt: new Date().toISOString(),
+      failureCode: 'DELIVERY_UNAVAILABLE',
+    };
   },
 };
 
@@ -37,7 +49,7 @@ export class TestRegistrationOtpDelivery implements RegistrationOtpDelivery {
     expiresAt: string;
   }) {
     this.messages.push(input);
-    return true;
+    return { queued: true, provider: 'test' as const, attemptedAt: new Date().toISOString() };
   }
 }
 

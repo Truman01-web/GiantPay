@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { useSessionStore } from '@/services/auth/sessionStore';
-import { RequireAuth, RequirePermission } from './guards';
+import { RequireAuth, RequireMerchant, RequirePermission, RequirePlatformAdmin } from './guards';
 
 function renderWithRouter(ui: React.ReactElement) {
   return render(<MemoryRouter initialEntries={['/dashboard']}>{ui}</MemoryRouter>);
@@ -89,5 +89,21 @@ describe('RequirePermission', () => {
       </RequirePermission>,
     );
     expect(screen.getByText('Refund form')).toBeInTheDocument();
+  });
+});
+
+describe('authority domains', () => {
+  it('keeps merchant sessions out of platform administration', () => {
+    useSessionStore.setState({ status: 'authenticated', session: { environment: 'sandbox', environments: ['sandbox'], user: { id: 'u1', name: 'Merchant', email: 'm@example.mw', role: 'OWNER', permissions: ['platform.health.read'], merchantId: 'm1', merchantName: 'M', mfaEnabled: false } } });
+    renderWithRouter(<RequirePlatformAdmin><div>Admin content</div></RequirePlatformAdmin>);
+    expect(screen.queryByText('Admin content')).not.toBeInTheDocument();
+    expect(screen.getByText(/don't have access/i)).toBeInTheDocument();
+  });
+
+  it('keeps platform sessions out of merchant pages', () => {
+    useSessionStore.setState({ status: 'authenticated', session: { environment: 'sandbox', environments: ['sandbox'], user: { id: 'u2', name: 'Admin', email: 'a@giantpay.mw', role: 'PLATFORM_ADMIN', permissions: [], merchantId: null, merchantName: null, mfaEnabled: true } } });
+    renderWithRouter(<RequireMerchant><div>Merchant content</div></RequireMerchant>);
+    expect(screen.queryByText('Merchant content')).not.toBeInTheDocument();
+    expect(screen.getByText(/don't have access/i)).toBeInTheDocument();
   });
 });

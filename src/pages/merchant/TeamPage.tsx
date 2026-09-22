@@ -287,10 +287,11 @@ export default function TeamPage() {
             ) : (
               <form onSubmit={handleSendInvite} className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                  <label htmlFor="invite-name" className="block text-xs font-bold uppercase tracking-wider text-slate-600">
                     Full Name (Optional)
                   </label>
                   <Input
+                    id="invite-name"
                     value={inviteName}
                     onChange={(e) => setInviteName(e.target.value)}
                     placeholder="e.g. Kondwani Mwawa"
@@ -299,10 +300,11 @@ export default function TeamPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                  <label htmlFor="invite-email" className="block text-xs font-bold uppercase tracking-wider text-slate-600">
                     Work Email Address
                   </label>
                   <Input
+                    id="invite-email"
                     type="email"
                     required
                     value={inviteEmail}
@@ -313,12 +315,13 @@ export default function TeamPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                  <label htmlFor="invite-role" className="block text-xs font-bold uppercase tracking-wider text-slate-600">
                     Assigned Role
                   </label>
                   <select
+                    id="invite-role"
                     value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as any)}
+                    onChange={(e) => setInviteRole(e.target.value as 'Admin' | 'Developer' | 'Finance' | 'Support')}
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none"
                   >
                     <option value="Admin">Admin (Full portal management &amp; settings)</option>

@@ -215,6 +215,10 @@ export default function PrivacyPage() {
       {/* Main Content Sections */}
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <div className="space-y-8">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm leading-relaxed text-amber-950">
+            This page describes sandbox data handling. The production privacy policy still requires GiantPlus legal and
+            compliance approval before production activation.
+          </div>
           {sections.map((section) => (
             <div
               key={section.id}

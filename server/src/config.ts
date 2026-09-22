@@ -2,6 +2,15 @@ import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
+const optionalText = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().trim().min(1).optional(),
+);
+const optionalSecret = z.preprocess(
+  (value) => (typeof value === 'string' && value.length === 0 ? undefined : value),
+  z.string().min(1).optional(),
+);
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DEPLOYMENT_ENVIRONMENT: z.enum(['local', 'sandbox', 'production']).default('local'),
@@ -35,13 +44,21 @@ const schema = z.object({
   WORKER_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
   WORKER_LEASE_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
   GRACEFUL_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(15_000),
-  EXTERNAL_DELIVERY_ENABLED: z.literal('false').default('false').transform(()=>false),
+  EXTERNAL_DELIVERY_ENABLED: z.enum(['true','false']).default('false').transform(value=>value==='true'),
+  EMAIL_PROVIDER: z.enum(['smtp']).optional(),
+  SMTP_HOST: optionalText,
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(465),
+  SMTP_SECURE: z.enum(['true','false']).default('true').transform(value=>value==='true'),
+  SMTP_USER: optionalText,
+  SMTP_PASSWORD: optionalSecret,
+  SMTP_FROM: optionalText,
+  SMTP_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30_000).default(5000),
   REAL_PAYOUTS_ENABLED: z.literal('false').default('false').transform(()=>false),
 });
 
 export type Config = Omit<z.output<typeof schema>, 'DEPLOYMENT_ENVIRONMENT'> & { DEPLOYMENT_ENVIRONMENT?: 'local' | 'sandbox' | 'production' };
 
-const mountedSecrets = ['DATABASE_URL', 'REDIS_URL', 'PASSWORD_PEPPER', 'COOKIE_SECRET', 'SANDBOX_WEBHOOK_SECRET', 'WEBHOOK_SECRET_KEY'] as const;
+const mountedSecrets = ['DATABASE_URL', 'REDIS_URL', 'PASSWORD_PEPPER', 'COOKIE_SECRET', 'SANDBOX_WEBHOOK_SECRET', 'WEBHOOK_SECRET_KEY', 'SMTP_PASSWORD'] as const;
 
 export function resolveMountedSecrets(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const resolved = { ...source };
@@ -72,5 +89,13 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<ty
   if (config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.PAYMENT_PROVIDER !== 'sandbox') throw new Error('Sandbox deployment requires PAYMENT_PROVIDER=sandbox');
   if (config.NODE_ENV === 'production' && config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.FRONTEND_ORIGIN !== 'https://giantpay.mw') throw new Error('Sandbox deployment FRONTEND_ORIGIN must be https://giantpay.mw');
   if (config.NODE_ENV === 'production' && [config.PASSWORD_PEPPER,config.COOKIE_SECRET,config.SANDBOX_WEBHOOK_SECRET].some(value=>/^(.)\1+$/.test(value))) throw new Error('Development-only secrets are forbidden in production');
+  if (config.EXTERNAL_DELIVERY_ENABLED) {
+    if (config.NODE_ENV === 'test') throw new Error('External delivery is forbidden during automated tests');
+    if (config.EMAIL_PROVIDER !== 'smtp') throw new Error('EMAIL_PROVIDER=smtp is required when external delivery is enabled');
+    if (!config.SMTP_HOST || !config.SMTP_USER || !config.SMTP_PASSWORD || !config.SMTP_FROM) throw new Error('Complete SMTP configuration is required when external delivery is enabled');
+    if (!config.SMTP_SECURE) throw new Error('SMTP_SECURE=true is required for external delivery');
+    const sender = config.SMTP_FROM.match(/<([^<>]+)>$/)?.[1] ?? config.SMTP_FROM;
+    if (!/^[^@\s]+@giantpay\.mw$/i.test(sender.trim())) throw new Error('SMTP_FROM must use an approved @giantpay.mw sender address');
+  }
   return config;
 }

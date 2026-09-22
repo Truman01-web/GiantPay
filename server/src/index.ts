@@ -7,13 +7,14 @@ import { RedisRateLimitStore } from './rateLimit.js';
 import { NotificationOutboxPublisher } from './notifications/service.js';
 import { workerAllowed } from './operations/controls.js';
 import { GracefulLifecycle,ShutdownCoordinator } from './operations/lifecycle.js';
+import { createRegistrationOtpDelivery } from './smtpRegistrationOtp.js';
 
 // Configuration is reloaded whenever the development watcher restarts.
 const config = loadConfig();
 const db = createDb(config.DATABASE_URL);
 const rateLimits=config.REDIS_URL?await RedisRateLimitStore.connect(config.REDIS_URL):undefined;
 let workerState=!config.OUTBOX_WORKER_ENABLED;
-const app = await buildApp(config, db, undefined,()=>workerState,rateLimits);
+const app = await buildApp(config, db, undefined,()=>workerState,rateLimits,createRegistrationOtpDelivery(config));
 const webhookPublisher=new MerchantWebhookPublisher(db,config.WEBHOOK_MAX_ATTEMPTS),notificationPublisher=new NotificationOutboxPublisher(db);
 const outbox = config.OUTBOX_WORKER_ENABLED ? new OutboxWorker(db, {publish:async message=>{await webhookPublisher.publish(message);if(await workerAllowed(db,'NOTIFICATION_PROCESSING_PAUSED'))await notificationPublisher.publish(message);}}, config.OUTBOX_POLL_MS,()=>workerAllowed(db,'OUTBOX_PROCESSING_PAUSED')) : null;
 const deliveries = config.OUTBOX_WORKER_ENABLED ? new WebhookDeliveryWorker(db,config,config.OUTBOX_POLL_MS,()=>workerAllowed(db,'WEBHOOK_DELIVERY_PAUSED')) : null;

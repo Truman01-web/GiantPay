@@ -1,5 +1,5 @@
 import { Suspense, useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
 import { Logo } from '@/components/navigation/Logo';
 import { IconButton } from '@/components/ui/IconButton';
@@ -46,9 +46,6 @@ export function AdminLayout() {
               <Menu className="h-5 w-5" aria-hidden="true" />
             </IconButton>
             <div className="flex items-center gap-3">
-              <Link to="/dashboard" className="text-[length:var(--text-label)] font-medium text-[var(--color-blue-600)] hover:underline">
-                Merchant view
-              </Link>
               {session && <span className="text-[length:var(--text-label)] text-[var(--color-neutral-600)]">{session.user.name}</span>}
               <IconButton label="Sign out" onClick={() => logout.mutate()}>
                 <LogOut className="h-5 w-5" aria-hidden="true" />

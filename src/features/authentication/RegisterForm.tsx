@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
@@ -12,13 +12,41 @@ import { Alert } from '@/components/feedback/Alert';
 import { CheckCircle2 } from 'lucide-react';
 import { Logo } from '@/components/navigation/Logo';
 import { ApiError } from '@/services/api/errors';
+import type { RegistrationResult } from '@/services/api/auth';
+import { normalizeMalawiPhone } from '@/lib/phone';
 import { registerSchema, type RegisterFormValues } from './schemas';
-import { useRegisterMutation } from './useAuthMutations';
+import {
+  useRegisterMutation,
+  useRegistrationOtpResendMutation,
+  useRegistrationOtpVerifyMutation,
+} from './useAuthMutations';
 
+
+function secondsUntil(value?: string): number {
+  if (!value) return 0;
+  return Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 1000));
+}
+
+const RECOVERY_KEY = 'giantpay.registration.verification';
+function loadRegistrationRecovery(): RegistrationResult | null {
+  try {
+    const value = sessionStorage.getItem(RECOVERY_KEY);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as RegistrationResult;
+    return parsed.accepted && parsed.challengeId && parsed.delivery ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 export function RegisterForm() {
-  const [submitted, setSubmitted] = useState(false);
-  const register_ = useRegisterMutation();
+  const [registration, setRegistration] = useState<RegistrationResult | null>(loadRegistrationRecovery);
+  const [verified, setVerified] = useState(false);
+  const [code, setCode] = useState('');
+  const [retrySeconds, setRetrySeconds] = useState(0);
+  const registerMutation = useRegisterMutation();
+  const verifyOtp = useRegistrationOtpVerifyMutation();
+  const resendOtp = useRegistrationOtpResendMutation();
   const {
     register,
     handleSubmit,
@@ -36,16 +64,12 @@ export function RegisterForm() {
     },
   });
 
-  async function onSubmit(values: RegisterFormValues) {
-    try {
-      await register_.mutateAsync(values);
-      setSubmitted(true);
-    } catch {
-      // Surfaced via register_.error below.
-    }
-  }
+  useEffect(() => {
+    if (registration?.challengeId) sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(registration));
+    else sessionStorage.removeItem(RECOVERY_KEY);
+  }, [registration]);
 
-  if (submitted) {
+  if (verified)
     return (
       <Card className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/75 sm:bg-white/80 backdrop-blur-2xl shadow-2xl shadow-blue-950/15">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#1B4FD8] via-emerald-400 to-teal-600" />
@@ -58,12 +82,143 @@ export function RegisterForm() {
           <p className="mt-2 text-sm text-slate-600">
             We&apos;ve sent a verification link to confirm your account. Once verified, you can sign in and start your merchant application.
           </p>
+          <Link
+            to="/login"
+            className="mt-4 inline-block font-medium text-[var(--color-blue-600)] hover:underline"
+          >
+            Sign in
+          </Link>
+        </CardContent>
+      </Card>
+    );
+
+  if (registration) {
+    const deliveryConfirmed = Boolean(
+      registration.delivery.available && registration.delivery.queued && registration.challengeId,
+    );
+    const error =
+      verifyOtp.error instanceof ApiError
+        ? verifyOtp.error.message
+        : resendOtp.error instanceof ApiError
+          ? resendOtp.error.message
+          : null;
+    return (
+      <Card className="rounded-2xl shadow-xl shadow-slate-900/10">
+        <CardContent>
+          <h1 className="text-[length:var(--text-h2)] font-extrabold text-[var(--color-navy-900)]">
+            Verify your email
+          </h1>
+          {registration.challengeId ? (
+            <>
+              {deliveryConfirmed ? (
+                <p className="mt-2 text-[var(--color-neutral-600)]">
+                  Enter the six-digit code sent to {registration.maskedDestination}. It expires in
+                  10 minutes.
+                </p>
+              ) : (
+                <div className="mt-4">
+                  <Alert variant="warning">
+                    {registration.delivery.available
+                      ? `We could not send a code to ${registration.maskedDestination ?? 'your email'}. Check the address and try again after the cooldown.`
+                      : 'Email delivery is currently unavailable. No verification code was sent. You can retry after delivery is configured.'}
+                  </Alert>
+                </div>
+              )}
+              {error && (
+                <div className="mt-4" role="alert">
+                  <Alert variant="danger">{error}</Alert>
+                </div>
+              )}
+              {deliveryConfirmed && <form
+                className="mt-5 space-y-4"
+                onSubmit={async (event) => {
+                  event.preventDefault();
+                  if (!registration.challengeId || verifyOtp.isPending || !/^\d{6}$/.test(code))
+                    return;
+                  try {
+                    await verifyOtp.mutateAsync({ challengeId: registration.challengeId, code });
+                    sessionStorage.removeItem(RECOVERY_KEY);
+                    setVerified(true);
+                  } catch (error) {
+                    void error;
+                  }
+                }}
+              >
+                <FormField
+                  label="Verification code"
+                  required
+                  help="Six digits from the registration email"
+                >
+                  {(fp) => (
+                    <Input
+                      {...fp}
+                      value={code}
+                      onChange={(event) =>
+                        setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                      }
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                    />
+                  )}
+                </FormField>
+                <Button type="submit" loading={verifyOtp.isPending} disabled={code.length !== 6}>
+                  Verify email
+                </Button>
+              </form>}
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-3"
+                disabled={retrySeconds > 0 || resendOtp.isPending}
+                loading={resendOtp.isPending}
+                onClick={async () => {
+                  if (!registration.challengeId) return;
+                  try {
+                    const next = await resendOtp.mutateAsync({
+                      challengeId: registration.challengeId,
+                    });
+                    setRegistration(next);
+                    setCode('');
+                    setRetrySeconds(secondsUntil(next.resendAvailableAt));
+                  } catch (error) {
+                    void error;
+                  }
+                }}
+              >
+                {retrySeconds > 0
+                  ? `Request another code in ${retrySeconds}s`
+                  : 'Request another code'}
+              </Button>
+            </>
+          ) : (
+            <div className="mt-4">
+              <Alert variant="warning">
+                Registration was accepted, but external email delivery is not enabled in this
+                sandbox. No verification code was sent.
+              </Alert>
+            </div>
+          )}
+          <button
+            type="button"
+            className="mt-5 font-medium text-[var(--color-blue-600)] hover:underline focus-visible:outline-2"
+            onClick={() => {
+              setRegistration(null);
+              registerMutation.reset();
+              verifyOtp.reset();
+              resendOtp.reset();
+              setCode('');
+            }}
+          >
+            Change email address
+          </button>
         </CardContent>
       </Card>
     );
   }
 
-  const errorMessage = register_.error instanceof ApiError ? register_.error.message : register_.error ? 'Registration failed. Please try again.' : null;
+  const errorMessage = registerMutation.error instanceof ApiError ? registerMutation.error.message : registerMutation.error ? 'Registration failed. Please try again.' : null;
 
   return (
     <Card className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/75 sm:bg-white/80 backdrop-blur-2xl shadow-2xl shadow-blue-950/15">
@@ -93,9 +248,22 @@ export function RegisterForm() {
             <Alert variant="danger">{errorMessage}</Alert>
           </div>
         )}
-
-
-        <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form
+          className="mt-5 flex flex-col gap-4"
+          onSubmit={handleSubmit(async (values) => {
+            try {
+              const result = await registerMutation.mutateAsync({
+                ...values,
+                phone: normalizeMalawiPhone(values.phone),
+              });
+              setRegistration(result);
+              setRetrySeconds(secondsUntil(result.resendAvailableAt));
+            } catch (error) {
+              void error;
+            }
+          })}
+          noValidate
+        >
           <FormField label="Business name" required error={errors.businessName?.message}>
             {(fp) => <Input invalid={Boolean(errors.businessName)} {...fp} {...register('businessName')} />}
           </FormField>
@@ -133,7 +301,7 @@ export function RegisterForm() {
 
           <Button
             type="submit"
-            loading={register_.isPending}
+            loading={registerMutation.isPending}
             className="mt-2 h-11 w-full rounded-xl bg-gradient-to-r from-[#1B4FD8] via-blue-600 to-[#103bb0] font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:brightness-110 active:scale-[0.99]"
           >
             Create account

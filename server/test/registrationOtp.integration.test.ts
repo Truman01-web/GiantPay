@@ -101,6 +101,16 @@ suite('registration email OTP lifecycle', () => {
       ).json().error.code,
     ).toBe('REGISTRATION_OTP_REUSED');
     expect((await login()).statusCode).toBe(200);
+    const authenticated = await login();
+    const cookie = authenticated.headers['set-cookie'];
+    expect(cookie).toBeTruthy();
+    const session = await app.inject({
+      method: 'GET',
+      url: '/v1/auth/session',
+      headers: { cookie: Array.isArray(cookie) ? cookie.join('; ') : String(cookie) },
+    });
+    expect(session.statusCode, session.body).toBe(200);
+    expect(session.json().session.user.email).toBe('otp-one@example.invalid');
   });
 
   it('rejects invalid and expired codes and exhausts exactly five attempts', async () => {
@@ -221,5 +231,65 @@ suite('registration email OTP lifecycle', () => {
     expect(
       delivery.messages.filter((x) => x.destination === 'otp-four@example.invalid'),
     ).toHaveLength(2);
+  });
+
+  it('records a safe failed delivery without returning the OTP or provider diagnostic', async () => {
+    const rejectingDelivery = {
+      available: true,
+      async queue() {
+        return {
+          queued: false,
+          provider: 'smtp' as const,
+          attemptedAt: new Date().toISOString(),
+          failureCode: 'DELIVERY_REJECTED' as const,
+        };
+      },
+    };
+    const rejectingApp = await buildApp(
+      loadConfig({
+        NODE_ENV: 'test',
+        DATABASE_URL: url!,
+        PASSWORD_PEPPER: 'p'.repeat(32),
+        COOKIE_SECRET: 'c'.repeat(32),
+        FRONTEND_ORIGIN: 'http://127.0.0.1:5173',
+        PAYMENT_PROVIDER: 'sandbox',
+        SANDBOX_WEBHOOK_SECRET: 'w'.repeat(32),
+      }),
+      db,
+      undefined,
+      undefined,
+      new MemoryRateLimitStore(),
+      rejectingDelivery,
+    );
+    try {
+      const response = await rejectingApp.inject({
+        method: 'POST',
+        url: '/v1/auth/register',
+        payload: registration('otp-rejected@example.invalid'),
+      });
+      expect(response.statusCode, response.body).toBe(202);
+      expect(response.json().delivery).toEqual({
+        available: true,
+        queued: false,
+        errorCode: 'DELIVERY_REJECTED',
+      });
+      expect(response.body).not.toMatch(/\b\d{6}\b/);
+      const stored = (
+        await db.query(
+          `SELECT delivery_state,delivery_provider,delivery_failure_code,otp_hmac
+             FROM registration_email_challenges
+            WHERE id=$1`,
+          [response.json().challengeId],
+        )
+      ).rows[0];
+      expect(stored).toMatchObject({
+        delivery_state: 'FAILED',
+        delivery_provider: 'smtp',
+        delivery_failure_code: 'DELIVERY_REJECTED',
+      });
+      expect(JSON.stringify(stored)).not.toMatch(/\b\d{6}\b/);
+    } finally {
+      await rejectingApp.close();
+    }
   });
 });

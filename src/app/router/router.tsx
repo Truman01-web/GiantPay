@@ -4,8 +4,7 @@ import { AuthLayout } from '@/layouts/AuthLayout';
 import { MerchantLayout } from '@/layouts/MerchantLayout';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { CheckoutLayout } from '@/layouts/CheckoutLayout';
-import { RequireAuth, RequirePermission, RedirectIfAuthenticated } from './guards';
-import { FeatureComingSoon } from '@/components/feedback/FeatureComingSoon';
+import { RequireAuth, RequireMerchant, RequirePermission, RequirePlatformAdmin, RedirectIfAuthenticated } from './guards';
 import {
   LandingPage,
   PricingPage,
@@ -59,12 +58,29 @@ import {
   DeveloperApiKeysPage,
   DeveloperWebhooksPage,
   DeveloperWebhookDetailPage,
+  DeveloperDocumentationPage,
   AdminHomePage,
   MerchantApplicationsListPage,
   MerchantApplicationDetailPage,
+  AdminMerchantsPage,
+  AdminMerchantDetailPage,
+  AdminTransactionsPage,
+  AdminTransactionDetailPage,
+  AdminRefundsPage,
   PendingRefundApprovalsPage,
+  AdminSettlementsPage,
+  AdminReconciliationPage,
+  AdminExceptionsPage,
+  AdminExceptionDetailPage,
+  AdminProvidersPage,
+  AdminUsersPage,
+  AdminRolesPage,
   AuditLogsPage,
+  AdminIncidentsPage,
+  AdminSecurityPage,
+  AdminReportsPage,
   SystemHealthPage,
+  AdminSettingsPage,
 } from './lazyPages';
 
 export const router = createBrowserRouter([
@@ -128,12 +144,19 @@ export const router = createBrowserRouter([
   {
     element: (
       <RequireAuth>
-        <MerchantLayout />
+        <RequireMerchant><MerchantLayout /></RequireMerchant>
       </RequireAuth>
     ),
     children: [
       { path: '/dashboard', element: <DashboardPage /> },
-      { path: '/onboarding', element: <OnboardingPage /> },
+      {
+        path: '/onboarding',
+        element: (
+          <RequirePermission anyOf={['onboarding:read', 'onboarding:write']}>
+            <OnboardingPage />
+          </RequirePermission>
+        ),
+      },
 
       {
         path: '/transactions',
@@ -271,7 +294,7 @@ export const router = createBrowserRouter([
         path: '/developers/documentation',
         element: (
           <RequirePermission permission="developer.apiKeys:manage">
-            <FeatureComingSoon title="Developer documentation" />
+            <DeveloperDocumentationPage />
           </RequirePermission>
         ),
       },
@@ -293,8 +316,18 @@ export const router = createBrowserRouter([
         ),
       },
 
-      { path: '/settings', element: <SettingsPage /> },
-      { path: '/settings/security', element: <SecuritySettingsPage /> },
+      {
+        path: '/settings',
+        element: (
+          <RequirePermission permission="security:manage:self"><SettingsPage /></RequirePermission>
+        ),
+      },
+      {
+        path: '/settings/security',
+        element: (
+          <RequirePermission permission="security:manage:self"><SecuritySettingsPage /></RequirePermission>
+        ),
+      },
 
       {
         path: '/support',
@@ -317,7 +350,7 @@ export const router = createBrowserRouter([
   {
     element: (
       <RequireAuth>
-        <AdminLayout />
+        <RequirePlatformAdmin><AdminLayout /></RequirePlatformAdmin>
       </RequireAuth>
     ),
     children: [
@@ -365,7 +398,7 @@ export const router = createBrowserRouter([
         path: '/admin/merchants',
         element: (
           <RequirePermission permission="platform.merchants.read">
-            <FeatureComingSoon title="Merchants" />
+            <AdminMerchantsPage />
           </RequirePermission>
         ),
       },
@@ -373,7 +406,7 @@ export const router = createBrowserRouter([
         path: '/admin/merchants/:id',
         element: (
           <RequirePermission permission="platform.merchants.read">
-            <FeatureComingSoon title="Merchant" />
+            <AdminMerchantDetailPage />
           </RequirePermission>
         ),
       },
@@ -381,7 +414,7 @@ export const router = createBrowserRouter([
         path: '/admin/transactions',
         element: (
           <RequirePermission permission="platform.transactions.read">
-            <FeatureComingSoon title="All transactions" />
+            <AdminTransactionsPage />
           </RequirePermission>
         ),
       },
@@ -389,7 +422,7 @@ export const router = createBrowserRouter([
         path: '/admin/transactions/:id',
         element: (
           <RequirePermission permission="platform.transactions.read">
-            <FeatureComingSoon title="Transaction" />
+            <AdminTransactionDetailPage />
           </RequirePermission>
         ),
       },
@@ -397,7 +430,7 @@ export const router = createBrowserRouter([
         path: '/admin/refunds',
         element: (
           <RequirePermission permission="platform.refunds.read">
-            <FeatureComingSoon title="All refunds" />
+            <AdminRefundsPage />
           </RequirePermission>
         ),
       },
@@ -413,7 +446,7 @@ export const router = createBrowserRouter([
         path: '/admin/settlements',
         element: (
           <RequirePermission permission="platform.settlements.read">
-            <FeatureComingSoon title="Settlements" />
+            <AdminSettlementsPage />
           </RequirePermission>
         ),
       },
@@ -421,7 +454,7 @@ export const router = createBrowserRouter([
         path: '/admin/reconciliation',
         element: (
           <RequirePermission permission="platform.reconciliation.read">
-            <FeatureComingSoon title="Reconciliation" />
+            <AdminReconciliationPage />
           </RequirePermission>
         ),
       },
@@ -429,7 +462,7 @@ export const router = createBrowserRouter([
         path: '/admin/exceptions',
         element: (
           <RequirePermission permission="platform.reconciliation.read">
-            <FeatureComingSoon title="Exceptions" />
+            <AdminExceptionsPage />
           </RequirePermission>
         ),
       },
@@ -437,7 +470,7 @@ export const router = createBrowserRouter([
         path: '/admin/exceptions/:id',
         element: (
           <RequirePermission permission="platform.reconciliation.read">
-            <FeatureComingSoon title="Exception" />
+            <AdminExceptionDetailPage />
           </RequirePermission>
         ),
       },
@@ -445,7 +478,7 @@ export const router = createBrowserRouter([
         path: '/admin/providers',
         element: (
           <RequirePermission permission="platform.operations.read">
-            <FeatureComingSoon title="Providers" />
+            <AdminProvidersPage />
           </RequirePermission>
         ),
       },
@@ -453,7 +486,7 @@ export const router = createBrowserRouter([
         path: '/admin/users',
         element: (
           <RequirePermission permission="team:read">
-            <FeatureComingSoon title="Users" />
+            <AdminUsersPage />
           </RequirePermission>
         ),
       },
@@ -461,7 +494,7 @@ export const router = createBrowserRouter([
         path: '/admin/roles',
         element: (
           <RequirePermission permission="roles:read">
-            <FeatureComingSoon title="Roles" />
+            <AdminRolesPage />
           </RequirePermission>
         ),
       },
@@ -477,7 +510,7 @@ export const router = createBrowserRouter([
         path: '/admin/incidents',
         element: (
           <RequirePermission permission="platform.incidents.read">
-            <FeatureComingSoon title="Incidents" />
+            <AdminIncidentsPage />
           </RequirePermission>
         ),
       },
@@ -485,7 +518,7 @@ export const router = createBrowserRouter([
         path: '/admin/security',
         element: (
           <RequirePermission permission="platform.controls.read">
-            <FeatureComingSoon title="Security" />
+            <AdminSecurityPage />
           </RequirePermission>
         ),
       },
@@ -493,7 +526,7 @@ export const router = createBrowserRouter([
         path: '/admin/reports',
         element: (
           <RequirePermission permission="platform.metrics.read">
-            <FeatureComingSoon title="Reports" />
+            <AdminReportsPage />
           </RequirePermission>
         ),
       },
@@ -509,7 +542,7 @@ export const router = createBrowserRouter([
         path: '/admin/settings',
         element: (
           <RequirePermission permission="platform.operations.read">
-            <FeatureComingSoon title="Admin settings" />
+            <AdminSettingsPage />
           </RequirePermission>
         ),
       },
