@@ -21,7 +21,6 @@ import {
   useRegistrationOtpVerifyMutation,
 } from './useAuthMutations';
 
-
 function secondsUntil(value?: string): number {
   if (!value) return 0;
   return Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 1000));
@@ -40,10 +39,14 @@ function loadRegistrationRecovery(): RegistrationResult | null {
 }
 
 export function RegisterForm() {
-  const [registration, setRegistration] = useState<RegistrationResult | null>(loadRegistrationRecovery);
+  const [registration, setRegistration] = useState<RegistrationResult | null>(
+    loadRegistrationRecovery,
+  );
   const [verified, setVerified] = useState(false);
   const [code, setCode] = useState('');
-  const [retrySeconds, setRetrySeconds] = useState(0);
+  const [retrySeconds, setRetrySeconds] = useState(() =>
+    secondsUntil(registration?.resendAvailableAt),
+  );
   const registerMutation = useRegisterMutation();
   const verifyOtp = useRegistrationOtpVerifyMutation();
   const resendOtp = useRegistrationOtpResendMutation();
@@ -65,9 +68,19 @@ export function RegisterForm() {
   });
 
   useEffect(() => {
-    if (registration?.challengeId) sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(registration));
+    if (registration?.challengeId)
+      sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(registration));
     else sessionStorage.removeItem(RECOVERY_KEY);
   }, [registration]);
+
+  useEffect(() => {
+    if (retrySeconds <= 0) return;
+    const timer = window.setTimeout(
+      () => setRetrySeconds((seconds) => Math.max(0, seconds - 1)),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [retrySeconds]);
 
   if (verified)
     return (
@@ -78,9 +91,12 @@ export function RegisterForm() {
             <Logo variant="full" />
           </div>
           <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" aria-hidden="true" />
-          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">Check your email</h1>
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">
+            Email verified
+          </h1>
           <p className="mt-2 text-sm text-slate-600">
-            We&apos;ve sent a verification link to confirm your account. Once verified, you can sign in and start your merchant application.
+            Your email address is verified. You can now sign in and continue to your merchant
+            dashboard.
           </p>
           <Link
             to="/login"
@@ -125,56 +141,68 @@ export function RegisterForm() {
                 </div>
               )}
               {error && (
-                <div className="mt-4" role="alert">
+                <div className="mt-4">
                   <Alert variant="danger">{error}</Alert>
                 </div>
               )}
-              {deliveryConfirmed && <form
-                className="mt-5 space-y-4"
-                onSubmit={async (event) => {
-                  event.preventDefault();
-                  if (!registration.challengeId || verifyOtp.isPending || !/^\d{6}$/.test(code))
-                    return;
-                  try {
-                    await verifyOtp.mutateAsync({ challengeId: registration.challengeId, code });
-                    sessionStorage.removeItem(RECOVERY_KEY);
-                    setVerified(true);
-                  } catch (error) {
-                    void error;
-                  }
-                }}
-              >
-                <FormField
-                  label="Verification code"
-                  required
-                  help="Six digits from the registration email"
+              {deliveryConfirmed && (
+                <form
+                  className="mt-5 space-y-4"
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    const form = event.currentTarget;
+                    if (
+                      !registration.challengeId ||
+                      form.dataset.submitting ||
+                      !/^\d{6}$/.test(code)
+                    )
+                      return;
+                    form.dataset.submitting = 'true';
+                    try {
+                      await verifyOtp.mutateAsync({ challengeId: registration.challengeId, code });
+                      sessionStorage.removeItem(RECOVERY_KEY);
+                      setVerified(true);
+                    } catch (error) {
+                      void error;
+                    } finally {
+                      delete form.dataset.submitting;
+                    }
+                  }}
                 >
-                  {(fp) => (
-                    <Input
-                      {...fp}
-                      value={code}
-                      onChange={(event) =>
-                        setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
-                      }
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      pattern="[0-9]{6}"
-                      maxLength={6}
-                    />
-                  )}
-                </FormField>
-                <Button type="submit" loading={verifyOtp.isPending} disabled={code.length !== 6}>
-                  Verify email
-                </Button>
-              </form>}
+                  <FormField
+                    label="Verification code"
+                    required
+                    help="Six digits from the registration email"
+                  >
+                    {(fp) => (
+                      <Input
+                        {...fp}
+                        value={code}
+                        onChange={(event) =>
+                          setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                        }
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                      />
+                    )}
+                  </FormField>
+                  <Button type="submit" loading={verifyOtp.isPending} disabled={code.length !== 6}>
+                    Verify email
+                  </Button>
+                </form>
+              )}
               <Button
                 type="button"
                 variant="secondary"
                 className="mt-3"
                 disabled={retrySeconds > 0 || resendOtp.isPending}
                 loading={resendOtp.isPending}
-                onClick={async () => {
-                  if (!registration.challengeId) return;
+                onClick={async (event) => {
+                  const button = event.currentTarget;
+                  if (!registration.challengeId || button.dataset.submitting) return;
+                  button.dataset.submitting = 'true';
                   try {
                     const next = await resendOtp.mutateAsync({
                       challengeId: registration.challengeId,
@@ -184,6 +212,8 @@ export function RegisterForm() {
                     setRetrySeconds(secondsUntil(next.resendAvailableAt));
                   } catch (error) {
                     void error;
+                  } finally {
+                    delete button.dataset.submitting;
                   }
                 }}
               >
@@ -218,7 +248,12 @@ export function RegisterForm() {
     );
   }
 
-  const errorMessage = registerMutation.error instanceof ApiError ? registerMutation.error.message : registerMutation.error ? 'Registration failed. Please try again.' : null;
+  const errorMessage =
+    registerMutation.error instanceof ApiError
+      ? registerMutation.error.message
+      : registerMutation.error
+        ? 'Registration failed. Please try again.'
+        : null;
 
   return (
     <Card className="relative overflow-hidden rounded-3xl border border-white/70 bg-white/75 sm:bg-white/80 backdrop-blur-2xl shadow-2xl shadow-blue-950/15">
@@ -239,8 +274,12 @@ export function RegisterForm() {
         </div>
 
         <div className="text-center sm:text-left">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Create your GiantPay account</h1>
-          <p className="mt-1 text-sm text-slate-500">Start with sandbox access — production activates after review.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            Create your GiantPay account
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Start with sandbox access — production activates after review.
+          </p>
         </div>
 
         {errorMessage && (
@@ -250,41 +289,89 @@ export function RegisterForm() {
         )}
         <form
           className="mt-5 flex flex-col gap-4"
-          onSubmit={handleSubmit(async (values) => {
-            try {
-              const result = await registerMutation.mutateAsync({
-                ...values,
-                phone: normalizeMalawiPhone(values.phone),
-              });
-              setRegistration(result);
-              setRetrySeconds(secondsUntil(result.resendAvailableAt));
-            } catch (error) {
-              void error;
-            }
-          })}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            if (form.dataset.submitting) return;
+            form.dataset.submitting = 'true';
+            void handleSubmit(async (values) => {
+              try {
+                const result = await registerMutation.mutateAsync({
+                  ...values,
+                  phone: normalizeMalawiPhone(values.phone),
+                });
+                setRegistration(result);
+                setRetrySeconds(secondsUntil(result.resendAvailableAt));
+              } catch (error) {
+                void error;
+              }
+            })(event).finally(() => {
+              delete form.dataset.submitting;
+            });
+          }}
           noValidate
         >
           <FormField label="Business name" required error={errors.businessName?.message}>
-            {(fp) => <Input invalid={Boolean(errors.businessName)} {...fp} {...register('businessName')} />}
+            {(fp) => (
+              <Input invalid={Boolean(errors.businessName)} {...fp} {...register('businessName')} />
+            )}
           </FormField>
           <FormField label="Work email" required error={errors.email?.message}>
-            {(fp) => <Input type="email" autoComplete="email" invalid={Boolean(errors.email)} {...fp} {...register('email')} />}
+            {(fp) => (
+              <Input
+                type="email"
+                autoComplete="email"
+                invalid={Boolean(errors.email)}
+                {...fp}
+                {...register('email')}
+              />
+            )}
           </FormField>
-          <FormField label="Phone number" required help="Malawi numbers, e.g. +265 991 234 567" error={errors.phone?.message}>
+          <FormField
+            label="Phone number"
+            required
+            help="Malawi numbers, e.g. +265 991 234 567"
+            error={errors.phone?.message}
+          >
             {(fp) => <PhoneInput invalid={Boolean(errors.phone)} {...fp} {...register('phone')} />}
           </FormField>
-          <FormField label="Password" required help="At least 10 characters" error={errors.password?.message}>
-            {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.password)} {...fp} {...register('password')} />}
+          <FormField
+            label="Password"
+            required
+            help="At least 12 characters"
+            error={errors.password?.message}
+          >
+            {(fp) => (
+              <PasswordInput
+                autoComplete="new-password"
+                invalid={Boolean(errors.password)}
+                {...fp}
+                {...register('password')}
+              />
+            )}
           </FormField>
           <FormField label="Confirm password" required error={errors.confirmPassword?.message}>
-            {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.confirmPassword)} {...fp} {...register('confirmPassword')} />}
+            {(fp) => (
+              <PasswordInput
+                autoComplete="new-password"
+                invalid={Boolean(errors.confirmPassword)}
+                {...fp}
+                {...register('confirmPassword')}
+              />
+            )}
           </FormField>
 
           <label className="flex items-start gap-2 text-[length:var(--text-label)] text-[var(--color-neutral-700)]">
             <Controller
               control={control}
               name="acceptTerms"
-              render={({ field }) => <Checkbox className="mt-0.5" checked={field.value} onCheckedChange={field.onChange} />}
+              render={({ field }) => (
+                <Checkbox
+                  className="mt-0.5"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              )}
             />
             <span>
               I agree to the{' '}
@@ -297,7 +384,11 @@ export function RegisterForm() {
               </Link>
             </span>
           </label>
-          {errors.acceptTerms && <p className="text-[length:var(--text-help)] text-[var(--color-red-600)]">{errors.acceptTerms.message}</p>}
+          {errors.acceptTerms && (
+            <p className="text-[length:var(--text-help)] text-[var(--color-red-600)]">
+              {errors.acceptTerms.message}
+            </p>
+          )}
 
           <Button
             type="submit"
@@ -306,7 +397,6 @@ export function RegisterForm() {
           >
             Create account
           </Button>
-
         </form>
 
         <p className="mt-5 text-center text-[length:var(--text-label)] text-[var(--color-neutral-600)]">
