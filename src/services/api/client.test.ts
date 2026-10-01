@@ -34,4 +34,32 @@ describe('real API client contract', () => {
     server.use(http.get(`${base}/slow`, async () => { await delay(100); return HttpResponse.json({ ok: true }); }));
     await expect(apiClient.get('/slow', { timeoutMs: 10 })).rejects.toMatchObject({ code: 'TIMEOUT', status: 0 });
   });
+
+  it('normalizes malformed successful JSON instead of leaking a parser error', async () => {
+    server.use(http.get(`${base}/malformed`, () => new HttpResponse('{not-json', {
+      status: 200,
+      headers: { 'content-type': 'application/json', 'x-request-id': 'req_malformed' },
+    })));
+
+    await expect(apiClient.get('/malformed')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+      status: 200,
+      requestId: 'req_malformed',
+    });
+  });
+
+  it('turns an active operational control into a clear subsystem-pause message', async () => {
+    server.use(http.post(`${base}/paused`, () => HttpResponse.json({
+      error: {
+        code: 'OPERATIONAL_CONTROL_ACTIVE',
+        message: 'Internal control details that should not drive feature copy.',
+      },
+    }, { status: 503 })));
+
+    await expect(apiClient.post('/paused', {})).rejects.toMatchObject({
+      code: 'OPERATIONAL_CONTROL_ACTIVE',
+      status: 503,
+      message: expect.stringContaining('temporarily paused'),
+    });
+  });
 });

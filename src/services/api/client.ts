@@ -1,5 +1,5 @@
 import { env } from '@/app/config/env';
-import { ApiError, GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE } from './errors';
+import { ApiError, GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE, safeApiErrorMessage } from './errors';
 
 export interface RequestOptions {
   signal?: AbortSignal;
@@ -58,10 +58,11 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
   } catch {
     // Non-JSON error body — fall through to a generic message.
   }
+  const code = body.error?.code ?? 'UNKNOWN_ERROR';
   return new ApiError({
     status: response.status,
-    code: body.error?.code ?? 'UNKNOWN_ERROR',
-    message: body.error?.message ?? GENERIC_ERROR_MESSAGE,
+    code,
+    message: safeApiErrorMessage(code, body.error?.message),
     fields: body.error?.fields,
     requestId: body.error?.requestId ?? response.headers.get('x-request-id') ?? undefined,
     traceId: body.error?.traceId ?? response.headers.get('traceparent')?.split('-')[1] ?? undefined,
@@ -124,7 +125,18 @@ async function request<T>(
     return undefined as T;
   }
 
-  const data = (await response.json()) as T;
+  let data: T;
+  try {
+    data = (await response.json()) as T;
+  } catch {
+    throw new ApiError({
+      status: response.status,
+      code: 'INVALID_RESPONSE',
+      message: GENERIC_ERROR_MESSAGE,
+      requestId: response.headers.get('x-request-id') ?? undefined,
+      traceId: response.headers.get('traceparent')?.split('-')[1] ?? undefined,
+    });
+  }
   if (data && typeof data === 'object' && 'csrfToken' in data) {
     const csrfToken = (data as { csrfToken?: unknown }).csrfToken;
     if (typeof csrfToken === 'string') setActiveCsrfToken(csrfToken);

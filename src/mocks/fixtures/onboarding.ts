@@ -1,6 +1,8 @@
 import type { OnboardingDraft } from '@/types/onboarding';
 
 export const MOCK_ONBOARDING_DRAFT: OnboardingDraft = {
+  id: null,
+  draftRevision: 0,
   status: 'DRAFT',
   currentStep: 1,
   business: {
@@ -19,6 +21,13 @@ export const MOCK_ONBOARDING_DRAFT: OnboardingDraft = {
     contactEmail: 'chikondi.banda@kambazapay.mw',
     contactPhone: '+265 991 234 567',
   },
+  addresses: [],
+  directors: [],
+  beneficialOwners: [],
+  representatives: [],
+  questionnaire: null,
+  evidenceMetadata: [],
+  informationRequests: [],
   owners: [],
   documents: [],
   settlement: {},

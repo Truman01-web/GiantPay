@@ -1,28 +1,42 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { merchantsApi } from '@/services/api/merchants';
-import type { OnboardingDraft } from '@/types/onboarding';
+import { merchantsApi, type AddressInput, type BusinessProfileInput, type EvidenceInput, type OwnerInput, type PersonInput, type QuestionnaireInput, type RepresentativeInput } from '@/services/api/merchants';
 
-const QUERY_KEY = ['onboarding', 'draft'];
+export const ONBOARDING_QUERY_KEY = ['onboarding', 'draft'];
+export function useOnboardingDraft() { return useQuery({ queryKey: ONBOARDING_QUERY_KEY, queryFn: ({ signal }) => merchantsApi.getOnboarding({ signal }) }); }
 
-export function useOnboardingDraft() {
-  return useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: ({ signal }) => merchantsApi.getOnboarding({ signal }),
-  });
-}
+export type OnboardingAction =
+  | { type: 'business'; value: BusinessProfileInput }
+  | { type: 'add-address'; value: AddressInput } | { type: 'remove-address'; id: string }
+  | { type: 'add-director'; value: PersonInput } | { type: 'remove-director'; id: string }
+  | { type: 'add-owner'; value: OwnerInput } | { type: 'remove-owner'; id: string }
+  | { type: 'add-representative'; value: RepresentativeInput } | { type: 'remove-representative'; id: string }
+  | { type: 'questionnaire'; value: QuestionnaireInput }
+  | { type: 'add-evidence'; value: EvidenceInput } | { type: 'remove-evidence'; id: string }
+  | { type: 'information-response'; requestId: string; response: string } | { type: 'resubmit' };
 
-export function useSaveOnboardingDraft() {
+export function useOnboardingAction() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: Partial<OnboardingDraft>) => merchantsApi.saveOnboardingDraft(payload),
-    onSuccess: (data) => queryClient.setQueryData(QUERY_KEY, data),
-  });
+  return useMutation({ mutationFn: async (action: OnboardingAction) => {
+    switch (action.type) {
+      case 'business': return merchantsApi.saveBusinessProfile(action.value);
+      case 'add-address': return merchantsApi.addAddress(action.value);
+      case 'remove-address': return merchantsApi.removeAddress(action.id);
+      case 'add-director': return merchantsApi.addDirector(action.value);
+      case 'remove-director': return merchantsApi.removeDirector(action.id);
+      case 'add-owner': return merchantsApi.addBeneficialOwner(action.value);
+      case 'remove-owner': return merchantsApi.removeBeneficialOwner(action.id);
+      case 'add-representative': return merchantsApi.addAuthorizedRepresentative(action.value);
+      case 'remove-representative': return merchantsApi.removeAuthorizedRepresentative(action.id);
+      case 'questionnaire': return merchantsApi.saveQuestionnaire(action.value);
+      case 'add-evidence': return merchantsApi.registerEvidence(action.value);
+      case 'remove-evidence': return merchantsApi.removeEvidence(action.id);
+      case 'information-response': return merchantsApi.respondToInformationRequest(action.requestId, action.response);
+      case 'resubmit': return merchantsApi.resubmit();
+    }
+  }, onSuccess: () => queryClient.invalidateQueries({ queryKey: ONBOARDING_QUERY_KEY }) });
 }
 
 export function useSubmitOnboarding() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => merchantsApi.submitOnboarding(),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
-  });
+  return useMutation({ mutationFn: (idempotencyKey: string) => merchantsApi.submitOnboarding(idempotencyKey), onSuccess: () => queryClient.invalidateQueries({ queryKey: ONBOARDING_QUERY_KEY }) });
 }

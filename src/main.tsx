@@ -5,7 +5,11 @@ import { env } from './app/config/env';
 import './index.css';
 
 async function prepare() {
-  if (!env.useMockApi) return;
+  // Keep this check on import.meta.env itself. Vite can replace this value at
+  // build time and remove the dynamic import from real-mode bundles entirely.
+  // Checking only the derived `env.useMockApi` value leaves the MSW worker and
+  // all fixtures in a dormant production chunk even though it never starts.
+  if (import.meta.env.VITE_USE_MOCK_API !== 'true') return;
   const { worker } = await import('./mocks/browser');
   try {
     await worker.start({

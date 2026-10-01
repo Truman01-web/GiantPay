@@ -676,7 +676,7 @@ paths:
       security: [{ cookieSession: [] }]
       operationId: getOnboarding
       responses:
-        '200': { description: Tenant-scoped application with masked draft data }
+        '200': { description: Tenant-scoped application with masked granular draft data and merchant-visible information requests }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     patch:
@@ -722,7 +722,7 @@ paths:
   /merchants/onboarding/evidence/{id}:
     delete: { tags: [Merchant onboarding], operationId: removeOnboardingEvidence, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Replaceable draft evidence removed }, '404': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/information-response:
-    post: { tags: [Merchant onboarding], operationId: respondToComplianceInformationRequest, security: [{ cookieSession: [] }], responses: { '200': { description: Merchant response recorded }, '404': { $ref: '#/components/responses/Error' } } }
+    post: { tags: [Merchant onboarding], operationId: respondToComplianceInformationRequest, security: [{ cookieSession: [] }], description: Responds to a merchant-visible open information request returned in the onboarding snapshot., responses: { '200': { description: Merchant response recorded }, '404': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/resubmit:
     post: { tags: [Merchant onboarding], operationId: resubmitOnboarding, security: [{ cookieSession: [] }], responses: { '200': { description: Application resubmitted }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/history:

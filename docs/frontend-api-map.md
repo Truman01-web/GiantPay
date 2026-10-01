@@ -51,3 +51,9 @@ All service calls pass through `services/api/client.ts`, which converts any
 non-2xx response (or network failure) into a typed `ApiError` with
 `{ code, message, fields?, requestId?, status }`, so features never branch on
 raw fetch/Response objects.
+
+Successful responses that claim to be JSON but contain malformed JSON are also
+normalized as `INVALID_RESPONSE`, preserving safe request/trace references when
+available. `OPERATIONAL_CONTROL_ACTIVE` is rendered consistently as a clear
+temporary subsystem-pause message; the client never implies that a blocked
+mutation was processed.
