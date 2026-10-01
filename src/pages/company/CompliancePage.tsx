@@ -1,12 +1,12 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft, ShieldCheck, FileText, UserCheck, Lock, AlertTriangle, CheckCircle } from "lucide-react";
+import { ShieldCheck, FileText, UserCheck, Lock, AlertTriangle, CheckCircle } from "lucide-react";
+import { PublicPageHero } from "@/components/marketing/PublicPageHero";
 
 const FRAMEWORKS = [
   { icon: ShieldCheck, title: "Reserve Bank of Malawi (RBM)", badge: "Primary Regulator", body: "GiantPlus operates in alignment with the RBM's National Payment Systems framework. All payment processing, settlement, and reporting activities are structured to meet RBM standards for licensed payment service providers." },
   { icon: UserCheck, title: "KYC / KYB Verification", badge: "Customer Due Diligence", body: "All merchants undergo Know Your Customer (KYC) and Know Your Business (KYB) verification before production activation. Identity documents, business certificates, and ownership structures are verified against official records." },
   { icon: AlertTriangle, title: "Anti-Money Laundering (AML)", badge: "Transaction Monitoring", body: "GiantPay applies automated AML screening to transactions, monitoring for suspicious activity patterns, structuring behaviour, and sanctions list matches in real time." },
   { icon: Lock, title: "Data Protection", badge: "Privacy & Security", body: "Merchant and customer data is encrypted at rest and in transit using industry-standard protocols. We maintain strict data access controls and detailed audit logs for all system events." },
-  { icon: FileText, title: "Transaction Reporting", badge: "Financial Transparency", body: "Every transaction processed through GiantPay carries a complete audit trail â€” including timestamps, provider confirmations, fee deductions, and settlement records â€” exportable for compliance reporting." },
+  { icon: FileText, title: "Transaction Reporting", badge: "Financial Transparency", body: "Every transaction processed through GiantPay carries a complete audit trail — including timestamps, provider confirmations, fee deductions, and settlement records — exportable for compliance reporting." },
   { icon: CheckCircle, title: "PCI DSS Alignment", badge: "Card Payment Standards", body: "Card payment processing is designed and implemented in alignment with PCI DSS (Payment Card Industry Data Security Standard) requirements, protecting cardholder data at every stage." },
 ];
 
@@ -23,39 +23,14 @@ export default function CompliancePage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative isolate overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28"
-        style={{ background: "linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)" }}>
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=2000&q=80"
-            alt=""
-            className="h-full w-full object-cover object-center opacity-20"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/80" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]" />
-        </div>
-        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-20"
-          style={{ backgroundImage: "radial-gradient(circle at 60% 50%, #1B4FD8 0%, transparent 60%)" }} />
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20">
-              <ArrowLeft className="h-4 w-4" /> Back to Home
-            </Link>
-          </div>
-          <div className="max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-blue-300">
-              Company &middot; Compliance
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Regulatory alignment<br />
-              <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300 bg-clip-text text-transparent">at our core.</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
-              GiantPay and GiantPlus are built compliance-first. Every product, every API, and every data handling decision is designed to meet the standards required to operate as a licensed payment service provider in Malawi.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PublicPageHero
+        badge="Company · Compliance"
+        title={<>Regulatory alignment</>}
+        titleAccent="at our core."
+        description="GiantPay and GiantPlus are built compliance-first. Every product, every API, and every data handling decision is designed to meet the standards required to operate as a licensed payment service provider in Malawi."
+        heroBgUrl="https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=2000&q=80"
+        heroBgFallback="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=80"
+      />
 
       {/* Status badges */}
       <section className="border-y border-slate-100 bg-slate-50 py-12">

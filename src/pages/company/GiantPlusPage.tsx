@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft,
   ArrowRight,
   ExternalLink,
   Cpu,
@@ -17,6 +16,7 @@ import {
   Building2,
   CheckCircle2
 } from "lucide-react";
+import { PublicPageHero } from "@/components/marketing/PublicPageHero";
 
 const STATS = [
   { value: "16+", label: "Enterprise & Institutional Clients" },
@@ -120,67 +120,33 @@ export default function GiantPlusPage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
       {/* Hero */}
-      <section
-        className="relative isolate overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28 text-white"
-        style={{ background: "linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)" }}
-      >
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=80"
-            alt=""
-            className="h-full w-full object-cover object-center opacity-25"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/80" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]" />
-        </div>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-25"
-          style={{ backgroundImage: "radial-gradient(circle at 75% 35%, #1B4FD8 0%, transparent 60%)" }}
-        />
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20"
+      <PublicPageHero
+        badge="Parent Company · Malawi & Pan-Africa"
+        badgeIcon={<Sparkles className="h-3.5 w-3.5 text-[var(--color-blue-600)]" />}
+        title={<>Innovating the future</>}
+        titleAccent="with Africa."
+        description="GiantPlus is a pioneering Malawian software, AI, and digital transformation powerhouse. GiantPay is our unified digital payment platform, engineered to modernise commerce and financial settlement across Africa."
+        heroBgUrl="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=80"
+        heroBgFallback="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=80"
+        actions={
+          <>
+            <a
+              href="https://www.giantplus-mw.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-blue-600)] px-6 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-[var(--color-blue-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to Home
+              Visit GiantPlus Website <ExternalLink className="h-4 w-4" />
+            </a>
+            <Link
+              to="/company/about"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-neutral-300)] bg-white px-6 py-3.5 text-sm font-bold text-[var(--color-navy-800)] shadow-sm transition hover:bg-[var(--color-neutral-100)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
+            >
+              About GiantPay Platform <ArrowRight className="h-4 w-4" />
             </Link>
-          </div>
-
-          <div className="max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-blue-300 backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5 text-blue-400" /> Parent Company &middot; Malawi &amp; Pan-Africa
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Innovating the future{" "}
-              <span className="bg-gradient-to-r from-blue-300 via-sky-200 to-white bg-clip-text text-transparent">
-                with Africa.
-              </span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">
-              GiantPlus is a pioneering Malawian software, AI, and digital transformation powerhouse. GiantPay is our unified digital payment platform, engineered to modernise commerce and financial settlement across Africa.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-4">
-              <a
-                href="https://www.giantplus-mw.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1B4FD8] px-6 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700 hover:-translate-y-0.5"
-              >
-                Visit GiantPlus Website <ExternalLink className="h-4 w-4" />
-              </a>
-              <Link
-                to="/company/about"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
-              >
-                About GiantPay Platform <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       {/* Stats Bar */}
       <section className="border-b border-slate-200 bg-slate-50 py-10">
@@ -209,7 +175,7 @@ export default function GiantPlusPage() {
                 GiantPlus is a Malawian technology company specializing in web development, AI-driven systems, cloud architecture, and digital transformation solutions. We empower government institutions, corporations, and startups with scalable, secure, and intelligent digital technologies.
               </p>
               <p className="mt-4 text-base leading-relaxed text-slate-600">
-                Recognizing the friction businesses face in collecting digital payments from fragmented mobile money and banking networks, GiantPlus engineered <strong>GiantPay</strong> â€” providing a single, robust API and merchant portal for unified payments, webhooks, automated reconciliation, and T+1 target settlements.
+                Recognizing the friction businesses face in collecting digital payments from fragmented mobile money and banking networks, GiantPlus engineered <strong>GiantPay</strong> — providing a single, robust API and merchant portal for unified payments, webhooks, automated reconciliation, and T+1 target settlements.
               </p>
               <div className="mt-8 flex items-center gap-4">
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Target, Eye, Heart, Shield, Zap, Globe } from "lucide-react";
+import { ArrowRight, Target, Eye, Heart, Shield, Zap, Globe } from "lucide-react";
+import { PublicPageHero } from "@/components/marketing/PublicPageHero";
 
 const HERO_BG_IMAGE = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=80";
 const HERO_BG_FALLBACK = "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=80";
@@ -14,7 +15,7 @@ const TIMELINE = [
 
 const VALUES = [
   { icon: Target, title: "Transparency First", body: "No hidden fees, no surprises. Every transaction rate, settlement cycle, and ledger entry is visible to you in real time." },
-  { icon: Shield, title: "Compliance-Led", body: "We design for regulatory alignment from day one â€” KYC/KYB, AML screening, and RBM reporting are built into every product." },
+  { icon: Shield, title: "Compliance-Led", body: "We design for regulatory alignment from day one — KYC/KYB, AML screening, and RBM reporting are built into every product." },
   { icon: Zap, title: "Developer Experience", body: "Clean REST APIs, predictable status models, and comprehensive sandbox tooling so your engineers can ship fast and ship confidently." },
   { icon: Heart, title: "Local-First", body: "We are a Malawian company building for Malawian commerce. Every design decision considers the local banking and mobile money reality." },
   { icon: Globe, title: "Infrastructure-Grade Reliability", body: "Payment infrastructure is critical infrastructure. We engineer for uptime, idempotency, and reconciliation correctness." },
@@ -32,34 +33,14 @@ export default function AboutPage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative isolate flex min-h-[480px] items-center overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28">
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none">
-          <img src={HERO_BG_IMAGE} onError={(e) => { e.currentTarget.src = HERO_BG_FALLBACK; }} alt=""
-            className="h-full w-full object-cover object-[75%_center] opacity-45 sm:opacity-55"
-            style={{ filter: "contrast(1.08) brightness(1.02)" }} />
-          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white" />
-        </div>
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-[#1B4FD8]">
-              <ArrowLeft className="h-4 w-4" /> Back to Home
-            </Link>
-          </div>
-          <div className="max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50/80 px-4 py-1.5 text-xs font-bold text-[#1B4FD8] backdrop-blur-sm">
-              Company &middot; Our Story
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Building Malawi&apos;s<br />
-              <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">payment backbone.</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-              GiantPay is the unified digital payments platform from GiantPlus Global Finance Solutions â€” purpose-built to modernise commerce and financial access across Malawi.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PublicPageHero
+        badge="Company · Our Story"
+        title={<>Building Malawi&apos;s</>}
+        titleAccent="payment backbone."
+        description="GiantPay is the unified digital payments platform from GiantPlus Global Finance Solutions — purpose-built to modernise commerce and financial access across Malawi."
+        heroBgUrl={HERO_BG_IMAGE}
+        heroBgFallback={HERO_BG_FALLBACK}
+      />
 
       {/* Stats */}
       <section className="border-y border-slate-100 bg-slate-50 py-12">
@@ -82,7 +63,7 @@ export default function AboutPage() {
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">Our Mission</p>
               <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Payments that work the way Malawi works.</h2>
-              <p className="mt-6 text-base leading-relaxed text-slate-600">Malawian businesses have historically juggled multiple, disconnected payment providers â€” one for mobile money, another for cards, another for bank transfers â€” with no unified view, no automated reconciliation, and no clean settlement cycle.</p>
+              <p className="mt-6 text-base leading-relaxed text-slate-600">Malawian businesses have historically juggled multiple, disconnected payment providers — one for mobile money, another for cards, another for bank transfers — with no unified view, no automated reconciliation, and no clean settlement cycle.</p>
               <p className="mt-4 text-base leading-relaxed text-slate-600">GiantPay is building the infrastructure to connect Airtel Money, TNM Mpamba, Visa, Mastercard, and the National Switch through one clean API, one merchant dashboard, and one transparent fee structure. The sandbox is fully operational; live payment channels are being activated through provider and regulatory approvals.</p>
               <div className="mt-8 flex gap-4">
                 <Link to="/register" className="inline-flex items-center gap-2 rounded-xl bg-[#1B4FD8] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#1744b9]">

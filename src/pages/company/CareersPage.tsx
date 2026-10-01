@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft,
   ArrowRight,
   Briefcase,
   Sparkles,
@@ -15,6 +14,7 @@ import {
   Mail,
   Users
 } from "lucide-react";
+import { PublicPageHero } from "@/components/marketing/PublicPageHero";
 
 interface JobOpening {
   id: string;
@@ -133,43 +133,15 @@ export default function CareersPage() {
   return (
     <main className="overflow-hidden bg-slate-50 text-slate-900">
       {/* Hero Section */}
-      <section className="relative isolate overflow-hidden pt-24 pb-20 text-white lg:pt-32 lg:pb-28">
-        {/* Background image */}
-        <img
-          src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?auto=format&fit=crop&w=1920&q=80"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-        />
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-[#061428]/80" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(27,79,216,0.35),transparent)] pointer-events-none" />
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back to Home
-            </Link>
-          </div>
-
-          <div className="max-w-3xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold text-blue-300 backdrop-blur-sm">
-              <Users className="h-3.5 w-3.5" /> Company &middot; Careers & Culture
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-              Build Malawi&apos;s financial infrastructure{" "}
-              <span className="bg-gradient-to-r from-blue-300 via-sky-200 to-white bg-clip-text text-transparent">
-                with us.
-              </span>
-            </h1>
-            <p className="mt-6 text-lg leading-relaxed text-slate-300">
-              At GiantPay, we are solving one of the most foundational challenges in modern African commerce: making digital payments seamless, instant, and trusted for every merchant and citizen.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PublicPageHero
+        badge="Company · Careers & Culture"
+        badgeIcon={<Users className="h-3.5 w-3.5 text-[var(--color-blue-600)]" />}
+        title={<>Build Malawi&apos;s financial infrastructure</>}
+        titleAccent="with us."
+        description="At GiantPay, we are solving one of the most foundational challenges in modern African commerce: making digital payments seamless, instant, and trusted for every merchant and citizen."
+        heroBgUrl="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?auto=format&fit=crop&w=1920&q=80"
+        heroBgFallback="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=80"
+      />
 
       {/* Culture & Values */}
       <section className="py-20">

@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Scale, FileCheck, CheckCircle2, Clock } from 'lucide-react';
+import { Scale, FileCheck, CheckCircle2, Clock } from 'lucide-react';
+import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 
 export default function TermsPage() {
   const lastUpdated = 'September 2026';
@@ -176,43 +176,20 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-slate-50/50">
       {/* Hero Header */}
-      <section className="relative overflow-hidden text-white pt-28 pb-14 sm:pt-36 sm:pb-16 bg-[#061428]">
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=2000&q=80"
-            onError={(e) => {
-              e.currentTarget.src = "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=2000&q=80";
-            }}
-            alt=""
-            className="h-full w-full object-cover object-center opacity-25"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/85" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]" />
-        </div>
-        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6">
-          <div className="mb-6">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Link>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400">
-            <Scale className="h-4 w-4" />
-            <span>Merchant Agreement</span>
-          </div>
-          <h1 className="mt-3 text-3xl sm:text-5xl font-black tracking-tight text-white">Terms of Service</h1>
-          <p className="mt-3 text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
-            Legal terms governing merchant accounts, digital payment processing, automated settlements, and acceptable platform use.
-          </p>
-          <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+      <PublicPageHero
+        badge="Legal · Merchant Agreement"
+        badgeIcon={<Scale className="h-3.5 w-3.5 text-[var(--color-blue-600)]" />}
+        title="Terms of Service"
+        description="Legal terms governing merchant accounts, digital payment processing, automated settlements, and acceptable platform use."
+        heroBgUrl="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=2000&q=80"
+        heroBgFallback="https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=2000&q=80"
+        meta={
+          <div className="flex items-center gap-2 text-xs text-[var(--color-navy-700)]">
             <Clock className="h-3.5 w-3.5" />
             <span>Effective date: {lastUpdated}</span>
           </div>
-        </div>
-      </section>
+        }
+      />
 
       {/* Main Content */}
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">

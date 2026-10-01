@@ -1,80 +1,58 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, FlaskConical, CircleCheck, Clock3 } from 'lucide-react';
+import { ArrowRight, FlaskConical, CircleCheck, Clock3 } from 'lucide-react';
+import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 
 const AVAILABLE_TODAY = [
-  'Registration, login, MFA, and password reset',
-  'Merchant onboarding (business info, ownership, KYC/KYB document upload)',
-  'Hosted checkout and payment-status lookup',
-  'Merchant dashboard (stats, volume chart, recent transactions)',
-  'Transactions — list, filters, detail view with event timeline',
-  'Payment links — create, list, detail, disable',
-  'Refunds — request, list, detail',
-  'Settlements and reconciliation — runs, exceptions, status updates',
-  'Reports and the developer dashboard (API keys, webhooks)',
+  'Registration, login, MFA, and password recovery',
+  'Merchant onboarding and KYB verification workflow',
+  'Hosted checkout and payment status polling',
+  'Merchant dashboard overview and transaction metrics',
+  'Transactions list, filters, and event timelines',
+  'Payment link generation and management',
+  'Refund requests and maker-checker approval queues',
+  'Settlements and reconciliation exception queues',
+  'Team management, custom roles, and permission gating',
+  'Support case ticketing and activity history',
+  'Developer API keys and signed webhook management',
 ];
 
 const NOT_YET_AVAILABLE = [
-  'Team invitations and role management',
-  'Support case tracking',
-  'The admin console',
+  'Live money movements (sandbox accounting only)',
+  'Direct telecommunications provider API integration (Airtel / TNM pending approval)',
+  'Live card acquirer routing (Visa / Mastercard pending approval)',
+  'Production automated bank payouts (National Switch approval pending)',
 ];
 
 export default function SandboxPage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative isolate overflow-hidden bg-white pt-24 pb-20 lg:pt-32 lg:pb-28">
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src="/hero-bg.jpg"
-            alt=""
-            className="h-full w-full object-cover object-[75%_center] opacity-45 sm:opacity-55"
-            style={{ filter: 'contrast(1.08) brightness(1.02)' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white" />
-        </div>
-        <div aria-hidden className="grid-bg absolute inset-0 opacity-60" />
-        <div aria-hidden className="hero-glow absolute inset-0" />
-        <div aria-hidden className="blob-primary absolute left-[12%] top-1/4 h-80 w-80 rounded-full" />
-        <div aria-hidden className="blob-accent absolute bottom-[12%] right-[12%] h-72 w-72 rounded-full" />
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
+      <PublicPageHero
+        badge="Developers · Sandbox Environment"
+        badgeIcon={<FlaskConical className="h-3.5 w-3.5 text-[var(--color-blue-600)]" />}
+        title={<>A zero-risk</>}
+        titleAccent="sandbox."
+        description="Register a merchant account, verify your credentials, and test against the deployed sandbox API. Sandbox transactions are simulated and never move real money."
+        backTo="/developers/overview"
+        backLabel="Back to Developers"
+        heroBgUrl="/hero-bg.jpg"
+        actions={
+          <>
             <Link
-              to="/developers/overview"
-              className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-[#1B4FD8]"
+              to="/register"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-blue-600)] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[var(--color-blue-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to Developers
+              Create sandbox account <ArrowRight className="h-4 w-4" />
             </Link>
-          </div>
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              A zero-risk{' '}
-              <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">
-                sandbox.
-              </span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-              Register a merchant account, verify its email, and test against the deployed sandbox API. Sandbox
-              transactions are simulated and never move real money.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1B4FD8] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#1744b9]"
-              >
-                Create sandbox account <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Sign in
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-neutral-300)] bg-white px-6 py-3 text-sm font-bold text-[var(--color-navy-800)] shadow-sm transition hover:bg-[var(--color-neutral-100)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
+            >
+              Sign in
+            </Link>
+          </>
+        }
+      />
 
       {/* How it works */}
       <section className="py-20 lg:py-28">

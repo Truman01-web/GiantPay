@@ -10,7 +10,7 @@ import {
   CreditCard,
   Lock,
 } from 'lucide-react';
-import { BackButton } from '@/components/navigation/BackButton';
+import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 import { RotatingOrbitalLogos } from '@/components/marketing/RotatingOrbitalLogos';
 
 interface FeatureDetail {
@@ -594,7 +594,7 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
             <span className="text-xs font-bold text-white uppercase tracking-wider">Unified Gateway Engine</span>
           </div>
           <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-bold text-blue-300">
-            99.95% Uptime
+            Sandbox Engine
           </span>
         </div>
 
@@ -730,7 +730,7 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
             <span className="text-xs font-bold text-white uppercase tracking-wider">GiantPay Checkout</span>
           </div>
           <span className="rounded-full bg-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold text-purple-300">
-            PCI-DSS Certified
+            PCI-DSS Architecture
           </span>
         </div>
 
@@ -846,79 +846,40 @@ export default function PublicFeaturePage() {
   return (
     <div className="min-h-screen bg-slate-50/50">
       {/* Hero Header */}
-      <section className="relative overflow-hidden text-white pt-28 pb-16 sm:pt-36 sm:pb-20 bg-[#061428]">
-        {/* Dedicated Background Photo with layered dark gradient overlay */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src={feature.heroImage}
-            onError={(e) => {
-              if (feature.heroImageFallback) e.currentTarget.src = feature.heroImageFallback;
-            }}
-            alt=""
-            className="h-full w-full object-cover object-center opacity-30 sm:opacity-35"
-            style={{ filter: 'contrast(1.1) brightness(0.85)' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/85" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]" />
-        </div>
-        <div aria-hidden className="grid-bg absolute inset-0 opacity-25 pointer-events-none" />
-        <div aria-hidden className="hero-glow absolute inset-0 pointer-events-none" />
-
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <BackButton fallbackTo="/" label="Back" variant="glass" />
+      <PublicPageHero
+        badge={feature.badge}
+        title={feature.title}
+        description={feature.tagline}
+        heroBgUrl={feature.heroImage}
+        heroBgFallback={feature.heroImageFallback || '/hero-bg.jpg'}
+        actions={
+          <>
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-blue-600)] px-6 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-[var(--color-blue-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
+            >
+              Get Started Free <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/developers/overview"
+              className="inline-flex items-center rounded-xl border border-[var(--color-neutral-300)] bg-white px-6 py-3.5 text-sm font-semibold text-[var(--color-navy-800)] shadow-sm transition hover:bg-[var(--color-neutral-100)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
+            >
+              View API Documentation
+            </Link>
+          </>
+        }
+        meta={
+          <div className="grid grid-cols-3 gap-4 border-t border-[var(--color-neutral-200)] pt-6 max-w-xl">
+            {feature.metrics.map((m) => (
+              <div key={m.label}>
+                <p className="text-2xl sm:text-3xl font-black text-[var(--color-blue-600)]">{m.value}</p>
+                <p className="text-xs text-[var(--color-navy-700)] font-medium mt-1">{m.label}</p>
+              </div>
+            ))}
           </div>
-
-          <div className="grid gap-12 lg:grid-cols-12 lg:items-center">
-            {/* Left Column: Headline & Content */}
-            <div className="lg:col-span-7">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400">
-                <span className="rounded-full bg-blue-500/20 border border-blue-400/30 px-3 py-1 text-blue-300">
-                  {feature.badge}
-                </span>
-              </div>
-
-              <h1 className="mt-4 text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-                {feature.title}
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-base sm:text-xl text-slate-300 leading-relaxed font-medium">
-                {feature.tagline}
-              </p>
-
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Link
-                  to="/register"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#1B4FD8] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-700/25 transition hover:bg-[#1744b9]"
-                >
-                  Get Started Free <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/developers/overview"
-                  className="inline-flex items-center rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
-                >
-                  View API Documentation
-                </Link>
-              </div>
-
-              {/* Key Metrics Strip */}
-              <div className="mt-12 grid grid-cols-3 gap-4 border-t border-white/10 pt-8 max-w-xl">
-                {feature.metrics.map((m) => (
-                  <div key={m.label}>
-                    <p className="text-2xl sm:text-3xl font-black text-white">{m.value}</p>
-                    <p className="text-xs text-slate-400 font-medium mt-1">{m.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right Column: Hero Visual Showcase (Rotating Logos on mobile-money & card-payments) */}
-            <div className="lg:col-span-5 flex justify-center">
-              <FeatureHeroVisual slug={slug} />
-            </div>
-          </div>
-        </div>
-      </section>
+        }
+        rightVisual={<FeatureHeroVisual slug={slug} />}
+      />
 
       {/* Main Content Area */}
       <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 space-y-12">

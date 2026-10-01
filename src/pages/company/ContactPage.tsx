@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, MapPin, Phone, Mail, Clock, MessageSquare, Building2, HeadphonesIcon } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, MessageSquare, Building2, HeadphonesIcon } from "lucide-react";
+import { PublicPageHero } from "@/components/marketing/PublicPageHero";
 
 const OFFICES = [
   {
@@ -17,7 +17,7 @@ const OFFICES = [
     address: "Ginnery Corner, Blantyre, Malawi",
     phone: "+265 885 362 150",
     email: "support@giantpay.mw",
-    hours: "Mon â€“ Fri, 08:00 â€“ 17:00 CAT",
+    hours: "Mon – Fri, 08:00 – 17:00 CAT",
   },
 ];
 
@@ -40,39 +40,15 @@ export default function ContactPage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative isolate overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28"
-        style={{ background: "linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)" }}>
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=2000&q=80"
-            alt=""
-            className="h-full w-full object-cover object-center opacity-20"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/80" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]" />
-        </div>
-        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-20"
-          style={{ backgroundImage: "radial-gradient(circle at 60% 40%, #1B4FD8 0%, transparent 60%)" }} />
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/20">
-              <ArrowLeft className="h-4 w-4" /> Back to Home
-            </Link>
-          </div>
-          <div className="max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs font-bold text-blue-300">
-              Company &middot; Contact
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Talk to our<br />
-              <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300 bg-clip-text text-transparent">Malawi team.</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
-              We have offices in Lilongwe and Blantyre. Our merchant support, sales, developer relations, and compliance teams are available Monday through Friday.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PublicPageHero
+        badge="Company · Contact"
+        badgeIcon={<MessageSquare className="h-3.5 w-3.5 text-[var(--color-blue-600)]" />}
+        title={<>Talk to our</>}
+        titleAccent="Malawi team."
+        description="We have offices in Lilongwe and Blantyre. Our merchant support, sales, developer relations, and compliance teams are available Monday through Friday."
+        heroBgUrl="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=2000&q=80"
+        heroBgFallback="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=80"
+      />
 
       {/* Contact channels */}
       <section className="border-y border-slate-100 bg-slate-50 py-14">

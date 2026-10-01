@@ -5,6 +5,8 @@ import { ArrowLeft } from 'lucide-react';
 export interface PublicPageHeroProps {
   /** Short label shown in the small badge above the heading, e.g. "Company · Our Story" */
   badge?: string;
+  /** Optional icon prefix inside the badge */
+  badgeIcon?: ReactNode;
   /** Main page heading */
   title: ReactNode;
   /** Portion of the heading rendered in the brand-blue gradient */
@@ -17,11 +19,16 @@ export interface PublicPageHeroProps {
   heroBgFallback?: string;
   /** Optional CTA row below the description */
   actions?: ReactNode;
+  /** Optional metadata strip (e.g. effective date or metric counters) */
+  meta?: ReactNode;
+  /** Optional visual element on the right column (e.g. interactive simulator or rotating logos) */
+  rightVisual?: ReactNode;
   /** "Back to X" back-navigation link. Defaults to "Back to Home" → "/" */
   backTo?: string;
   backLabel?: string;
   /** Left-aligned (default) or centred */
   align?: 'left' | 'center';
+  children?: ReactNode;
 }
 
 /**
@@ -38,21 +45,25 @@ export interface PublicPageHeroProps {
  */
 export function PublicPageHero({
   badge,
+  badgeIcon,
   title,
   titleAccent,
   description,
   heroBgUrl,
   heroBgFallback,
   actions,
+  meta,
+  rightVisual,
   backTo = '/',
   backLabel = 'Back to Home',
   align = 'left',
+  children,
 }: PublicPageHeroProps) {
-  const isCenter = align === 'center';
+  const isCenter = align === 'center' && !rightVisual;
 
   return (
     <section
-      className={`relative isolate flex min-h-[480px] items-center overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28`}
+      className="relative isolate flex min-h-[480px] items-center overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-28"
     >
       {/* Background image layer */}
       {heroBgUrl && (
@@ -83,40 +94,61 @@ export function PublicPageHero({
           </Link>
         </div>
 
-        {/* Copy block */}
-        <div className={`max-w-3xl${isCenter ? ' mx-auto text-center' : ''}`}>
-          {badge && (
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--color-blue-100)] bg-[var(--color-blue-50)]/80 px-4 py-1.5 text-xs font-bold text-[var(--color-blue-600)] backdrop-blur-sm">
-              {badge}
-            </div>
-          )}
-
-          <h1 className="text-4xl font-extrabold tracking-tight text-[var(--color-navy-950)] sm:text-5xl lg:text-6xl">
-            {title}
-            {titleAccent && (
-              <>
-                <br />
-                <span className="bg-gradient-to-r from-[var(--color-blue-600)] via-[var(--color-blue-500)] to-sky-400 bg-clip-text text-transparent">
-                  {titleAccent}
-                </span>
-              </>
+        {/* Content container: either two-column grid (if rightVisual) or single column copy block */}
+        <div
+          className={
+            rightVisual
+              ? 'grid gap-12 lg:grid-cols-12 lg:items-center'
+              : `max-w-3xl${isCenter ? ' mx-auto text-center' : ''}`
+          }
+        >
+          {/* Main copy column */}
+          <div className={rightVisual ? 'lg:col-span-7' : ''}>
+            {badge && (
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--color-blue-100)] bg-[var(--color-blue-50)]/80 px-4 py-1.5 text-xs font-bold text-[var(--color-blue-600)] backdrop-blur-sm">
+                {badgeIcon}
+                <span>{badge}</span>
+              </div>
             )}
-          </h1>
 
-          {description && (
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--color-navy-700)]">
-              {description}
-            </p>
-          )}
+            <h1 className="text-4xl font-extrabold tracking-tight text-[var(--color-navy-950)] sm:text-5xl lg:text-6xl">
+              {title}
+              {titleAccent && (
+                <>
+                  <br />
+                  <span className="bg-gradient-to-r from-[var(--color-blue-600)] via-[var(--color-blue-500)] to-sky-400 bg-clip-text text-transparent">
+                    {titleAccent}
+                  </span>
+                </>
+              )}
+            </h1>
 
-          {actions && (
-            <div
-              className={`mt-8 flex flex-wrap gap-4${isCenter ? ' justify-center' : ''}`}
-            >
-              {actions}
+            {description && (
+              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--color-navy-700)]">
+                {description}
+              </p>
+            )}
+
+            {actions && (
+              <div
+                className={`mt-8 flex flex-wrap gap-4${isCenter ? ' justify-center' : ''}`}
+              >
+                {actions}
+              </div>
+            )}
+
+            {meta && <div className="mt-8">{meta}</div>}
+          </div>
+
+          {/* Optional Right visual column */}
+          {rightVisual && (
+            <div className="lg:col-span-5 flex justify-center">
+              {rightVisual}
             </div>
           )}
         </div>
+
+        {children && <div className="mt-12">{children}</div>}
       </div>
     </section>
   );

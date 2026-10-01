@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Boxes, Send, Webhook, Package, FlaskConical, Rocket, UserRoundCheck, Code2 } from 'lucide-react';
+import { ArrowRight, BookOpen, Boxes, Send, Webhook, Package, FlaskConical, Rocket, UserRoundCheck, Code2 } from 'lucide-react';
+import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 
 const RESOURCES = [
   {
@@ -65,61 +66,31 @@ export default function DeveloperOverviewPage() {
   return (
     <main className="overflow-hidden bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative isolate overflow-hidden bg-white pt-24 pb-20 lg:pt-32 lg:pb-28">
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=2000&q=80"
-            onError={(e) => {
-              e.currentTarget.src = '/hero-bg.jpg';
-            }}
-            alt=""
-            className="h-full w-full object-cover object-[75%_center] opacity-35 sm:opacity-45"
-            style={{ filter: 'contrast(1.08) brightness(1.02)' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white" />
-        </div>
-        <div aria-hidden className="grid-bg absolute inset-0 opacity-60" />
-        <div aria-hidden className="hero-glow absolute inset-0" />
-        <div aria-hidden className="blob-primary absolute left-[12%] top-1/4 h-80 w-80 rounded-full" />
-        <div aria-hidden className="blob-accent absolute bottom-[12%] right-[12%] h-72 w-72 rounded-full" />
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
+      <PublicPageHero
+        badge="Developers · Platform Architecture"
+        badgeIcon={<Code2 className="h-3.5 w-3.5 text-[var(--color-blue-600)]" />}
+        title={<>Build on</>}
+        titleAccent="GiantPay."
+        description="A unified REST API for accepting mobile money, cards, and bank transfers across Malawi — built sandbox-first, so you can start testing today, before you write a single line of integration code."
+        heroBgUrl="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=2000&q=80"
+        heroBgFallback="/hero-bg.jpg"
+        actions={
+          <>
             <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-[#1B4FD8]"
+              to="/register"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-blue-600)] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[var(--color-blue-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to Home
+              Create sandbox account <ArrowRight className="h-4 w-4" />
             </Link>
-          </div>
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Build on{' '}
-              <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">
-                GiantPay.
-              </span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-              A unified REST API for accepting mobile money, cards, and bank transfers across Malawi — built
-              sandbox-first, so you can start testing today, before you write a single line of integration code.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1B4FD8] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#1744b9]"
-              >
-                Create sandbox account <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/developers/sandbox"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                Explore the sandbox
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+            <Link
+              to="/developers/sandbox"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-neutral-300)] bg-white px-6 py-3 text-sm font-bold text-[var(--color-navy-800)] shadow-sm transition hover:bg-[var(--color-neutral-100)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
+            >
+              Explore the sandbox
+            </Link>
+          </>
+        }
+      />
 
       {/* Quickstart */}
       <section className="py-20 lg:py-28">
