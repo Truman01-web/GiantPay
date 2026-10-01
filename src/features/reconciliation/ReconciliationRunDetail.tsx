@@ -15,6 +15,7 @@ import { toast } from '@/components/feedback/toastStore';
 import { usePermission } from '@/hooks/useSession';
 import { useReconciliationRun } from './useReconciliationQueries';
 import { UpdateExceptionDialog } from './UpdateExceptionDialog';
+import { AdjustmentDialog } from './AdjustmentDialog';
 import type { ReconciliationException } from '@/types/reconciliation';
 
 const TYPE_LABELS: Record<ReconciliationException['type'], string> = {
@@ -29,6 +30,7 @@ export function ReconciliationRunDetail() {
   const query = useReconciliationRun(id);
   const canManage = usePermission('reconciliation:manage');
   const [activeException, setActiveException] = useState<ReconciliationException | null>(null);
+  const [adjustmentException, setAdjustmentException] = useState<ReconciliationException | null>(null);
 
   if (query.isPending) {
     return (
@@ -71,9 +73,7 @@ export function ReconciliationRunDetail() {
       header: 'Action',
       cell: (e) =>
         canManage ? (
-          <Button variant="secondary" size="sm" onClick={() => setActiveException(e)}>
-            Update
-          </Button>
+          <div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm" onClick={() => setActiveException(e)}>Update</Button><Button variant="ghost" size="sm" onClick={() => setAdjustmentException(e)}>Adjustment</Button></div>
         ) : (
           <span className="text-[length:var(--text-help)] text-[var(--color-neutral-500)]">View only</span>
         ),
@@ -148,6 +148,7 @@ export function ReconciliationRunDetail() {
           }}
         />
       )}
+      {adjustmentException && <AdjustmentDialog exception={adjustmentException} onOpenChange={(open) => { if (!open) setAdjustmentException(null); }} />}
     </div>
   );
 }

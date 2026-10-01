@@ -71,6 +71,20 @@ export function formatMoney(
   }
 }
 
+/** Formats an API integer string without converting it through Number. */
+export function formatMinorUnitsExact(amountMinor: string, currency: string): string {
+  if (!/^-?\d+$/.test(amountMinor)) return `${currency.toUpperCase()} —`;
+  const digits = minorUnitDigits(currency);
+  const value = BigInt(amountMinor);
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const scale = 10n ** BigInt(digits);
+  const whole = absolute / scale;
+  const fraction = (absolute % scale).toString().padStart(digits, '0');
+  const grouped = new Intl.NumberFormat('en-MW', { maximumFractionDigits: 0 }).format(whole);
+  return `${negative ? '-' : ''}${currency.toUpperCase()} ${grouped}${digits ? `.${fraction}` : ''}`;
+}
+
 /** Parse a user-entered decimal string (e.g. "1,250.00") into minor units. */
 export function parseMoneyInput(input: string, currency: string): number | null {
   const cleaned = input.replace(/,/g, '').trim();

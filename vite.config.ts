@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
 // https://vite.dev/config/
+const mockApiEnabled = process.env.VITE_USE_MOCK_API === 'true';
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -19,6 +21,6 @@ export default defineConfig({
     port: 5173,
   },
   build: {
-    sourcemap: true,
+    sourcemap: mockApiEnabled,
   },
 });

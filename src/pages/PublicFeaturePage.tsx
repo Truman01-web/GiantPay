@@ -191,7 +191,7 @@ const FEATURE_CATALOG: Record<string, FeatureDetail> = {
     metrics: [
       { value: '99.4%', label: 'Checkout Uptime' },
       { value: '< 2s', label: 'Page Load' },
-      { value: '1.8%', label: 'Flat Fee' },
+      { value: '3% / 2%', label: 'Mobile-card / bank fee' },
     ],
   },
   disbursements: {
@@ -788,8 +788,8 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
           <p className="text-[10px] text-slate-400">Zero FX Conversion Drag</p>
         </div>
         <div className="rounded-xl bg-slate-800/80 p-3">
-          <p className="text-xs font-bold text-white">T+1 Settlement</p>
-          <p className="text-[10px] text-slate-400">Direct Bank Payouts</p>
+          <p className="text-xs font-bold text-white">Sandbox Settlement</p>
+          <p className="text-[10px] text-slate-400">No External Transfer</p>
         </div>
       </div>
     </div>
@@ -838,7 +838,7 @@ export default function PublicFeaturePage() {
     ],
     metrics: [
       { value: '5+', label: 'Payment Channels' },
-      { value: '1.8%', label: 'Competitive Fee' },
+      { value: '3% / 2%', label: 'Mobile-card / bank fee' },
       { value: '24/7', label: 'Platform Support' },
     ],
   };

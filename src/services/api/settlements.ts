@@ -8,10 +8,10 @@ export const settlementsApi = {
     return apiClient.get<Paginated<SettlementListItem>>(`/settlements?${search}`, options);
   },
   getById: (id: string, options?: { signal?: AbortSignal }) => apiClient.get<Settlement>(`/settlements/${id}`, options),
-  create: (payload: { currency: string; periodStart: string; periodEnd: string }) =>
-    apiClient.post<Settlement>('/settlements', payload, { idempotencyKey: crypto.randomUUID() }),
+  create: (payload: { currency: string; periodStart: string; periodEnd: string }, idempotencyKey: string) =>
+    apiClient.post<Settlement>('/settlements', payload, { idempotencyKey }),
   submit: (id: string) => apiClient.post<Settlement>(`/settlements/${id}/submit`, {}),
   approve: (id: string) => apiClient.post<Settlement>(`/settlements/${id}/approve`, {}),
-  cancel: (id: string) => apiClient.post<Settlement>(`/settlements/${id}/cancel`, {}, { idempotencyKey: crypto.randomUUID() }),
-  exportBatch: (id: string) => apiClient.post<unknown>(`/settlements/${id}/export`, {}),
+  cancel: (id: string, idempotencyKey: string) => apiClient.post<Settlement>(`/settlements/${id}/cancel`, {}, { idempotencyKey }),
+  exportBatch: (id: string) => apiClient.postDownload(`/settlements/${id}/export`),
 };

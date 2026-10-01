@@ -1,4 +1,5 @@
 import { useForm, type Resolver } from 'react-hook-form';
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +25,7 @@ export function UpdateExceptionDialog({
 }) {
   const options = NEXT_STATUS_OPTIONS[exception.status];
   const updateException = useUpdateException(runId);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   const {
     register,
@@ -40,7 +42,8 @@ export function UpdateExceptionDialog({
 
   async function onSubmit(values: UpdateExceptionFormValues) {
     try {
-      await updateException.mutateAsync({ exceptionId: exception.id, status: values.status, note: values.note || undefined, evidenceRef: values.evidenceRef || undefined });
+      await updateException.mutateAsync({ exceptionId: exception.id, status: values.status, note: values.note || undefined, evidenceRef: values.evidenceRef || undefined, idempotencyKey });
+      setIdempotencyKey(crypto.randomUUID());
       onSuccess();
     } catch {
       // Surfaced via updateException.error below.

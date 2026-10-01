@@ -1087,7 +1087,7 @@ paths:
       operationId: listSandboxSettlements
       tags: [Sandbox settlements]
       security: [{ cookieSession: [] }]
-      responses: { '200': { description: Paginated merchant sandbox settlements } }
+      responses: { '200': { description: 'Paginated merchant sandbox settlements with exact minor-unit strings and nullable creator, submitter and approver evidence' } }
     post:
       operationId: createSandboxSettlement
       tags: [Sandbox settlements]
@@ -1101,7 +1101,7 @@ paths:
       tags: [Sandbox settlements]
       security: [{ cookieSession: [] }]
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Sandbox settlement with externalTransferExecuted false }, '404': { $ref: '#/components/responses/Error' } }
+      responses: { '200': { description: 'Sandbox settlement with exact minor-unit strings, creator and approval identities, timestamps, and externalTransferExecuted false' }, '404': { $ref: '#/components/responses/Error' } }
   /settlements/{id}/submit:
     post:
       operationId: submitSandboxSettlement
@@ -1131,7 +1131,7 @@ paths:
       security: [{ cookieSession: [] }]
       description: Produces a formula-safe sandbox CSV and audit record. It does not execute a transfer.
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Deterministic sandbox CSV }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+      responses: { '200': { description: Deterministic text/csv attachment with a bounded server filename }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /reports/summary:
     get:
       tags: [Operational reports]

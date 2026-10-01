@@ -51,6 +51,27 @@ function buildHeaders(hasBody: boolean, options?: RequestOptions, method?: strin
   return headers;
 }
 
+async function requestDownload(path: string, options?: RequestOptions): Promise<{ blob: Blob; contentDisposition: string | null }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? 15_000);
+  try {
+    const response = await fetch(`${env.apiUrl}/v1${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { ...buildHeaders(false, options, 'POST'), Accept: 'text/csv' },
+      signal: controller.signal,
+    });
+    if (response.status === 401) onUnauthorized?.();
+    if (!response.ok) throw await parseErrorResponse(response);
+    return { blob: await response.blob(), contentDisposition: response.headers.get('content-disposition') };
+  } catch (cause) {
+    if (cause instanceof ApiError) throw cause;
+    throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function parseErrorResponse(response: Response): Promise<ApiError> {
   let body: RawErrorBody = {};
   try {
@@ -278,6 +299,7 @@ export const apiClient = {
     request<T>('PATCH', path, body, options),
   delete: <T>(path: string, options?: RequestOptions) =>
     request<T>('DELETE', path, undefined, options),
+  postDownload: requestDownload,
   uploadFile,
 };
 

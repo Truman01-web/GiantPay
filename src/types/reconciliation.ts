@@ -52,3 +52,21 @@ export interface ReconciliationException {
 export interface ReconciliationRun extends ReconciliationRunListItem {
   exceptions: ReconciliationException[];
 }
+
+export interface ReconciliationAdjustment {
+  id: string;
+  exceptionId: string;
+  originalEntryId: string;
+  reason: string;
+  evidenceRef: string;
+  status: 'AWAITING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  createdBy: string | null;
+  approvedBy: string | null;
+  journalEntryId: string | null;
+  decidedAt: string | null;
+}
+
+export interface LedgerIntegrityResult {
+  ok: boolean;
+  failures: Array<{ id?: string; source_type?: string; source_id?: string; posting_count?: number; currency_count?: number; imbalance_minor?: string }>;
+}
