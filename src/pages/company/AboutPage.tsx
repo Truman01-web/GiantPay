@@ -7,9 +7,9 @@ const HERO_BG_FALLBACK = "https://images.unsplash.com/photo-1522071820081-009f01
 const TIMELINE = [
   { year: "2021", title: "GiantPlus Founded", body: "GiantPlus Global Finance Solutions is incorporated in Malawi with a mandate to build modern financial infrastructure for Malawian businesses." },
   { year: "2022", title: "Regulatory Groundwork", body: "Deep engagement with the Reserve Bank of Malawi to understand the regulatory landscape for digital payment service providers." },
-  { year: "2023", title: "GiantPay Launched", body: "GiantPay is launched as the unified payment platform product under GiantPlus, offering mobile money and bank transfer integrations." },
-  { year: "2024", title: "Sandbox & Developer Platform", body: "Full sandbox environment and developer API released. Merchants can test end-to-end checkout flows, webhooks, and reconciliation before going live." },
-  { year: "2025", title: "Card Payments & Growth", body: "Visa and Mastercard integration completed. GiantPay processes its first million-kwacha day and onboards its first enterprise merchants." },
+  { year: "2023", title: "GiantPay Launched", body: "GiantPay is launched as the unified payment platform product under GiantPlus, targeting mobile money and bank transfer integration across Malawi." },
+  { year: "2024", title: "Sandbox & Developer Platform", body: "Full sandbox environment and developer API released. Merchants can test end-to-end checkout flows, webhooks, payment links, and reconciliation before going live." },
+  { year: "2025", title: "Merchant Onboarding & Compliance", body: "Merchant onboarding, KYC/KYB workflows, and the reconciliation platform are live in sandbox. Provider integration agreements with Airtel, TNM, and card networks are in progress — live payment execution pending regulatory and commercial approvals." },
 ];
 
 const VALUES = [
@@ -22,10 +22,10 @@ const VALUES = [
 ];
 
 const STATS = [
-  { value: "5+", label: "Payment channels integrated" },
-  { value: "T+1", label: "Settlement to your bank" },
-  { value: "1.8%", label: "Flat transaction rate from" },
-  { value: "RBM", label: "Regulatory alignment" },
+  { value: "5", label: "Payment channels in sandbox" },
+  { value: "T+1", label: "Target settlement cycle (sandbox)" },
+  { value: "2–3%", label: "Confirmed transaction rate range" },
+  { value: "RBM", label: "Regulatory alignment in progress" },
 ];
 
 export default function AboutPage() {
@@ -83,7 +83,7 @@ export default function AboutPage() {
               <p className="mb-3 text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">Our Mission</p>
               <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Payments that work the way Malawi works.</h2>
               <p className="mt-6 text-base leading-relaxed text-slate-600">Malawian businesses have historically juggled multiple, disconnected payment providers â€” one for mobile money, another for cards, another for bank transfers â€” with no unified view, no automated reconciliation, and no clean settlement cycle.</p>
-              <p className="mt-4 text-base leading-relaxed text-slate-600">GiantPay solves this by providing a single integration that connects Airtel Money, TNM Mpamba, Visa, Mastercard, and the National Switch through one clean API, one merchant dashboard, and one transparent fee structure.</p>
+              <p className="mt-4 text-base leading-relaxed text-slate-600">GiantPay is building the infrastructure to connect Airtel Money, TNM Mpamba, Visa, Mastercard, and the National Switch through one clean API, one merchant dashboard, and one transparent fee structure. The sandbox is fully operational; live payment channels are being activated through provider and regulatory approvals.</p>
               <div className="mt-8 flex gap-4">
                 <Link to="/register" className="inline-flex items-center gap-2 rounded-xl bg-[#1B4FD8] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#1744b9]">
                   Get Started <ArrowRight className="h-4 w-4" />

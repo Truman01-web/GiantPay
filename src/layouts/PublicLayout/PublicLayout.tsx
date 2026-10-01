@@ -44,11 +44,36 @@ const SOCIAL_LINKS = [
   },
 ];
 
-const FOOTER_LINKS = [
+const FOOTER_COL_PRODUCTS = [
+  { label: 'Payment Gateway', to: '/products/gateway' },
+  { label: 'Collections', to: '/products/collections' },
+  { label: 'Payment Links', to: '/products/payment-links' },
+  { label: 'Hosted Checkout', to: '/products/hosted-checkout' },
+  { label: 'Disbursements', to: '/products/disbursements' },
+  { label: 'Pricing', to: '/pricing' },
+];
+
+const FOOTER_COL_DEVELOPERS = [
+  { label: 'Developer Overview', to: '/developers/overview' },
+  { label: 'API Documentation', to: '/developers/api-documentation' },
+  { label: 'Collections API', to: '/developers/collections-api' },
+  { label: 'Disbursements API', to: '/developers/disbursements-api' },
+  { label: 'Webhooks', to: '/developers/webhooks-api' },
+  { label: 'Sandbox', to: '/developers/sandbox' },
+];
+
+const FOOTER_COL_COMPANY = [
+  { label: 'About GiantPay', to: '/company/about' },
+  { label: 'About GiantPlus', to: '/company/giantplus' },
+  { label: 'Compliance', to: '/company/compliance' },
+  { label: 'Careers', to: '/company/careers' },
+  { label: 'Contact', to: '/company/contact' },
+  { label: 'System Status', to: '/status' },
+];
+
+const FOOTER_COL_LEGAL = [
   { label: 'Privacy Policy', to: '/privacy' },
   { label: 'Terms of Service', to: '/terms' },
-  { label: 'System Status', to: '/status' },
-  { label: 'Developer Docs', to: '/developers/overview' },
 ];
 
 export function PublicLayout() {
@@ -107,16 +132,14 @@ export function PublicLayout() {
               </div>
             </div>
 
-            {/* Links + Socials */}
-            <div className="flex flex-col gap-8 sm:flex-row sm:gap-16">
-
-              {/* Navigation links */}
+            {/* Multi-column footer navigation */}
+            <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:gap-12">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-4">
-                  Platform
+                  Products
                 </p>
-                <nav aria-label="Footer navigation" className="flex flex-col gap-2.5">
-                  {FOOTER_LINKS.map((link) => (
+                <nav aria-label="Products navigation" className="flex flex-col gap-2.5">
+                  {FOOTER_COL_PRODUCTS.map((link) => (
                     <Link
                       key={link.to}
                       to={link.to}
@@ -128,36 +151,78 @@ export function PublicLayout() {
                 </nav>
               </div>
 
-              {/* Social icons */}
               <div>
                 <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-4">
-                  Follow us
+                  Developers
                 </p>
-                <div className="flex gap-2.5">
-                  {SOCIAL_LINKS.map((s) => (
-                    <a
-                      key={s.label}
-                      href={s.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={s.label}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 hover:text-white transition-colors"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.09)',
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.1)';
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.18)';
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.05)';
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.09)';
-                      }}
+                <nav aria-label="Developers navigation" className="flex flex-col gap-2.5">
+                  {FOOTER_COL_DEVELOPERS.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="text-sm text-white/50 hover:text-white/90 transition-colors w-fit"
                     >
-                      {s.icon}
-                    </a>
+                      {link.label}
+                    </Link>
                   ))}
+                </nav>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-4">
+                  Company
+                </p>
+                <nav aria-label="Company navigation" className="flex flex-col gap-2.5">
+                  {FOOTER_COL_COMPANY.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="text-sm text-white/50 hover:text-white/90 transition-colors w-fit"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-4">
+                  Legal
+                </p>
+                <nav aria-label="Legal navigation" className="flex flex-col gap-2.5">
+                  {FOOTER_COL_LEGAL.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="text-sm text-white/50 hover:text-white/90 transition-colors w-fit"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+
+                <div className="mt-6">
+                  <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-white/25 mb-3">
+                    Follow us
+                  </p>
+                  <div className="flex gap-2">
+                    {SOCIAL_LINKS.map((s) => (
+                      <a
+                        key={s.label}
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={s.label}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 hover:text-white transition-colors"
+                        style={{
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid rgba(255,255,255,0.09)',
+                        }}
+                      >
+                        {s.icon}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -172,7 +237,7 @@ export function PublicLayout() {
               © {new Date().getFullYear()} GiantPlus Global Finance Solutions. All rights reserved.
             </p>
             <p className="text-xs text-white/20">
-              Regulated payment services · Malawi
+              Designed for regulatory compliance · Malawi
             </p>
           </div>
         </div>

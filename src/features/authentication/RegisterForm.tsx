@@ -273,7 +273,7 @@ export function RegisterForm() {
           <FormField label="Phone number" required help="Malawi numbers, e.g. +265 991 234 567" error={errors.phone?.message}>
             {(fp) => <PhoneInput invalid={Boolean(errors.phone)} {...fp} {...register('phone')} />}
           </FormField>
-          <FormField label="Password" required help="At least 10 characters" error={errors.password?.message}>
+          <FormField label="Password" required help="At least 12 characters" error={errors.password?.message}>
             {(fp) => <PasswordInput autoComplete="new-password" invalid={Boolean(errors.password)} {...fp} {...register('password')} />}
           </FormField>
           <FormField label="Confirm password" required error={errors.confirmPassword?.message}>

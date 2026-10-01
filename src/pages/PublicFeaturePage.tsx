@@ -189,9 +189,9 @@ const FEATURE_CATALOG: Record<string, FeatureDetail> = {
       { label: 'Callbacks', value: 'Synchronous + Webhook' },
     ],
     metrics: [
-      { value: '99.4%', label: 'Checkout Uptime' },
-      { value: '< 2s', label: 'Page Load' },
-      { value: '1.8%', label: 'Flat Fee' },
+      { value: '99.4%', label: 'Checkout uptime (sandbox)' },
+      { value: '< 2s', label: 'Page load time' },
+      { value: '3%', label: 'Transaction fee (confirmed)' },
     ],
   },
   disbursements: {
@@ -227,9 +227,9 @@ const FEATURE_CATALOG: Record<string, FeatureDetail> = {
       { label: 'Settlement', value: 'Immediate to Wallets' },
     ],
     metrics: [
-      { value: '5,000', label: 'Batch Capacity' },
-      { value: 'Instant', label: 'Wallet Delivery' },
-      { value: 'T+1', label: 'Bank Delivery' },
+      { value: '5,000', label: 'Batch capacity (planned)' },
+      { value: 'Planned', label: 'Live payout execution' },
+      { value: 'T+1', label: 'Bank delivery target' },
     ],
   },
   'online-payments': {
@@ -277,7 +277,7 @@ const FEATURE_CATALOG: Record<string, FeatureDetail> = {
     heroImage: 'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=2000&q=80',
     heroImageFallback: 'https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=2000&q=80',
     overview:
-      'Over 85% of digital payments in Malawi originate from mobile wallets. GiantPay integrates directly with both Airtel Money and TNM Mpamba, providing customers with instant prompt-based wallet debit experiences without USSD dialing friction.',
+      'GiantPay integrates directly with both Airtel Money and TNM Mpamba, providing customers with USSD push-based wallet debit experiences without manual dialing. Both channels are available in the sandbox environment for testing. Live collection capability is pending provider approval.',
     keyBenefits: [
       {
         title: 'Airtel Money Express',
@@ -609,7 +609,7 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
                 <p className="text-[10px] text-slate-400">USSD Push Routing</p>
               </div>
             </div>
-            <span className="text-xs font-semibold text-emerald-400">Active (120ms)</span>
+            <span className="text-xs font-semibold text-blue-400">Sandbox</span>
           </div>
 
           <div className="flex items-center justify-between rounded-xl bg-slate-800/80 p-3 border border-white/5">
@@ -622,7 +622,7 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
                 <p className="text-[10px] text-slate-400">Instant Wallet Push</p>
               </div>
             </div>
-            <span className="text-xs font-semibold text-emerald-400">Active (140ms)</span>
+            <span className="text-xs font-semibold text-blue-400">Sandbox</span>
           </div>
 
           <div className="flex items-center justify-between rounded-xl bg-slate-800/80 p-3 border border-white/5">
@@ -635,7 +635,7 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
                 <p className="text-[10px] text-slate-400">3D Secure 2.0</p>
               </div>
             </div>
-            <span className="text-xs font-semibold text-emerald-400">Active (210ms)</span>
+            <span className="text-xs font-semibold text-amber-400">Planned</span>
           </div>
         </div>
 
@@ -788,8 +788,8 @@ function FeatureHeroVisual({ slug }: { slug: string }) {
           <p className="text-[10px] text-slate-400">Zero FX Conversion Drag</p>
         </div>
         <div className="rounded-xl bg-slate-800/80 p-3">
-          <p className="text-xs font-bold text-white">T+1 Settlement</p>
-          <p className="text-[10px] text-slate-400">Direct Bank Payouts</p>
+          <p className="text-xs font-bold text-white">T+1 Target Settlement</p>
+          <p className="text-[10px] text-slate-400">Production Bank Payouts</p>
         </div>
       </div>
     </div>
@@ -837,9 +837,9 @@ export default function PublicFeaturePage() {
       { label: 'Security', value: 'TLS 1.3 & HMAC' },
     ],
     metrics: [
-      { value: '5+', label: 'Payment Channels' },
-      { value: '1.8%', label: 'Competitive Fee' },
-      { value: '24/7', label: 'Platform Support' },
+      { value: '5', label: 'Payment channels (sandbox)' },
+      { value: '2–3%', label: 'Confirmed rate range' },
+      { value: 'Free', label: 'Sandbox access' },
     ],
   };
 

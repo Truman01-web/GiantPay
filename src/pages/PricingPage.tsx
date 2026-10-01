@@ -1,374 +1,346 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Zap, HelpCircle, Building2 } from 'lucide-react';
+import { ArrowRight, Check, HelpCircle, Building2, Smartphone, CreditCard } from 'lucide-react';
 import { useState } from 'react';
+import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 
-const HERO_BG_IMAGE =
+/*
+ * Confirmed GiantPay transaction rates (commercial approval on file):
+ *   - Account/setup fee:  none
+ *   - Monthly/platform fee:  none
+ *   - Airtel Money & TNM Mpamba collections:  3 % per successful transaction
+ *   - Bank-transfer (National Switch) collections:  2 % per successful transaction
+ *   - Card payments (Visa / Mastercard):  3 % per successful transaction
+ *
+ * Do NOT add tiered discounts, volume thresholds or settlement guarantees
+ * until they are commercially confirmed.  Settlement timing is stated as a
+ * sandbox target only.
+ */
+
+const HERO_BG =
   'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=2000&q=80';
 const HERO_BG_FALLBACK =
   'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=2000&q=80';
 
-interface PricingTier {
+interface Channel {
   id: string;
   name: string;
-  badge?: string;
-  popular?: boolean;
+  type: string;
   rate: string;
-  rateDetail: string;
-  description: string;
-  highlights: string[];
-  ctaText: string;
-  ctaLink: string;
+  rateNote?: string;
+  settlement: string;
+  settlementNote?: string;
+  icon: 'mobile' | 'card' | 'bank';
+  status: 'sandbox' | 'planned';
+  statusLabel: string;
 }
 
-const PRICING_TIERS: PricingTier[] = [
+const CHANNELS: Channel[] = [
   {
-    id: 'starter',
-    name: 'Starter',
-    badge: 'New & Small Businesses',
-    rate: '1.8%',
-    rateDetail: 'per successful transaction',
-    description: 'Everything needed to launch and start accepting mobile payments immediately with zero upfront capital.',
-    highlights: [
-      'Airtel Money & TNM Mpamba mobile wallets',
-      'National Switch bank transfers',
-      'Hosted Payment Links & shareable URLs',
-      'Full Sandbox API access with test credentials',
-      'Automated T+1 settlements to Malawian banks',
-      'Standard webhook notifications & event logs',
-      'Email developer & operations support',
-    ],
-    ctaText: 'Get Started Free',
-    ctaLink: '/register',
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    badge: 'Most Popular',
-    popular: true,
-    rate: '1.5%',
-    rateDetail: 'per successful transaction',
-    description: 'Optimized rates and enterprise capabilities for growing digital businesses processing consistent volume.',
-    highlights: [
-      'Everything in Starter',
-      'Visa & Mastercard digital card acceptance',
-      'Lower 1.5% flat transaction rate',
-      'Team member access with role-based permissions',
-      'Full ledger reconciliation reports & CSV/PDF export',
-      'Advanced webhook retry logic & delivery monitoring',
-      'Priority live chat and dedicated support engineer',
-    ],
-    ctaText: 'Create Growth Account',
-    ctaLink: '/register',
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    badge: 'High-Volume Merchants',
-    rate: 'Custom',
-    rateDetail: 'volume-tiered from 1.2%',
-    description: 'Custom pricing, dedicated infrastructure, and treasury routing for large platforms and financial institutions.',
-    highlights: [
-      'Everything in Growth',
-      'Volume-based interchange discounting from 1.2%',
-      'Bulk payouts & automated disbursements API',
-      'Custom settlement schedule (same-day or multiple daily)',
-      'Dedicated integration architect & technical account manager',
-      '99.99% uptime Service Level Agreement (SLA)',
-      'Custom regulatory, AML & compliance reporting',
-    ],
-    ctaText: 'Contact Sales',
-    ctaLink: 'mailto:sales@giantpay.mw',
-  },
-];
-
-const CHANNELS = [
-  {
+    id: 'airtel',
     name: 'Airtel Money',
     type: 'Mobile Wallet',
-    rate: '1.8%',
-    settlement: 'T+1 Bank Transfer',
-    logo: '/brands/airtel-money.svg',
-    color: 'bg-red-50 text-red-600 border-red-200',
+    rate: '3%',
+    rateNote: 'per successful transaction',
+    settlement: 'T+1 (sandbox target)',
+    settlementNote: 'Sandbox accounting only — no live settlement',
+    icon: 'mobile',
+    status: 'sandbox',
+    statusLabel: 'Integration pending provider approval',
   },
   {
+    id: 'tnm',
     name: 'TNM Mpamba',
     type: 'Mobile Wallet',
-    rate: '1.8%',
-    settlement: 'T+1 Bank Transfer',
-    logo: '/brands/tnm-mpamba.svg',
-    color: 'bg-green-50 text-green-600 border-green-200',
+    rate: '3%',
+    rateNote: 'per successful transaction',
+    settlement: 'T+1 (sandbox target)',
+    settlementNote: 'Sandbox accounting only — no live settlement',
+    icon: 'mobile',
+    status: 'sandbox',
+    statusLabel: 'Integration pending provider approval',
   },
   {
+    id: 'bank',
+    name: 'Bank Transfer',
+    type: 'National Switch',
+    rate: '2%',
+    rateNote: 'per successful transaction',
+    settlement: 'Direct account clearing (sandbox target)',
+    settlementNote: 'Sandbox accounting only — no live settlement',
+    icon: 'bank',
+    status: 'sandbox',
+    statusLabel: 'Integration pending bank connectivity',
+  },
+  {
+    id: 'card',
     name: 'Visa & Mastercard',
     type: 'Credit & Debit Cards',
-    rate: '2.2%',
-    settlement: 'T+1 Bank Transfer',
-    logo: '/brands/visa.svg',
-    color: 'bg-blue-50 text-blue-600 border-blue-200',
-  },
-  {
-    name: 'National Switch',
-    type: 'Bank Clearing',
-    rate: '1.5%',
-    settlement: 'Direct Account Clearing',
-    logo: '',
-    color: 'bg-violet-50 text-violet-600 border-violet-200',
+    rate: '3%',
+    rateNote: 'per successful transaction',
+    settlement: 'T+1 (sandbox target)',
+    settlementNote: 'Sandbox accounting only — no live settlement',
+    icon: 'card',
+    status: 'planned',
+    statusLabel: 'Planned — card API access pending',
   },
 ];
 
 const PRICING_FAQS = [
   {
     q: 'Are there any setup or monthly subscription fees?',
-    a: 'None whatsoever. GiantPay operates on a purely transactional basis: you only pay a small flat percentage when you successfully receive a payment. There are 0 MWK setup fees, 0 MWK monthly maintenance charges, and no hidden surprises.',
+    a: 'No. GiantPay has no account setup fee, no monthly platform fee, and no minimum volume requirement. You only pay a small percentage when you successfully receive a payment. If a customer abandons a transaction or a payment fails, you are not charged anything.',
+  },
+  {
+    q: 'What are the exact transaction rates?',
+    a: 'Airtel Money and TNM Mpamba mobile wallet collections: 3% per successful transaction. Bank transfers via National Switch: 2% per successful transaction. Visa and Mastercard card payments: 3% per successful transaction. These are the confirmed rates at commercial approval. All deductions are shown in your dashboard ledger.',
   },
   {
     q: 'How and when are transaction fees deducted?',
-    a: 'Fees are calculated and deducted automatically by the backend ledger at the moment of payment confirmation. If a customer abandons a transaction or a payment fails, you are never charged anything.',
+    a: 'Fees are calculated automatically at the moment of payment confirmation and deducted before funds are batched for settlement. Your dashboard shows gross transaction value, fee amount, and net settlement amount for every transaction.',
   },
   {
-    q: 'How does settlement to my bank account work?',
-    a: 'Net funds from reconciled transactions are batched and settled automatically to your registered Malawian business bank account on a T+1 (next business day) schedule, fully reconciled against official provider records.',
+    q: 'How does settlement work?',
+    a: 'In the current sandbox environment, settlement batches are generated for accounting and reconciliation testing — no real funds move. Target production settlement cycle is T+1 (next business day) to your registered Malawian business bank account, subject to reconciliation against official provider records. Settlement terms will be confirmed in your merchant agreement before going live.',
   },
   {
     q: 'Can I test all payment channels before going live?',
-    a: 'Yes! Every registered user gains immediate access to the GiantPay sandbox environment. You can simulate mobile money USSD prompts, card authorizations, webhook delivery, and refund flows completely free of charge.',
+    a: 'Yes. Every registered merchant gets immediate sandbox access at no charge. You can simulate Airtel Money and TNM Mpamba wallet prompts, bank transfer flows, webhook delivery, and refund processing. Sandbox credentials are separate from production and cannot initiate real financial transactions.',
   },
   {
-    q: 'Can I get a volume discount if my transaction volume increases?',
-    a: 'Yes. Once your monthly processed volume exceeds MWK 25,000,000, our system automatically unlocks Growth tier pricing, and our sales team can negotiate custom Enterprise tiers with rates scaling down to 1.2%.',
+    q: 'Are Visa and Mastercard available now?',
+    a: 'Card payment processing is planned and the API surface is documented in the sandbox, but it is not yet available for live transactions. Card API access is pending approval from our card scheme partners. We will communicate availability to registered merchants directly.',
+  },
+  {
+    q: 'Are Airtel Money and TNM Mpamba available now?',
+    a: 'Mobile money channels are integrated in the sandbox environment for testing. Live collection capability is pending final provider approval and will be enabled once integration agreements are in place. We will notify registered merchants when each channel is activated.',
   },
 ];
+
+function ChannelIcon({ icon }: { icon: Channel['icon'] }) {
+  if (icon === 'mobile') return <Smartphone className="h-5 w-5" aria-hidden />;
+  if (icon === 'card') return <CreditCard className="h-5 w-5" aria-hidden />;
+  return <Building2 className="h-5 w-5" aria-hidden />;
+}
 
 export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
     <main className="overflow-hidden bg-white text-slate-900">
-      {/* ── Hero Section with Highly Visible Background Image Layer ── */}
-      <section className="relative isolate flex min-h-[480px] items-center overflow-hidden bg-white pt-24 pb-16 lg:pt-32 lg:pb-24">
-        {/* Background Image Layer — clearly and prominently visible */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 select-none overflow-hidden">
-          <img
-            src={HERO_BG_IMAGE}
-            onError={(e) => {
-              e.currentTarget.src = HERO_BG_FALLBACK;
-            }}
-            alt=""
-            className="h-full w-full object-cover object-[75%_center] opacity-45 sm:opacity-55"
-            style={{
-              filter: 'contrast(1.08) brightness(1.02)',
-            }}
-          />
-          {/* Subtle overlay keeping the background photo rich and clear while keeping text readable */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-white/40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white" />
-        </div>
-
-        {/* Ambient decorative elements */}
-        <div aria-hidden="true" className="grid-bg absolute inset-0 opacity-60 pointer-events-none" />
-        <div aria-hidden="true" className="hero-glow absolute inset-0 pointer-events-none" />
-
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Back button */}
-          <div className="mb-8">
+      {/* Hero */}
+      <PublicPageHero
+        badge="Pricing · Transparent Rates"
+        title="Simple, transparent"
+        titleAccent="pricing for every merchant."
+        description="No setup fees. No monthly charges. Pay a flat percentage only on successful transactions — with clear, confirmed rates for every payment channel."
+        heroBgUrl={HERO_BG}
+        heroBgFallback={HERO_BG_FALLBACK}
+        align="center"
+        actions={
+          <>
             <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-[#1B4FD8]"
+              to="/register"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-blue-600)] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[var(--color-blue-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
+              Create Free Account <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
-          </div>
-          <div className="mx-auto max-w-3xl text-center">
+            <a
+              href="mailto:sales@giantpay.mw?subject=Pricing%20Enquiry"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-neutral-200)] bg-white px-6 py-3 text-sm font-bold text-[var(--color-navy-800)] transition hover:bg-[var(--color-neutral-100)]"
+            >
+              Talk to Sales
+            </a>
+          </>
+        }
+      />
 
+      {/* Quick guarantees bar */}
+      <section className="border-y border-[var(--color-neutral-200)] bg-[var(--color-neutral-100)] py-5">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <dl className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-[var(--color-navy-700)]">
+            {[
+              'No setup fee',
+              'No monthly fee',
+              'Pay only on success',
+              'Free unlimited sandbox',
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-[var(--color-green-600)]" aria-hidden />
+                <span>{item}</span>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
 
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Simple, fair pricing.{' '}
-              <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">
-                No hidden fees.
-              </span>
-            </h1>
-
-            <p className="mt-6 text-base sm:text-lg leading-relaxed text-slate-600">
-              Only pay when you get paid. Scale seamlessly from your first transaction to enterprise volumes with
-              transparent package rates, zero monthly maintenance, and automated settlement.
+      {/* Per-channel rate table */}
+      <section className="py-20 lg:py-28">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto mb-14 max-w-2xl text-center">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[.3em] text-[var(--color-blue-600)]">
+              Payment Channels
             </p>
+            <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-navy-950)] sm:text-4xl">
+              Confirmed rates per channel
+            </h2>
+            <p className="mt-4 text-[var(--color-neutral-600)]">
+              These are the commercially confirmed transaction rates. All channels are
+              available for sandbox testing. Live availability is noted per channel below.
+            </p>
+          </div>
 
-            {/* Quick Guarantees */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs sm:text-sm font-medium text-slate-600">
-              <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 font-bold" /> 0 MWK Setup Fee
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 font-bold" /> 0 MWK Monthly Fee
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 font-bold" /> Free Unlimited Sandbox
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 font-bold" /> T+1 Bank Payouts
-              </span>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {CHANNELS.map((ch) => (
+              <div
+                key={ch.id}
+                className="flex flex-col rounded-2xl border border-[var(--color-neutral-200)] bg-white p-6 shadow-[var(--shadow-card)] transition hover:border-[var(--color-blue-300)] hover:shadow-[var(--shadow-popover)]"
+              >
+                {/* Icon + rate row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-blue-100)] bg-[var(--color-blue-50)] text-[var(--color-blue-600)]">
+                    <ChannelIcon icon={ch.icon} />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-extrabold text-[var(--color-blue-600)]">{ch.rate}</p>
+                    <p className="text-[10px] text-[var(--color-neutral-500)]">{ch.rateNote}</p>
+                  </div>
+                </div>
+
+                {/* Channel name + type */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-bold text-[var(--color-navy-900)]">{ch.name}</h3>
+                  <p className="text-xs text-[var(--color-neutral-500)]">{ch.type}</p>
+                </div>
+
+                {/* Settlement */}
+                <div className="mt-4 border-t border-[var(--color-neutral-200)] pt-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-neutral-500)]">
+                    Settlement
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-[var(--color-navy-700)]">{ch.settlement}</p>
+                </div>
+
+                {/* Live status label */}
+                <div className="mt-3">
+                  <span
+                    className={[
+                      'inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold',
+                      ch.status === 'planned'
+                        ? 'bg-[var(--color-amber-100)] text-[var(--color-amber-700)]'
+                        : 'bg-[var(--color-blue-50)] text-[var(--color-blue-600)]',
+                    ].join(' ')}
+                  >
+                    {ch.statusLabel}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Sandbox note */}
+          <p className="mx-auto mt-8 max-w-2xl text-center text-xs text-[var(--color-neutral-500)]">
+            All channels are available for sandbox testing with simulated transaction flows.
+            Live payment execution requires provider approval, which is in progress.
+            Settlement figures in the sandbox are accounting entries only — no real funds move.
+          </p>
+        </div>
+      </section>
+
+      {/* What you pay / What you don't pay */}
+      <section className="border-t border-[var(--color-neutral-200)] bg-[var(--color-neutral-100)] py-20 lg:py-28">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-2">
+            {/* What you pay */}
+            <div className="rounded-2xl border border-[var(--color-neutral-200)] bg-white p-8 shadow-[var(--shadow-card)]">
+              <h2 className="text-xl font-extrabold text-[var(--color-navy-950)]">What you pay</h2>
+              <p className="mt-2 text-sm text-[var(--color-neutral-600)]">
+                One simple charge per successful payment collected.
+              </p>
+              <ul className="mt-6 space-y-4">
+                {[
+                  { label: 'Airtel Money collection', rate: '3% per successful transaction' },
+                  { label: 'TNM Mpamba collection', rate: '3% per successful transaction' },
+                  { label: 'Bank transfer (National Switch)', rate: '2% per successful transaction' },
+                  {
+                    label: 'Visa / Mastercard (Planned)',
+                    rate: '3% per successful transaction',
+                    planned: true,
+                  },
+                ].map((item) => (
+                  <li
+                    key={item.label}
+                    className="flex items-start justify-between gap-4 border-b border-[var(--color-neutral-200)] pb-4 last:border-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--color-navy-900)]">{item.label}</p>
+                      {'planned' in item && item.planned && (
+                        <span className="mt-1 inline-block rounded-full bg-[var(--color-amber-100)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-amber-700)]">
+                          Planned
+                        </span>
+                      )}
+                    </div>
+                    <p className="shrink-0 text-sm font-bold text-[var(--color-blue-600)]">{item.rate}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* What you don't pay */}
+            <div className="rounded-2xl border border-[var(--color-neutral-200)] bg-white p-8 shadow-[var(--shadow-card)]">
+              <h2 className="text-xl font-extrabold text-[var(--color-navy-950)]">What you don&apos;t pay</h2>
+              <p className="mt-2 text-sm text-[var(--color-neutral-600)]">
+                No hidden charges — ever.
+              </p>
+              <ul className="mt-6 space-y-4">
+                {[
+                  'Account setup or onboarding fee',
+                  'Monthly platform or subscription fee',
+                  'Failed or abandoned transaction fee',
+                  'Sandbox API access fee',
+                  'Refund processing fee',
+                  'Dashboard or reporting access fee',
+                  'API key or webhook registration fee',
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-3 border-b border-[var(--color-neutral-200)] pb-4 last:border-0 last:pb-0"
+                  >
+                    <Check
+                      className="h-4 w-4 shrink-0 text-[var(--color-green-600)]"
+                      aria-hidden
+                    />
+                    <span className="text-sm text-[var(--color-navy-800)]">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Pricing Packages (Tiers with %) ── */}
-      <section className="relative z-10 -mt-8 pb-20 sm:pb-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-3 lg:items-stretch">
-            {PRICING_TIERS.map((tier) => (
-              <div
-                key={tier.id}
-                className={[
-                  'relative flex flex-col justify-between rounded-3xl border bg-white p-8 shadow-lg transition-all duration-200 hover:-translate-y-1 hover:shadow-xl',
-                  tier.popular
-                    ? 'border-[#1B4FD8] ring-2 ring-[#1B4FD8]/20 shadow-blue-500/10'
-                    : 'border-slate-200 shadow-slate-100',
-                ].join(' ')}
-              >
-                {/* Popular Pill */}
-                {tier.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#1B4FD8] px-4 py-1 text-xs font-bold text-white shadow-md">
-                    {tier.badge}
-                  </div>
-                )}
-
-                <div>
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-slate-900">{tier.name}</h2>
-                    {!tier.popular && tier.badge && (
-                      <span className="rounded-full bg-slate-100 px-3 py-0.5 text-xs font-semibold text-slate-600">
-                        {tier.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="mt-3 text-xs sm:text-sm text-slate-500 leading-relaxed min-h-[40px]">
-                    {tier.description}
-                  </p>
-
-                  {/* Percentage Rate Display */}
-                  <div className="mt-6 border-t border-b border-slate-100 py-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-                        {tier.rate}
-                      </span>
-                      <span className="text-xs font-medium text-slate-500">{tier.rateDetail}</span>
-                    </div>
-                  </div>
-
-                  {/* Feature Highlights list */}
-                  <div className="mt-6 space-y-3.5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Included features</p>
-                    {tier.highlights.map((feat) => (
-                      <div key={feat} className="flex items-start gap-3 text-xs sm:text-sm text-slate-700">
-                        <Check className="h-4 w-4 shrink-0 text-[#1B4FD8] mt-0.5" />
-                        <span>{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Call to action */}
-                <div className="mt-8 pt-4">
-                  {tier.ctaLink.startsWith('mailto:') ? (
-                    <a
-                      href={tier.ctaLink}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
-                    >
-                      {tier.ctaText} <ArrowRight className="h-4 w-4" />
-                    </a>
-                  ) : (
-                    <Link
-                      to={tier.ctaLink}
-                      className={[
-                        'flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition shadow-sm',
-                        tier.popular
-                          ? 'bg-[#1B4FD8] text-white shadow-blue-500/25 hover:bg-[#1744b9]'
-                          : 'border border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100',
-                      ].join(' ')}
-                    >
-                      {tier.ctaText} <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Per-Channel Rate Breakdown Matrix ── */}
-      <section className="border-t border-slate-100 bg-slate-50 py-16 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">Payment Channels</p>
-            <h2 className="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">
-              Transparent rates per channel
-            </h2>
-            <p className="mt-4 text-sm sm:text-base text-slate-500">
-              Clear transaction fees across all Malawian mobile money operators and digital card networks.
-            </p>
-          </div>
-
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {CHANNELS.map((ch) => (
-              <div
-                key={ch.name}
-                className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-[#1B4FD8]/40 hover:shadow-md"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className={['flex h-10 w-10 items-center justify-center rounded-xl border font-bold text-sm', ch.color].join(' ')}>
-                      {ch.logo ? (
-                        <img src={ch.logo} alt={ch.name} className="max-h-5 max-w-7 object-contain" />
-                      ) : (
-                        <Building2 className="h-5 w-5" />
-                      )}
-                    </div>
-                    <span className="text-xl font-extrabold text-[#1B4FD8]">{ch.rate}</span>
-                  </div>
-
-                  <h3 className="mt-4 text-base font-bold text-slate-900">{ch.name}</h3>
-                  <p className="text-xs font-medium text-slate-400">{ch.type}</p>
-                </div>
-
-                <div className="mt-6 border-t border-slate-100 pt-3">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>Payout cycle:</span>
-                    <span className="font-semibold text-slate-700">{ch.settlement}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Enterprise & Custom Integrations Banner ── */}
+      {/* Enterprise contact */}
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 p-8 sm:p-12 lg:p-16 text-white">
+          <div className="relative overflow-hidden rounded-2xl border border-[var(--color-navy-800)] bg-[var(--color-navy-950)] p-8 text-white sm:p-12">
             <div className="relative z-10 max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
-                <Zap className="h-3.5 w-3.5" /> High Volume Solutions
-              </div>
-              <h2 className="mt-6 text-3xl font-extrabold sm:text-4xl">Processing over MWK 50M monthly?</h2>
-              <p className="mt-4 text-sm sm:text-base text-slate-300 leading-relaxed">
-                Connect directly with our engineering and treasury leadership to access custom interchange pricing,
-                same-day settlement batches, and specialized enterprise API rate limits.
+              <h2 className="text-3xl font-extrabold sm:text-4xl">
+                Processing high volumes?
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-white/70 sm:text-base">
+                If you expect consistently high monthly transaction volumes, contact our
+                team to discuss your use case. Any commercial arrangement beyond the
+                published rates requires a signed merchant agreement.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <a
-                  href="mailto:sales@giantpay.mw?subject=Enterprise%20Volume%20Inquiry"
-                  className="rounded-xl bg-[#1B4FD8] px-6 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-[#1744b9]"
+                  href="mailto:sales@giantpay.mw?subject=High%20Volume%20Pricing%20Enquiry"
+                  className="rounded-xl bg-[var(--color-blue-600)] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[var(--color-blue-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-400)]"
                 >
-                  Request Enterprise Quote
+                  Contact Sales
                 </a>
                 <Link
-                  to="/developers"
-                  className="rounded-xl border border-slate-700 bg-slate-800 px-6 py-3.5 text-sm font-bold text-slate-200 transition hover:bg-slate-700"
+                  to="/developers/overview"
+                  className="rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-sm font-bold text-white/90 transition hover:bg-white/10"
                 >
                   Explore Developer API
                 </Link>
@@ -378,51 +350,81 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── Pricing FAQs ── */}
-      <section className="border-t border-slate-100 bg-white py-16 sm:py-24">
+      {/* FAQ */}
+      <section className="border-t border-[var(--color-neutral-200)] bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">
-              <HelpCircle className="h-4 w-4" /> FAQ
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.3em] text-[var(--color-blue-600)]">
+              <HelpCircle className="h-4 w-4" aria-hidden />
+              FAQ
             </div>
-            <h2 className="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">Pricing questions answered</h2>
-            <p className="mt-4 text-sm sm:text-base text-slate-500">
-              Everything you need to know about transaction costs, settlements, and compliance.
-            </p>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[var(--color-navy-950)] sm:text-4xl">
+              Pricing questions answered
+            </h2>
           </div>
 
-          <div className="mt-12 space-y-4">
+          <div className="mt-12 space-y-3">
             {PRICING_FAQS.map((faq, idx) => {
               const isOpen = openFaq === idx;
               return (
                 <div
                   key={faq.q}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:border-slate-300"
+                  className="overflow-hidden rounded-xl border border-[var(--color-neutral-200)] bg-white"
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
                     aria-expanded={isOpen}
-                    className="flex w-full items-center justify-between gap-4 p-6 text-left font-semibold text-slate-900"
+                    className="flex w-full items-center justify-between gap-4 p-6 text-left font-semibold text-[var(--color-navy-900)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
                   >
-                    <span className="text-base">{faq.q}</span>
+                    <span className="text-sm sm:text-base">{faq.q}</span>
                     <span
+                      aria-hidden
                       className={[
-                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-transform duration-200',
-                        isOpen ? 'rotate-45 border-[#1B4FD8] bg-[#1B4FD8] text-white' : 'border-slate-200 text-slate-400',
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-base font-bold transition-transform duration-[var(--duration-base)]',
+                        isOpen
+                          ? 'rotate-45 border-[var(--color-blue-600)] bg-[var(--color-blue-600)] text-white'
+                          : 'border-[var(--color-neutral-200)] text-[var(--color-neutral-500)]',
                       ].join(' ')}
                     >
                       +
                     </span>
                   </button>
                   {isOpen && (
-                    <div className="px-6 pb-6 text-sm leading-relaxed text-slate-600 border-t border-slate-100 pt-4">
+                    <div className="border-t border-[var(--color-neutral-200)] px-6 pt-4 pb-6 text-sm leading-relaxed text-[var(--color-neutral-600)]">
                       {faq.a}
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA footer */}
+      <section className="border-t border-[var(--color-neutral-200)] bg-[var(--color-neutral-100)] py-20">
+        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+          <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-navy-950)] sm:text-4xl">
+            Ready to accept payments?
+          </h2>
+          <p className="mt-4 text-[var(--color-neutral-600)]">
+            Create a free account and start testing in the sandbox today. No payment
+            details required.
+          </p>
+          <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+            <Link
+              to="/register"
+              className="rounded-xl bg-[var(--color-blue-600)] px-8 py-4 text-sm font-bold text-white shadow-lg transition hover:bg-[var(--color-blue-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-600)]"
+            >
+              Create Free Account
+            </Link>
+            <Link
+              to="/company/contact"
+              className="rounded-xl border border-[var(--color-neutral-200)] bg-white px-8 py-4 text-sm font-bold text-[var(--color-navy-800)] transition hover:bg-[var(--color-neutral-100)]"
+            >
+              Talk to Our Team
+            </Link>
           </div>
         </div>
       </section>

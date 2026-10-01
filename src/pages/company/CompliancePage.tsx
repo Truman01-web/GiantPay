@@ -51,7 +51,7 @@ export default function CompliancePage() {
               <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300 bg-clip-text text-transparent">at our core.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
-              GiantPay and GiantPlus are built compliance-first. Every product, every API, and every data handling decision is designed to meet the standards required of a regulated payment service provider in Malawi.
+              GiantPay and GiantPlus are built compliance-first. Every product, every API, and every data handling decision is designed to meet the standards required to operate as a licensed payment service provider in Malawi.
             </p>
           </div>
         </div>

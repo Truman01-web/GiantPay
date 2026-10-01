@@ -209,7 +209,7 @@ export default function GiantPlusPage() {
                 GiantPlus is a Malawian technology company specializing in web development, AI-driven systems, cloud architecture, and digital transformation solutions. We empower government institutions, corporations, and startups with scalable, secure, and intelligent digital technologies.
               </p>
               <p className="mt-4 text-base leading-relaxed text-slate-600">
-                Recognizing the friction businesses face in collecting digital payments from fragmented mobile money and banking networks, GiantPlus engineered <strong>GiantPay</strong> â€” providing a single, robust API and merchant portal for unified payments, webhooks, automated reconciliation, and T+1 settlements.
+                Recognizing the friction businesses face in collecting digital payments from fragmented mobile money and banking networks, GiantPlus engineered <strong>GiantPay</strong> â€” providing a single, robust API and merchant portal for unified payments, webhooks, automated reconciliation, and T+1 target settlements.
               </p>
               <div className="mt-8 flex items-center gap-4">
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
