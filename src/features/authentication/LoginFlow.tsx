@@ -120,7 +120,7 @@ export function LoginFlow() {
 
         <div className="text-center sm:text-left">
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Sign in to GiantPay</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage your transactions, payment links, and live settlements.</p>
+          <p className="mt-1 text-sm text-slate-500">Manage sandbox transactions, payment links, and settlement records.</p>
         </div>
 
         {errorMessage && (

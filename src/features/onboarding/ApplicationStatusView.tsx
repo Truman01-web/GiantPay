@@ -3,6 +3,7 @@ import { StatusBadge } from '@/components/data-display/StatusBadge';
 import { Timeline } from '@/components/data-display/Timeline';
 import { Alert } from '@/components/feedback/Alert';
 import type { OnboardingDraft } from '@/types/onboarding';
+import { Button } from '@/components/ui/Button';
 
 const NEXT_ACTION: Record<string, string> = {
   SUBMITTED: 'GiantPay has received your application and will begin review shortly.',
@@ -13,7 +14,7 @@ const NEXT_ACTION: Record<string, string> = {
   SUSPENDED: 'Your merchant account is currently suspended. Contact support to resolve this.',
 };
 
-export function ApplicationStatusView({ draft }: { draft: OnboardingDraft }) {
+export function ApplicationStatusView({ draft, onEditInformation }: { draft: OnboardingDraft; onEditInformation?: () => void }) {
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -28,6 +29,13 @@ export function ApplicationStatusView({ draft }: { draft: OnboardingDraft }) {
 
       {draft.status === 'REJECTED' && <Alert variant="danger">This application was rejected. See your email for the reason, or contact support to discuss next steps.</Alert>}
       {draft.status === 'SUSPENDED' && <Alert variant="warning">This merchant account is suspended. Payment processing is paused until this is resolved.</Alert>}
+      {draft.status === 'INFORMATION_REQUIRED' && (
+        <Card><CardContent>
+          <p className="font-semibold">Requested information</p>
+          {draft.informationRequests.length === 0 ? <Alert variant="danger">Request details are unavailable. Contact support before resubmitting.</Alert> : <ul className="my-3 list-disc space-y-2 pl-5">{draft.informationRequests.map(request => <li key={request.id}>{request.reason} — {request.respondedAt ? 'response sent' : 'response required'}</li>)}</ul>}
+          {onEditInformation && <Button onClick={onEditInformation}>Respond and update application</Button>}
+        </CardContent></Card>
+      )}
 
       <Card>
         <CardContent>
