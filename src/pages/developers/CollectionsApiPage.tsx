@@ -1,4 +1,5 @@
-import { Send } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Send, ArrowRight } from 'lucide-react';
 import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 
 const ENDPOINTS = [

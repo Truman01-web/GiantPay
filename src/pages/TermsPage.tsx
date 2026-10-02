@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Scale, FileCheck, CheckCircle2, Clock } from 'lucide-react';
 import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 

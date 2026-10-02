@@ -1,4 +1,5 @@
-import { Webhook, KeyRound, RotateCcw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Webhook, KeyRound, RotateCcw, ArrowRight } from 'lucide-react';
 import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 
 const EVENTS = [

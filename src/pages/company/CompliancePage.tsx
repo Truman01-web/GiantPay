@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { ShieldCheck, FileText, UserCheck, Lock, AlertTriangle, CheckCircle } from "lucide-react";
 import { PublicPageHero } from "@/components/marketing/PublicPageHero";
 

@@ -1,4 +1,5 @@
-import { KeyRound, Globe2, RefreshCw, AlertOctagon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { KeyRound, Globe2, RefreshCw, AlertOctagon, ArrowRight, ShieldCheck } from 'lucide-react';
 import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 
 const CONVENTIONS = [

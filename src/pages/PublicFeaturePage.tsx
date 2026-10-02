@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PublicPageHero } from '@/components/marketing/PublicPageHero';
 import { RotatingOrbitalLogos } from '@/components/marketing/RotatingOrbitalLogos';
+import { BackButton } from '@/components/navigation/BackButton';
 
 interface FeatureDetail {
   title: string;
