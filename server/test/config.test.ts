@@ -16,6 +16,14 @@ describe('configuration safety', () => {
     expect(loadConfig({ ...base, NODE_ENV: 'development' })).toMatchObject({ PAYMENT_PROVIDER: 'sandbox' });
   });
 
+  it('fails closed to secure binary evidence and allows explicit sandbox metadata mode only in sandbox', () => {
+    expect(loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'secure_binary' });
+    expect(loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' });
+    expect(loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox', ONBOARDING_EVIDENCE_MODE: 'secure_binary' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'secure_binary' });
+    expect(() => loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'local', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toThrow(/restricted to sandbox/i);
+    expect(() => loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'production', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toThrow(/restricted to sandbox/i);
+  });
+
   it('blocks sandbox in production', () => {
     expect(() => loadConfig({ ...productionBase, NODE_ENV: 'production', WEBHOOK_SECRET_KEY:'k'.repeat(32), REDIS_URL:'rediss://cache.invalid', TRUSTED_PROXIES:'10.0.0.1', FRONTEND_ORIGIN:'https://app.invalid', COOKIE_SECURE:'true' })).toThrow(/forbidden/i);
   });

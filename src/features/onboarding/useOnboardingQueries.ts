@@ -11,7 +11,7 @@ export type OnboardingAction =
   | { type: 'add-owner'; value: OwnerInput } | { type: 'remove-owner'; id: string }
   | { type: 'add-representative'; value: RepresentativeInput } | { type: 'remove-representative'; id: string }
   | { type: 'questionnaire'; value: QuestionnaireInput }
-  | { type: 'add-evidence'; value: EvidenceInput } | { type: 'remove-evidence'; id: string }
+  | { type: 'add-evidence'; value: EvidenceInput; idempotencyKey: string } | { type: 'remove-evidence'; id: string }
   | { type: 'information-response'; requestId: string; response: string } | { type: 'resubmit' };
 
 export function useOnboardingAction() {
@@ -28,7 +28,7 @@ export function useOnboardingAction() {
       case 'add-representative': return merchantsApi.addAuthorizedRepresentative(action.value);
       case 'remove-representative': return merchantsApi.removeAuthorizedRepresentative(action.id);
       case 'questionnaire': return merchantsApi.saveQuestionnaire(action.value);
-      case 'add-evidence': return merchantsApi.registerEvidence(action.value);
+      case 'add-evidence': return merchantsApi.registerEvidence(action.value, action.idempotencyKey);
       case 'remove-evidence': return merchantsApi.removeEvidence(action.id);
       case 'information-response': return merchantsApi.respondToInformationRequest(action.requestId, action.response);
       case 'resubmit': return merchantsApi.resubmit();

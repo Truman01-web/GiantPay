@@ -83,7 +83,7 @@ export function ReviewStep({
           </Button>
         </CardHeader>
         <CardContent>
-          <SummaryRow label="Files uploaded" value={draft.documents.filter((d) => d.status === 'UPLOADED').length} />
+          <SummaryRow label="Clean scanned files" value={draft.documents.filter((d) => d.status === 'CLEAN').length} />
         </CardContent>
       </Card>
 

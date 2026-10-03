@@ -118,7 +118,7 @@ export function FileUpload({ label, accept, acceptedMimeTypes, maxSizeBytes, doc
         <ul className="mt-3 flex flex-col gap-2">
           {documents.map((doc) => (
             <li key={doc.id} className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--color-neutral-200)] p-2.5">
-              {doc.status === 'FAILED' ? (
+              {doc.status === 'FAILED' || doc.status === 'REJECTED' ? (
                 <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--color-red-600)]" aria-hidden="true" />
               ) : (
                 <FileText className="h-4 w-4 shrink-0 text-[var(--color-neutral-500)]" aria-hidden="true" />
@@ -141,6 +141,11 @@ export function FileUpload({ label, accept, acceptedMimeTypes, maxSizeBytes, doc
                   </div>
                 )}
                 {doc.status === 'FAILED' && <p className="text-[length:var(--text-help)] text-[var(--color-red-600)]">{doc.error || 'Upload failed'}</p>}
+                {doc.status === 'QUARANTINED' && <p className="text-[length:var(--text-help)] text-[var(--color-neutral-600)]">Quarantined; awaiting malware scan.</p>}
+                {doc.status === 'SCANNING' && <p className="text-[length:var(--text-help)] text-[var(--color-neutral-600)]">Scanning for malware.</p>}
+                {doc.status === 'CLEAN' && <p className="text-[length:var(--text-help)] text-[var(--color-green-700)]">Scan completed. This does not verify the document's contents.</p>}
+                {doc.status === 'REJECTED' && <p className="text-[length:var(--text-help)] text-[var(--color-red-600)]">Rejected by malware scanning. Remove this file and choose another.</p>}
+                {doc.status === 'HISTORICAL_METADATA' && <p className="text-[length:var(--text-help)] text-[var(--color-neutral-600)]">Historical metadata only; no stored or verified document is available.</p>}
               </div>
               {doc.status === 'FAILED' && (
                 <button type="button" onClick={() => onRetry(doc.id)} aria-label={`Retry uploading ${doc.fileName}`} className="rounded p-1 text-[var(--color-neutral-500)] hover:bg-[var(--color-neutral-100)]">

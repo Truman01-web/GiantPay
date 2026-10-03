@@ -19,9 +19,9 @@ Until every applicable prerequisite is verified, `PAYMENT_PROVIDER=sandbox` and 
 
 ## Onboarding evidence storage design
 
-No approved binary evidence store or malware-scanning service is configured. The implemented onboarding route registers metadata only; it does not upload, retrieve, scan, or verify a document.
+No approved binary evidence store or malware-scanning service is configured. The development foundation now has authenticated upload/download routes, persistent quarantine state, an injectable private store, and a mandatory scanner interface. In `secure_binary` mode the upload route returns `503 EVIDENCE_SERVICE_UNAVAILABLE` unless both adapters are supplied and never downgrades. `sandbox_metadata` is restricted to sandbox deployments and records only client-computed metadata as `HISTORICAL_METADATA`; it may support internal sandbox review but cannot activate production or imply that a document was uploaded, stored, scanned, authentic, or verified.
 
-An approved implementation must provide:
+Activation must provide and verify:
 
 1. Tenant-scoped authorization before upload initiation, completion, or download.
 2. Private encrypted object storage outside every public document root, using opaque references rather than user-controlled paths.
