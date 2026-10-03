@@ -89,7 +89,7 @@ export default function TermsPage() {
         <div className="space-y-3">
           <p>
             GiantPay applies transparent, pre-agreed transaction fees as displayed in our pricing schedule (standard
-            flat rate starting from 1.8% per successful transaction). There are zero monthly subscription fees or setup
+            3% for successful Airtel Money, TNM Mpamba, and card collections, and 2% for successful bank-transfer collections). There are zero monthly subscription fees or setup
             costs for standard merchant accounts.
           </p>
           <div className="space-y-2 text-slate-600">

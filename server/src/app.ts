@@ -30,6 +30,7 @@ import { registerPlatformRoutes } from './platform/routes.js';
 import { registerDisputeRoutes } from './disputes/routes.js';
 import { registerNotificationRoutes } from './notifications/routes.js';
 import { registerOperationsRoutes } from './operations/routes.js';
+import { registerEvidenceRoutes, type EvidenceRuntime } from './evidence/routes.js';
 import { operationalMetrics } from './operations/metrics.js';
 import { operationalControlGuard } from './operations/controls.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
@@ -167,6 +168,7 @@ export async function buildApp(
   workersReady: () => boolean = () => true,
   suppliedRateLimits?: RateLimitStore,
   registrationDelivery: RegistrationOtpDelivery = disabledRegistrationOtpDelivery,
+  evidenceRuntime?: EvidenceRuntime,
 ) {
   if (config.NODE_ENV === 'production' && !suppliedRateLimits)
     throw new Error('A distributed rate-limit store is required in production');
@@ -1075,6 +1077,7 @@ export async function buildApp(
   await registerReportingRoutes(app, config, db, rateLimits);
   await registerTeamRoutes(app, config, db, rateLimits);
   await registerOnboardingRoutes(app, config, db, rateLimits);
+  await registerEvidenceRoutes(app, config, db, rateLimits, evidenceRuntime);
   await registerPlatformRoutes(app, config, db, rateLimits);
   await registerDisputeRoutes(app, config, db, rateLimits);
   await registerNotificationRoutes(app, config, db, rateLimits);

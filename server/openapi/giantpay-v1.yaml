@@ -718,9 +718,64 @@ paths:
   /merchants/onboarding/questionnaire:
     put: { tags: [Merchant onboarding], operationId: answerComplianceQuestionnaire, security: [{ cookieSession: [] }], description: Records versioned merchant declarations; answers are not externally verified screening results., responses: { '200': { description: Questionnaire saved }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/evidence:
-    post: { tags: [Merchant onboarding], operationId: registerOnboardingEvidence, security: [{ cookieSession: [] }], description: Registers metadata and an encrypted opaque storage reference; file upload is unavailable., responses: { '201': { description: Evidence metadata registered }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+    post:
+      tags: [Merchant onboarding]
+      operationId: registerOnboardingEvidenceMetadata
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      description: Available only when the deployment is explicitly operating in sandbox_metadata mode. Records client-computed filename, type, size and SHA-256 metadata; no binary is uploaded, stored, scanned or verified, and the record remains HISTORICAL_METADATA. Returns 410 in secure_binary mode.
+      responses:
+        '201': { description: Sandbox metadata recorded without a binary object or scanner verdict }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+  /merchants/onboarding/evidence/upload:
+    post:
+      tags: [Merchant onboarding]
+      operationId: uploadOnboardingEvidence
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      description: Secure-binary-mode endpoint. Accepts one bounded PDF, JPEG, or PNG into private quarantine. The authenticated actor and merchant own the record; evidence is usable only after an actual scanner records CLEAN. Returns 503 when private storage or a real scanner is unavailable and never downgrades to metadata-only behavior. Magic-byte validation is preliminary and is not document verification.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [metadata, file]
+              properties:
+                metadata: { type: string, description: JSON containing category, ownerType and optional ownerId }
+                file: { type: string, format: binary }
+      responses:
+        '201': { description: Evidence scanned clean; response contains safe metadata only }
+        '202': { description: Evidence remains in a non-usable processing state }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '415': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /merchants/onboarding/evidence/{id}:
     delete: { tags: [Merchant onboarding], operationId: removeOnboardingEvidence, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Replaceable draft evidence removed }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/evidence/{id}/download:
+    get:
+      tags: [Merchant onboarding]
+      operationId: downloadOnboardingEvidence
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      description: Streams tenant-scoped CLEAN evidence after stored size and SHA-256 integrity checks and an audit write. No permanent public URL or private object key is returned.
+      responses:
+        '200':
+          description: Private evidence attachment
+          headers:
+            Cache-Control: { schema: { type: string }, description: "no-store, private" }
+            X-Content-Type-Options: { schema: { type: string }, description: nosniff }
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /merchants/onboarding/information-response:
     post: { tags: [Merchant onboarding], operationId: respondToComplianceInformationRequest, security: [{ cookieSession: [] }], description: Responds to a merchant-visible open information request returned in the onboarding snapshot., responses: { '200': { description: Merchant response recorded }, '404': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/resubmit:
@@ -1087,7 +1142,7 @@ paths:
       operationId: listSandboxSettlements
       tags: [Sandbox settlements]
       security: [{ cookieSession: [] }]
-      responses: { '200': { description: Paginated merchant sandbox settlements } }
+      responses: { '200': { description: 'Paginated merchant sandbox settlements with exact minor-unit strings and nullable creator, submitter and approver evidence' } }
     post:
       operationId: createSandboxSettlement
       tags: [Sandbox settlements]
@@ -1101,7 +1156,7 @@ paths:
       tags: [Sandbox settlements]
       security: [{ cookieSession: [] }]
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Sandbox settlement with externalTransferExecuted false }, '404': { $ref: '#/components/responses/Error' } }
+      responses: { '200': { description: 'Sandbox settlement with exact minor-unit strings, creator and approval identities, timestamps, and externalTransferExecuted false' }, '404': { $ref: '#/components/responses/Error' } }
   /settlements/{id}/submit:
     post:
       operationId: submitSandboxSettlement
@@ -1131,7 +1186,7 @@ paths:
       security: [{ cookieSession: [] }]
       description: Produces a formula-safe sandbox CSV and audit record. It does not execute a transfer.
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Deterministic sandbox CSV }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+      responses: { '200': { description: Deterministic text/csv attachment with a bounded server filename }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /reports/summary:
     get:
       tags: [Operational reports]

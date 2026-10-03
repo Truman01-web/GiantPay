@@ -5,6 +5,7 @@ export const MOCK_ONBOARDING_DRAFT: OnboardingDraft = {
   draftRevision: 0,
   status: 'DRAFT',
   currentStep: 1,
+  evidenceMode: 'secure_binary',
   business: {
     legalName: 'Kambaza Traders Limited',
     tradingName: 'Kambaza Traders',

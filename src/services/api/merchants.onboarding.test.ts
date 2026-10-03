@@ -6,7 +6,7 @@ import { adaptBackendOnboarding, merchantsApi, type BackendOnboarding } from './
 
 const base = `${env.apiUrl}/v1`;
 const backend: BackendOnboarding = {
-  id: 'onb_1', status: 'INFORMATION_REQUIRED', draft_revision: 7, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+  id: 'onb_1', status: 'INFORMATION_REQUIRED', draft_revision: 7, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z', evidenceMode: 'sandbox_metadata',
   snapshot: {
     businessProfile: { legal_name: 'Merchant Ltd', trading_name: 'Merchant', registration_number_masked: '****1234', tax_identifier_masked: '****9876', business_type: 'LIMITED_COMPANY', industry: 'Software testing', incorporation_country: 'MW', operating_country: 'MW', contact_email: 'ops@example.invalid', contact_phone: '+265999000001', website: 'https://example.invalid', expected_monthly_volume_min: 1, expected_monthly_volume_max: 10, expected_monthly_value_min: 100, expected_monthly_value_max: 1000, intended_channels: ['CARD'], settlement_account_masked: '****0001' },
     addresses: [{ id: 'adr_1', kind: 'REGISTERED', line1: 'One Road', city: 'Blantyre', country: 'MW' }, { id: 'adr_2', kind: 'OPERATING', line1: 'Two Road', city: 'Lilongwe', country: 'MW' }],
@@ -22,7 +22,8 @@ const backend: BackendOnboarding = {
 describe('granular onboarding API contract', () => {
   it('adapts the complete masked backend snapshot without inventing raw secrets', () => {
     const result = adaptBackendOnboarding(backend);
-    expect(result).toMatchObject({ id: 'onb_1', status: 'INFORMATION_REQUIRED', draftRevision: 7, currentStep: 5 });
+    expect(result).toMatchObject({ id: 'onb_1', status: 'INFORMATION_REQUIRED', draftRevision: 7, currentStep: 5, evidenceMode: 'sandbox_metadata' });
+    expect(result.evidenceMetadata[0].scanState).toBe('HISTORICAL_METADATA');
     expect(result.addresses.map(x => x.kind)).toEqual(['REGISTERED', 'OPERATING']);
     expect(result.beneficialOwners[0].ownershipBasisPoints).toBe(10000);
     expect(result.questionnaire?.version).toBe('2026-01');
@@ -52,12 +53,14 @@ describe('granular onboarding API contract', () => {
     await merchantsApi.addBeneficialOwner({ fullName:'Owner',email:'',nationality:'MW',identificationNumber:'TEST-ID-2',ownershipBasisPoints:10000 });
     await merchantsApi.addAuthorizedRepresentative({ fullName:'Representative',email:'rep@example.invalid',telephone:'+265 999 000 001',authority:'Authorized representative',identificationNumber:'' });
     await merchantsApi.saveQuestionnaire({ version:'2026-01',declarationAccepted:true,answers:{natureOfBusiness:'Software testing services',sourceOfFunds:'Customer service revenue',expectedPaymentActivity:'Sandbox card transactions',countriesOfOperation:['MW'],politicallyExposedPerson:false,sanctionsDeclaration:false,highRiskBusiness:false,thirdPartyPaymentProcessing:false,refundAndDisputeExpectations:'Occasional sandbox refunds'} });
-    await merchantsApi.registerEvidence({ category:'BUSINESS_REGISTRATION',ownerType:'MERCHANT',storageReference:'opaque/object/1',mediaType:'application/pdf',sizeBytes:100,sha256:'a'.repeat(64),fileName:'registration.pdf' });
+    await merchantsApi.registerEvidence({ category:'BUSINESS_REGISTRATION',ownerType:'MERCHANT',mediaType:'application/pdf',sizeBytes:100,sha256:'a'.repeat(64),fileName:'registration.pdf' }, 'metadata-key');
     await merchantsApi.respondToInformationRequest('irq_1','The address is a fictional sandbox location.');
     await merchantsApi.resubmit();
     await merchantsApi.submitOnboarding('stable-submission-key');
     expect(seen.map(x => x.path)).toEqual(expect.arrayContaining(['/v1/merchants/onboarding/addresses','/v1/merchants/onboarding/directors','/v1/merchants/onboarding/beneficial-owners','/v1/merchants/onboarding/authorized-representatives','/v1/merchants/onboarding/questionnaire','/v1/merchants/onboarding/evidence','/v1/merchants/onboarding/information-response','/v1/merchants/onboarding/resubmit','/v1/merchants/onboarding/submit']));
     expect(seen.find(x => x.path.endsWith('/questionnaire'))?.body).toMatchObject({ version: '2026-01' });
+    expect(seen.find(x => x.path.endsWith('/evidence'))).toMatchObject({ key: 'metadata-key' });
+    expect(JSON.stringify(seen.find(x => x.path.endsWith('/evidence'))?.body)).not.toContain('storageReference');
     expect(seen.find(x => x.path.endsWith('/submit'))?.key).toBe('stable-submission-key');
   });
 });

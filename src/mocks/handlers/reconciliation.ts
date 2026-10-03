@@ -12,9 +12,11 @@ const base = `${env.apiUrl}/v1`;
 // leaks across test files under this project's `isolate: false` vitest
 // config (see resetAuthMockState in ../handlers/auth.ts for the same issue).
 let runs: ReconciliationRun[] = structuredClone(MOCK_RECONCILIATION_RUNS);
+let adjustments = new Map<string, Record<string, unknown>>();
 
 export function resetReconciliationMockState(): void {
   runs = structuredClone(MOCK_RECONCILIATION_RUNS);
+  adjustments = new Map();
 }
 
 const VALID_NEXT_STATUS: Record<ReconciliationExceptionStatus, ReconciliationExceptionStatus[]> = {
@@ -71,4 +73,18 @@ export const reconciliationHandlers = [
 
     return HttpResponse.json({ accepted: true });
   }),
+  http.post(`${base}/reconciliation/exceptions/:exceptionId/adjustments`, async ({ params, request }) => {
+    const body = await request.json() as { originalEntryId: string; reason: string; evidenceRef: string };
+    const row = { id: `adj_${params.exceptionId}`, exception_id: params.exceptionId, original_entry_id: body.originalEntryId, reason: body.reason, evidence_ref: body.evidenceRef, status: 'AWAITING_APPROVAL', created_by: 'u1', approved_by: null, journal_entry_id: null, decided_at: null };
+    adjustments.set(String(row.id), row); return HttpResponse.json(row, { status: 201 });
+  }),
+  http.post(`${base}/reconciliation/adjustments/:id/approve`, ({ params }) => {
+    const row = adjustments.get(String(params.id)); if (!row) return new HttpResponse(null, { status: 404 });
+    row.status = 'APPROVED'; row.approved_by = 'u2'; row.journal_entry_id = 'jnl_reversal'; row.decided_at = new Date().toISOString(); return HttpResponse.json(row);
+  }),
+  http.post(`${base}/reconciliation/adjustments/:id/reject`, ({ params }) => {
+    const row = adjustments.get(String(params.id)); if (!row) return new HttpResponse(null, { status: 404 });
+    row.status = 'REJECTED'; row.approved_by = 'u2'; row.decided_at = new Date().toISOString(); return HttpResponse.json(row);
+  }),
+  http.get(`${base}/ledger/integrity`, () => HttpResponse.json({ ok: true, failures: [] })),
 ];

@@ -24,15 +24,17 @@ export interface BeneficialOwnerInfo extends PersonInfo { ownershipBasisPoints: 
 export interface RepresentativeInfo { id: string; fullName: string; email: string; telephone: string; authority: string; identificationNumber: string; }
 export interface QuestionnaireAnswers { natureOfBusiness: string; sourceOfFunds: string; expectedPaymentActivity: string; countriesOfOperation: string[]; politicallyExposedPerson: boolean; sanctionsDeclaration: boolean; highRiskBusiness: boolean; thirdPartyPaymentProcessing: boolean; refundAndDisputeExpectations: string; }
 export interface QuestionnaireInfo { version: '2026-01'; declarationAccepted: boolean; answers: QuestionnaireAnswers; }
-export interface EvidenceMetadata { id: string; category: EvidenceCategory; ownerType: EvidenceOwnerType; ownerId?: string; storageReference: string; mediaType: 'application/pdf' | 'image/jpeg' | 'image/png'; sizeBytes: number; sha256: string; fileName: string; removedAt?: string | null; }
+export type EvidenceScanState = 'HISTORICAL_METADATA' | 'QUARANTINED' | 'SCANNING' | 'CLEAN' | 'REJECTED' | 'FAILED';
+export type OnboardingEvidenceMode = 'secure_binary' | 'sandbox_metadata';
+export interface EvidenceMetadata { id: string; category: EvidenceCategory; ownerType: EvidenceOwnerType; ownerId?: string; mediaType: 'application/pdf' | 'image/jpeg' | 'image/png'; sizeBytes: number; sha256: string; fileName: string; scanState: EvidenceScanState; failureCode?: string | null; removedAt?: string | null; }
 export interface InformationRequest { id: string; reason: string; evidenceReference: string; response: string | null; requestedAt: string; respondedAt: string | null; }
 
 export interface OwnerInfo { id: string; fullName: string; role: string; ownershipPercentage: number | null; nationalIdNumber: string; isBeneficialOwner: boolean; }
-export interface UploadedDocument { id: string; category: string; fileName: string; sizeBytes: number; status: 'UPLOADING' | 'UPLOADED' | 'FAILED'; uploadProgress: number; error?: string | null; }
+export interface UploadedDocument { id: string; category: string; fileName: string; sizeBytes: number; status: 'UPLOADING' | 'QUARANTINED' | 'SCANNING' | 'CLEAN' | 'HISTORICAL_METADATA' | 'REJECTED' | 'FAILED'; uploadProgress: number; error?: string | null; }
 export interface SettlementConfig { destinationType: 'BANK_ACCOUNT' | 'MOBILE_MONEY'; bankName: string; accountNumberMasked: string; mobileNumberMasked: string; }
 
 export interface OnboardingDraft {
-  id: string | null; status: MerchantApplicationStatus; draftRevision: number; currentStep: number;
+  id: string | null; status: MerchantApplicationStatus; draftRevision: number; currentStep: number; evidenceMode: OnboardingEvidenceMode;
   business: Partial<BusinessInfo>; addresses: AddressInfo[]; directors: PersonInfo[];
   beneficialOwners: BeneficialOwnerInfo[]; representatives: RepresentativeInfo[];
   questionnaire: QuestionnaireInfo | null; evidenceMetadata: EvidenceMetadata[];

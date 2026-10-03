@@ -51,6 +51,27 @@ function buildHeaders(hasBody: boolean, options?: RequestOptions, method?: strin
   return headers;
 }
 
+async function requestDownload(path: string, options?: RequestOptions, method: 'GET' | 'POST' = 'POST'): Promise<{ blob: Blob; contentDisposition: string | null }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? 15_000);
+  try {
+    const response = await fetch(`${env.apiUrl}/v1${path}`, {
+      method,
+      credentials: 'include',
+      headers: { ...buildHeaders(false, options, method), Accept: 'text/csv,application/pdf,image/jpeg,image/png' },
+      signal: controller.signal,
+    });
+    if (response.status === 401) onUnauthorized?.();
+    if (!response.ok) throw await parseErrorResponse(response);
+    return { blob: await response.blob(), contentDisposition: response.headers.get('content-disposition') };
+  } catch (cause) {
+    if (cause instanceof ApiError) throw cause;
+    throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function parseErrorResponse(response: Response): Promise<ApiError> {
   let body: RawErrorBody = {};
   try {
@@ -162,7 +183,7 @@ export const UPLOAD_TIMEOUT_MESSAGE = 'The upload timed out. Please check your c
 function uploadFile<T>(
   path: string,
   form: FormData,
-  options?: { signal?: AbortSignal; onProgress?: (percent: number) => void; timeoutMs?: number },
+  options?: { signal?: AbortSignal; onProgress?: (percent: number) => void; timeoutMs?: number; idempotencyKey?: string },
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     if (options?.signal?.aborted) {
@@ -182,6 +203,7 @@ function uploadFile<T>(
     xhr.setRequestHeader('X-Request-Id', crypto.randomUUID());
     const csrf = getCsrfToken();
     if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
+    if (options?.idempotencyKey) xhr.setRequestHeader('Idempotency-Key', options.idempotencyKey);
 
     // `xhr.timeout`/`ontimeout` and `xhr.abort()`/`onabort` are the
     // standard browser mechanism and are kept above as the primary path,
@@ -278,6 +300,8 @@ export const apiClient = {
     request<T>('PATCH', path, body, options),
   delete: <T>(path: string, options?: RequestOptions) =>
     request<T>('DELETE', path, undefined, options),
+  postDownload: (path: string, options?: RequestOptions) => requestDownload(path, options, 'POST'),
+  getDownload: (path: string, options?: RequestOptions) => requestDownload(path, options, 'GET'),
   uploadFile,
 };
 

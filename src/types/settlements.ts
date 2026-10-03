@@ -11,6 +11,9 @@ export interface SettlementListItem {
   feesMinor: string;
   netMinor: string;
   createdAt: string;
+  createdBy: string | null;
+  submittedAt: string | null;
+  approvedBy: string | null;
   approvedAt: string | null;
   exportedAt: string | null;
   externalTransferExecuted: false;

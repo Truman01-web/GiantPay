@@ -8,7 +8,7 @@ import { DocumentsStep } from './DocumentsStep';
 import type { UploadedDocument } from '@/types/onboarding';
 
 const base = `${env.apiUrl}/v1`;
-const UPLOAD_PATH = `${base}/merchants/onboarding/documents`;
+const UPLOAD_PATH = `${base}/merchants/onboarding/evidence/upload`;
 
 function pdfFile(name = 'certificate.pdf', sizeBytes = 1024) {
   const file = new File([new Uint8Array(sizeBytes)], name, { type: 'application/pdf' });
@@ -115,9 +115,11 @@ describe('DocumentsStep — file upload', () => {
 
   it('retries exactly once and succeeds', async () => {
     let calls = 0;
+    const idempotencyKeys: string[] = [];
     server.use(
-      http.post(UPLOAD_PATH, () => {
+      http.post(UPLOAD_PATH, ({ request }) => {
         calls++;
+        idempotencyKeys.push(request.headers.get('idempotency-key') ?? '');
         if (calls === 1) return HttpResponse.json({ error: { code: 'INTERNAL', message: 'boom' } }, { status: 500 });
         return HttpResponse.json({ id: 'doc_1', fileName: 'certificate.pdf', sizeBytes: 1024 });
       }),
@@ -130,6 +132,8 @@ describe('DocumentsStep — file upload', () => {
     await userEvent.click(retryButton);
     await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument());
     expect(calls).toBe(2);
+    expect(idempotencyKeys[0]).toMatch(/\S/);
+    expect(idempotencyKeys[1]).toBe(idempotencyKeys[0]);
     expect(screen.queryByRole('button', { name: /retry uploading/i })).not.toBeInTheDocument();
   });
 

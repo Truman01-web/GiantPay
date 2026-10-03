@@ -14,7 +14,7 @@ const TIMELINE = [
 
 const VALUES = [
   { icon: Target, title: "Transparency First", body: "No hidden fees, no surprises. Every transaction rate, settlement cycle, and ledger entry is visible to you in real time." },
-  { icon: Shield, title: "Compliance-Led", body: "We design for regulatory alignment from day one â€” KYC/KYB, AML screening, and RBM reporting are built into every product." },
+  { icon: Shield, title: "Compliance-Led", body: "We design for regulatory alignment from day one — KYC/KYB, AML screening, and RBM reporting are built into every product." },
   { icon: Zap, title: "Developer Experience", body: "Clean REST APIs, predictable status models, and comprehensive sandbox tooling so your engineers can ship fast and ship confidently." },
   { icon: Heart, title: "Local-First", body: "We are a Malawian company building for Malawian commerce. Every design decision considers the local banking and mobile money reality." },
   { icon: Globe, title: "Infrastructure-Grade Reliability", body: "Payment infrastructure is critical infrastructure. We engineer for uptime, idempotency, and reconciliation correctness." },
@@ -24,7 +24,7 @@ const VALUES = [
 const STATS = [
   { value: "5+", label: "Payment channels integrated" },
   { value: "T+1", label: "Settlement to your bank" },
-  { value: "1.8%", label: "Flat transaction rate from" },
+  { value: "3% / 2%", label: "Mobile-card / bank pricing" },
   { value: "RBM", label: "Regulatory alignment" },
 ];
 
@@ -55,7 +55,7 @@ export default function AboutPage() {
               <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">payment backbone.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-              GiantPay is the unified digital payments platform from GiantPlus Global Finance Solutions â€” purpose-built to modernise commerce and financial access across Malawi.
+              GiantPay is the unified digital payments platform from GiantPlus Global Finance Solutions — purpose-built to modernise commerce and financial access across Malawi.
             </p>
           </div>
         </div>
@@ -82,7 +82,7 @@ export default function AboutPage() {
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">Our Mission</p>
               <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Payments that work the way Malawi works.</h2>
-              <p className="mt-6 text-base leading-relaxed text-slate-600">Malawian businesses have historically juggled multiple, disconnected payment providers â€” one for mobile money, another for cards, another for bank transfers â€” with no unified view, no automated reconciliation, and no clean settlement cycle.</p>
+              <p className="mt-6 text-base leading-relaxed text-slate-600">Malawian businesses have historically juggled multiple, disconnected payment providers — one for mobile money, another for cards, another for bank transfers — with no unified view, no automated reconciliation, and no clean settlement cycle.</p>
               <p className="mt-4 text-base leading-relaxed text-slate-600">GiantPay solves this by providing a single integration that connects Airtel Money, TNM Mpamba, Visa, Mastercard, and the National Switch through one clean API, one merchant dashboard, and one transparent fee structure.</p>
               <div className="mt-8 flex gap-4">
                 <Link to="/register" className="inline-flex items-center gap-2 rounded-xl bg-[#1B4FD8] px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-[#1744b9]">
@@ -160,7 +160,7 @@ export default function AboutPage() {
       <section className="border-t border-slate-100 bg-slate-50 py-20">
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Ready to accept payments in Malawi?</h2>
-          <p className="mt-4 text-slate-500">Join merchants building on GiantPay â€” the fastest way to integrate all local payment channels through a single, reliable API.</p>
+          <p className="mt-4 text-slate-500">Join merchants building on GiantPay — the fastest way to integrate all local payment channels through a single, reliable API.</p>
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link to="/register" className="rounded-xl bg-[#1B4FD8] px-8 py-4 text-sm font-bold text-white shadow-lg transition hover:bg-[#1744b9]">Create Free Account</Link>
             <Link to="/company/contact" className="rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Talk to Our Team</Link>

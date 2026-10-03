@@ -9,7 +9,7 @@
   "scripts": {
     "predev": "msw init public --save",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/prune-real-build-artifacts.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",

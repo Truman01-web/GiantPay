@@ -14,6 +14,7 @@ const optionalSecret = z.preprocess(
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DEPLOYMENT_ENVIRONMENT: z.enum(['local', 'sandbox', 'production']).default('local'),
+  ONBOARDING_EVIDENCE_MODE: z.enum(['secure_binary', 'sandbox_metadata']).default('secure_binary'),
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1),
@@ -56,7 +57,7 @@ const schema = z.object({
   REAL_PAYOUTS_ENABLED: z.literal('false').default('false').transform(()=>false),
 });
 
-export type Config = Omit<z.output<typeof schema>, 'DEPLOYMENT_ENVIRONMENT'> & { DEPLOYMENT_ENVIRONMENT?: 'local' | 'sandbox' | 'production' };
+export type Config = Omit<z.output<typeof schema>, 'DEPLOYMENT_ENVIRONMENT' | 'ONBOARDING_EVIDENCE_MODE'> & { DEPLOYMENT_ENVIRONMENT?: 'local' | 'sandbox' | 'production'; ONBOARDING_EVIDENCE_MODE?: 'secure_binary' | 'sandbox_metadata' };
 
 const mountedSecrets = ['DATABASE_URL', 'REDIS_URL', 'PASSWORD_PEPPER', 'COOKIE_SECRET', 'SANDBOX_WEBHOOK_SECRET', 'WEBHOOK_SECRET_KEY', 'SMTP_PASSWORD'] as const;
 
@@ -85,6 +86,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<ty
   if (config.NODE_ENV === 'production' && !config.TRUSTED_PROXIES.trim()) throw new Error('TRUSTED_PROXIES is required in production');
   if (config.NODE_ENV === 'production' && config.COOKIE_SECURE === false) throw new Error('COOKIE_SECURE must not be false in production');
   if (config.NODE_ENV === 'production' && new URL(config.FRONTEND_ORIGIN).protocol !== 'https:') throw new Error('FRONTEND_ORIGIN must use HTTPS in production');
+  if (config.ONBOARDING_EVIDENCE_MODE === 'sandbox_metadata' && config.DEPLOYMENT_ENVIRONMENT !== 'sandbox') throw new Error('ONBOARDING_EVIDENCE_MODE=sandbox_metadata is restricted to sandbox deployments');
   if (config.DEPLOYMENT_ENVIRONMENT === 'production' && config.PAYMENT_PROVIDER === 'sandbox') throw new Error('PAYMENT_PROVIDER=sandbox is forbidden for production payment deployment');
   if (config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.PAYMENT_PROVIDER !== 'sandbox') throw new Error('Sandbox deployment requires PAYMENT_PROVIDER=sandbox');
   if (config.NODE_ENV === 'production' && config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.FRONTEND_ORIGIN !== 'https://giantpay.mw') throw new Error('Sandbox deployment FRONTEND_ORIGIN must be https://giantpay.mw');

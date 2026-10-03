@@ -30,11 +30,13 @@ export const merchantsHandlers = [
     return HttpResponse.json(draft);
   }),
 
-  http.post(`${base}/merchants/onboarding/documents`, async () => {
+  http.post(`${base}/merchants/onboarding/evidence/upload`, async () => {
     return HttpResponse.json({
       id: `doc_${Math.random().toString(36).slice(2, 9)}`,
       fileName: 'uploaded-file',
       sizeBytes: 102400,
+      scanState: 'CLEAN',
+      failureCode: null,
     });
   }),
 ];

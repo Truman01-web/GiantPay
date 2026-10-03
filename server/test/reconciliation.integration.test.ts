@@ -444,6 +444,9 @@ suite('reconciliation and sandbox settlement database controls', () => {
     const retry = await app.inject({ ...json('checker-token', 'reject-retry', { reason: 'Evidence disproves adjustment' }), url: `/v1/reconciliation/adjustments/${id}/reject` });
     expect(first.json().status).toBe('REJECTED');
     expect(retry.json().status).toBe('REJECTED');
+    const approveRejected = await app.inject({ ...json('checker-token', 'approve-rejected', {}), url: `/v1/reconciliation/adjustments/${id}/approve` });
+    expect(approveRejected.statusCode).toBe(409);
+    expect(approveRejected.json()).toMatchObject({ error: { code: 'STATE_CONFLICT' } });
     expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE reversed_entry_id=$1`, [original.entryId])).rows[0].count)).toBe(0);
     expect(Number((await db.query(`SELECT count(*) FROM audit_events WHERE action='COMPENSATING_ADJUSTMENT_REJECTED' AND resource_id=$1`, [id])).rows[0].count)).toBe(1);
   });
@@ -577,6 +580,9 @@ suite('reconciliation and sandbox settlement database controls', () => {
       refundsMinor: '100',
       feesMinor: '20',
       netMinor: '1380',
+      createdBy: 'maker',
+      submittedAt: null,
+      approvedBy: null,
       externalTransferExecuted: false,
       sandboxOnly: true,
     });

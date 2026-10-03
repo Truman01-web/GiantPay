@@ -44,7 +44,8 @@ suite('team access database controls', () => {
           !x.startsWith('016_') &&
           !x.startsWith('017_') &&
           !x.startsWith('018_') &&
-          !x.startsWith('019_'),
+          !x.startsWith('019_') &&
+          !x.startsWith('020_'),
       )
       .sort())
       await db.query(await readFile(resolve('migrations', name), 'utf8'));
@@ -78,6 +79,9 @@ suite('team access database controls', () => {
     );
     await db.query(
       await readFile(resolve('migrations/018_support_case_management.sql'), 'utf8'),
+    );
+    await db.query(
+      await readFile(resolve('migrations/020_secure_onboarding_evidence.sql'), 'utf8'),
     );
     await db.query(
       `INSERT INTO users(id,merchant_id,name,email,normalized_email,password_hash,role,permissions,status) VALUES('invitee','m1','Invitee','invitee@test.invalid','invitee@test.invalid','x','VIEWER','{}','REMOVED')`,

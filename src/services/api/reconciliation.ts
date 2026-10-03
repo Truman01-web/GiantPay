@@ -1,5 +1,5 @@
 import type { Paginated } from '@/types/common';
-import type { ReconciliationException, ReconciliationExceptionStatus, ReconciliationRun, ReconciliationRunListItem } from '@/types/reconciliation';
+import type { LedgerIntegrityResult, ReconciliationAdjustment, ReconciliationException, ReconciliationExceptionStatus, ReconciliationRun, ReconciliationRunListItem } from '@/types/reconciliation';
 import { apiClient, type RequestOptions } from './client';
 
 interface BackendRun {
@@ -57,6 +57,15 @@ const exceptionView = (row: BackendException): ReconciliationException => ({
   evidenceRef: row.resolution_evidence_ref ?? null,
 });
 
+const adjustmentView = (row: Record<string, unknown>): ReconciliationAdjustment => ({
+  id: String(row.id), exceptionId: String(row.exception_id), originalEntryId: String(row.original_entry_id),
+  reason: String(row.reason), evidenceRef: String(row.evidence_ref),
+  status: row.status as ReconciliationAdjustment['status'], createdBy: typeof row.created_by === 'string' ? row.created_by : null,
+  approvedBy: typeof row.approved_by === 'string' ? row.approved_by : null,
+  journalEntryId: typeof row.journal_entry_id === 'string' ? row.journal_entry_id : null,
+  decidedAt: typeof row.decided_at === 'string' ? row.decided_at : null,
+});
+
 export const reconciliationApi = {
   async listRuns(params: { page: number; pageSize: number }, options?: RequestOptions): Promise<Paginated<ReconciliationRunListItem>> {
     const search = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
@@ -83,14 +92,14 @@ export const reconciliationApi = {
     return { ...runView(run, forRun.length), exceptions: forRun };
   },
 
-  async updateException(id: string, payload: { status: ReconciliationExceptionStatus; reason?: string; evidenceRef?: string }): Promise<ReconciliationException> {
-    await apiClient.post<{ accepted: true }>(`/reconciliation/exceptions/${id}/review`, payload, { idempotencyKey: crypto.randomUUID() });
+  async updateException(id: string, payload: { status: ReconciliationExceptionStatus; reason?: string; evidenceRef?: string }, idempotencyKey: string): Promise<ReconciliationException> {
+    await apiClient.post<{ accepted: true }>(`/reconciliation/exceptions/${id}/review`, payload, { idempotencyKey });
     return this.getException(id);
   },
 
-  proposeAdjustment: (exceptionId: string, payload: { originalEntryId: string; reason: string; evidenceRef: string }) =>
-    apiClient.post(`/reconciliation/exceptions/${exceptionId}/adjustments`, payload, { idempotencyKey: crypto.randomUUID() }),
-  approveAdjustment: (id: string) => apiClient.post(`/reconciliation/adjustments/${id}/approve`, {}),
-  rejectAdjustment: (id: string, reason: string) => apiClient.post(`/reconciliation/adjustments/${id}/reject`, { reason }),
-  ledgerIntegrity: () => apiClient.get<{ ok: boolean; failures: unknown[] }>('/ledger/integrity'),
+  proposeAdjustment: (exceptionId: string, payload: { originalEntryId: string; reason: string; evidenceRef: string }, idempotencyKey: string) =>
+    apiClient.post<Record<string, unknown>>(`/reconciliation/exceptions/${exceptionId}/adjustments`, payload, { idempotencyKey }).then(adjustmentView),
+  approveAdjustment: (id: string) => apiClient.post<Record<string, unknown>>(`/reconciliation/adjustments/${id}/approve`, {}).then(adjustmentView),
+  rejectAdjustment: (id: string, reason: string) => apiClient.post<Record<string, unknown>>(`/reconciliation/adjustments/${id}/reject`, { reason }).then(adjustmentView),
+  ledgerIntegrity: (options?: RequestOptions) => apiClient.get<LedgerIntegrityResult>('/ledger/integrity', options),
 };
