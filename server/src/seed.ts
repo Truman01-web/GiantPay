@@ -27,9 +27,9 @@ try {
      ON CONFLICT(id) DO UPDATE SET name=excluded.name`, [onboarding],
   );
   await db.query(
-    `INSERT INTO users(id,merchant_id,name,email,password_hash,role,permissions,mfa_enabled)
-     VALUES('usr_owner_01','mch_kambaza','Chikondi Banda','chikondi.banda@kambazapay.mw',$1,'OWNER',$2,false)
-     ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, permissions=excluded.permissions`,
+    `INSERT INTO users(id,merchant_id,name,email,normalized_email,password_hash,role,permissions,mfa_enabled)
+     VALUES('usr_owner_01','mch_kambaza','Chikondi Banda','chikondi.banda@kambazapay.mw','chikondi.banda@kambazapay.mw',$1,'OWNER',$2,false)
+     ON CONFLICT(email) DO UPDATE SET normalized_email=excluded.normalized_email,password_hash=excluded.password_hash,permissions=excluded.permissions`,
     [passwordHash, permissions],
   );
   await db.query(

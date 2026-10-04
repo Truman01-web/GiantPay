@@ -3,6 +3,7 @@ import { delay, http, HttpResponse } from 'msw';
 import { env } from '@/app/config/env';
 import { server } from '@/mocks/server';
 import { apiClient } from './client';
+import { authApi } from './auth';
 
 const base = `${env.apiUrl}/v1`;
 
@@ -61,5 +62,15 @@ describe('real API client contract', () => {
       status: 503,
       message: expect.stringContaining('temporarily paused'),
     });
+  });
+
+  it('sends a JSON body for logout so Fastify accepts the mutation', async () => {
+    server.use(http.post(`${base}/auth/logout`, async ({ request }) => {
+      expect(request.headers.get('content-type')).toContain('application/json');
+      expect(await request.json()).toEqual({});
+      return new HttpResponse(null, { status: 204 });
+    }));
+
+    await expect(authApi.logout()).resolves.toBeUndefined();
   });
 });
