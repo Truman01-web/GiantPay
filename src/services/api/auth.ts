@@ -34,7 +34,7 @@ export const authApi = {
   verifyMfa: (payload: { challengeId: string; code: string }) =>
     apiClient.post<{ session: Session }>(env.portalContext==='staff'?'/staff/auth/mfa/verify':'/auth/mfa/verify', payload),
 
-  logout: () => apiClient.post<void>(env.portalContext==='staff'?'/staff/auth/logout':'/auth/logout'),
+  logout: () => apiClient.post<void>(env.portalContext==='staff'?'/staff/auth/logout':'/auth/logout', {}),
 
   getSession: (options?: { signal?: AbortSignal }) =>
     apiClient.get<{ session: Session | null }>(env.portalContext==='staff'?'/staff/auth/session':'/auth/session', options),
