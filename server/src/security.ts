@@ -7,6 +7,9 @@ import { rateLimit, type RateLimitStore } from './rateLimit.js';
 import { operationalMetrics } from './operations/metrics.js';
 
 export const SESSION_COOKIE = 'giantpay_session';
+export const STAFF_SESSION_COOKIE = 'giantpay_staff_session';
+export const MERCHANT_CSRF_COOKIE = 'giantpay_csrf';
+export const STAFF_CSRF_COOKIE = 'giantpay_staff_csrf';
 export const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 export const newId = (prefix: string) => `${prefix}_${randomUUID().replaceAll('-', '')}`;
 export const newToken = () => randomBytes(32).toString('base64url');
@@ -15,6 +18,7 @@ export interface Actor {
   id: string; merchantId: string | null; name: string; email: string; role: string;
   permissions: string[]; mfaEnabled: boolean; merchantName: string | null; environment: 'sandbox' | 'production';
   authType?: 'session' | 'apiKey'; apiKeyId?: string;
+  sessionContext?: 'MERCHANT' | 'STAFF'; staffProfile?: string | null;
 }
 
 declare module 'fastify' {
@@ -29,14 +33,34 @@ export async function authenticate(db: Db, config:Config, request: FastifyReques
             m.name merchant_name, coalesce(m.environment,'production') environment
        FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN merchants m ON m.id=u.merchant_id
        LEFT JOIN user_role_assignments ura ON ura.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=ura.role_id AND mr.merchant_id=u.merchant_id
-      WHERE s.token_hash=$1 AND s.expires_at > now() AND s.absolute_expires_at > now()
+      WHERE s.token_hash=$1 AND s.session_context='MERCHANT' AND u.merchant_id IS NOT NULL
+        AND s.expires_at > now() AND s.absolute_expires_at > now()
         AND s.revoked_at IS NULL AND u.status='ACTIVE' AND s.last_seen_at > now()-($2 || ' minutes')::interval`, [tokenHash(token),String(config.SESSION_IDLE_MINUTES)],
   );
   if (!result.rowCount) {operationalMetrics.increment('authentication_denials_total',{reason:'invalid_session'});return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Your session has expired.'));}
   await db.query('UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1',[tokenHash(token)]);
   const row = result.rows[0];
-  request.actor = { id: row.id, merchantId: row.merchant_id, name: row.name, email: row.email, role: row.role, permissions: row.permissions, mfaEnabled: row.mfa_enabled, merchantName: row.merchant_name, environment: row.environment, authType: 'session' };
+  request.actor = { id: row.id, merchantId: row.merchant_id, name: row.name, email: row.email, role: row.role, permissions: row.permissions, mfaEnabled: row.mfa_enabled, merchantName: row.merchant_name, environment: row.environment, authType: 'session', sessionContext: 'MERCHANT' };
 }
+
+export async function authenticateStaff(db: Db, config:Config, request: FastifyRequest, reply: FastifyReply) {
+  if (request.headers.authorization) return reply.code(403).send(apiError(request,'FORBIDDEN','A staff browser session is required.'));
+  const token=request.cookies[STAFF_SESSION_COOKIE];
+  if(!token)return reply.code(401).send(apiError(request,'UNAUTHENTICATED','Sign in is required.'));
+  const result=await db.query(`SELECT u.id,u.name,u.email,u.permissions,u.mfa_enabled,u.staff_profile
+    FROM sessions s JOIN users u ON u.id=s.user_id JOIN mfa_enrollments e ON e.user_id=u.id AND e.verified_at IS NOT NULL
+    WHERE s.token_hash=$1 AND s.session_context='STAFF' AND s.mfa_verified_at IS NOT NULL
+      AND s.expires_at>now() AND s.absolute_expires_at>now() AND s.revoked_at IS NULL
+      AND s.last_seen_at>now()-($2 || ' minutes')::interval AND u.status='ACTIVE' AND u.merchant_id IS NULL
+      AND u.role='PLATFORM_ADMIN' AND u.staff_profile IS NOT NULL AND u.email_verified_at IS NOT NULL
+      AND u.normalized_email ~ '^[^@]+@giantplus-mw[.]com$'`,[tokenHash(token),String(config.SESSION_IDLE_MINUTES)]);
+  if(!result.rowCount)return reply.code(401).send(apiError(request,'UNAUTHENTICATED','Your staff session has expired.'));
+  await db.query('UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1',[tokenHash(token)]);
+  const row=result.rows[0];
+  request.actor={id:row.id,merchantId:null,name:row.name,email:row.email,role:'PLATFORM_ADMIN',permissions:row.permissions,mfaEnabled:true,merchantName:null,environment:config.DEPLOYMENT_ENVIRONMENT==='production'?'production':'sandbox',authType:'session',sessionContext:'STAFF',staffProfile:row.staff_profile};
+}
+
+export function requireStaffPermission(db:Db,config:Config,permission:string){return async(request:FastifyRequest,reply:FastifyReply)=>{await authenticateStaff(db,config,request,reply);if(reply.sent)return;if(!request.actor?.permissions.includes(permission))return reply.code(403).send(apiError(request,'PLATFORM_PERMISSION_DENIED','You do not have permission to perform this action.'));};}
 
 export function authenticateSessionOrApiKey(db: Db, pepper: string,rateLimits:RateLimitStore,config:Config) {
   return async (request: FastifyRequest, reply: FastifyReply) => {

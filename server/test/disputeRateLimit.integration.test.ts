@@ -9,9 +9,10 @@ import { loadConfig } from '../src/config.js';
 import { RedisRateLimitStore } from '../src/rateLimit.js';
 import { tokenHash } from '../src/security.js';
 import { requireSafeTestDatabase } from './integrationGuard.js';
+import {dualContextHeaders,provisionSyntheticStaff} from './staffTestFixtures.js';
 const databaseUrl=process.env.TEST_DATABASE_URL?requireSafeTestDatabase(process.env.TEST_DATABASE_URL,process.env.ALLOW_REMOTE_TEST_DATABASE==='true').toString():undefined,redisUrl=process.env.TEST_REDIS_URL,suite=databaseUrl&&redisUrl?describe:describe.skip,schema=`dispute_rate_${randomUUID().replaceAll('-','')}`;
 let admin:pg.Pool,db:pg.Pool,app:Awaited<ReturnType<typeof buildApp>>;
-const session=(token:string)=>({cookie:`giantpay_session=${token}; giantpay_csrf=c`,origin:'http://127.0.0.1:5173','x-csrf-token':'c'});
+const session=dualContextHeaders;
 suite('Phase 8 endpoint Redis limits',()=>{
  beforeAll(async()=>{
   admin=new pg.Pool({connectionString:databaseUrl!});await admin.query(`CREATE SCHEMA ${schema}`);db=new pg.Pool({connectionString:databaseUrl!,options:`-c search_path=${schema}`});for(const name of (await readdir(resolve('migrations'))).filter(x=>x.endsWith('.sql')).sort())await db.query(await readFile(resolve('migrations',name),'utf8'));
@@ -19,6 +20,7 @@ suite('Phase 8 endpoint Redis limits',()=>{
   const merchantPermissions=['disputes.read','disputes.respond','disputes.evidence.create'],platformPermissions=['platform.disputes.read','platform.disputes.investigate','platform.disputes.request_information','platform.disputes.decide','platform.disputes.assign','platform.disputes.reopen'];
   await db.query(`INSERT INTO users(id,merchant_id,name,email,normalized_email,password_hash,role,permissions,status) VALUES('u1','m1','One','one@example.invalid','one@example.invalid','x','OWNER',$1,'ACTIVE'),('u2','m2','Two','two@example.invalid','two@example.invalid','x','OWNER',$1,'ACTIVE'),('s1',NULL,'Staff One','s1@example.invalid','s1@example.invalid','x','PLATFORM_ADMIN',$2,'ACTIVE'),('s2',NULL,'Staff Two','s2@example.invalid','s2@example.invalid','x','PLATFORM_ADMIN',$2,'ACTIVE')`,[merchantPermissions,platformPermissions]);
   await db.query(`INSERT INTO sessions(token_hash,user_id,expires_at,absolute_expires_at,last_seen_at) VALUES($1,'u1',now()+interval '1 hour',now()+interval '2 hours',now()),($2,'u2',now()+interval '1 hour',now()+interval '2 hours',now()),($3,'s1',now()+interval '1 hour',now()+interval '2 hours',now()),($4,'s2',now()+interval '1 hour',now()+interval '2 hours',now())`,['u1-token','u2-token','s1-token','s2-token'].map(tokenHash));
+  await provisionSyntheticStaff(db);
   await db.query(`INSERT INTO payments(id,merchant_id,reference,status,channel,gross_minor,currency) VALUES('rp1','m1','RATE-PAY-1','SUCCEEDED','SANDBOX',10000,'MWK'),('rp2','m2','RATE-PAY-2','SUCCEEDED','SANDBOX',10000,'MWK');INSERT INTO disputes(id,reference,merchant_id,payment_id,source,reason_category,amount_minor,currency,summary,status,created_by) VALUES('rd1','RATE-DSP-1','m1','rp1','SANDBOX','OTHER',100,'MWK','Rate dispute one','OPEN','s1'),('rd2','RATE-DSP-2','m2','rp2','SANDBOX','OTHER',100,'MWK','Rate dispute two','OPEN','s2')`);
   const store=await RedisRateLimitStore.connect(redisUrl!);app=await buildApp(loadConfig({NODE_ENV:'test',DATABASE_URL:databaseUrl!,PASSWORD_PEPPER:'p'.repeat(32),COOKIE_SECRET:'c'.repeat(32),FRONTEND_ORIGIN:'http://127.0.0.1:5173',PAYMENT_PROVIDER:'sandbox',SANDBOX_WEBHOOK_SECRET:'w'.repeat(32),RATE_LIMIT_NAMESPACE:`phase8:${randomUUID()}`}),db,undefined,undefined,store);
  },60_000);

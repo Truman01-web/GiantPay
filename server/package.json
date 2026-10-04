@@ -26,6 +26,7 @@
     "db:verify-migrations": "tsx src/verifyMigrations.ts",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts"
+    ,"staff:provision": "tsx src/provisionStaff.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

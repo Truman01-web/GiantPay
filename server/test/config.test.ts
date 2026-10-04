@@ -9,7 +9,7 @@ const base = {
   PAYMENT_PROVIDER: 'sandbox',
   SANDBOX_WEBHOOK_SECRET: 'w'.repeat(32),
 };
-const productionBase={...base,DATABASE_URL:'postgres://database.invalid/giantpay?sslmode=verify-full'};
+const productionBase={...base,DATABASE_URL:'postgres://database.invalid/giantpay?sslmode=verify-full',STAFF_FRONTEND_ORIGIN:'https://admin.giantpay.mw'};
 
 describe('configuration safety', () => {
   it('allows sandbox in development', () => {
@@ -62,6 +62,7 @@ describe('configuration safety', () => {
       NODE_ENV: 'production',
       DEPLOYMENT_ENVIRONMENT: 'sandbox',
       FRONTEND_ORIGIN: 'https://giantpay.mw',
+      STAFF_FRONTEND_ORIGIN: 'https://admin.giantpay.mw',
       REDIS_URL: 'rediss://cache.invalid',
       TRUSTED_PROXIES: '10.0.0.1',
       COOKIE_SECURE: 'true',

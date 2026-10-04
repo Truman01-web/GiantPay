@@ -91,8 +91,8 @@ export const ADMIN_NAV: NavGroup[] = [
     label: 'Platform',
     items: [
       { label: 'Providers', to: '/admin/providers', icon: Code2, permission: 'platform.operations.read' },
-      { label: 'Users', to: '/admin/users', icon: Users, permission: 'team:read' },
-      { label: 'Roles', to: '/admin/roles', icon: ShieldCheck, permission: 'roles:read' },
+      { label: 'Staff', to: '/admin/users', icon: Users, permission: 'platform.staff.read' },
+      { label: 'Access profiles', to: '/admin/roles', icon: ShieldCheck, permission: 'platform.staff.read' },
       { label: 'Audit logs', to: '/admin/audit-logs', icon: FileBarChart, permission: 'platform.audit.read' },
       { label: 'Incidents', to: '/admin/incidents', icon: ShieldCheck, permission: 'platform.incidents.read' },
       { label: 'Security', to: '/admin/security', icon: ShieldCheck, permission: 'platform.controls.read' },

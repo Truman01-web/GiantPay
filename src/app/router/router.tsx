@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { MerchantLayout } from '@/layouts/MerchantLayout';
@@ -83,7 +83,7 @@ import {
   AdminSettingsPage,
 } from './lazyPages';
 
-export const router = createBrowserRouter([
+const allRoutes:RouteObject[] = [
   {
     element: <PublicLayout />,
     children: [
@@ -141,7 +141,7 @@ export const router = createBrowserRouter([
       { path: '/payment/:reference', element: <PaymentStatusPage /> },
     ],
   },
-  {
+  ...(import.meta.env.VITE_PORTAL_CONTEXT === 'staff' ? [{
     element: (
       <RequireAuth>
         <RequireMerchant><MerchantLayout /></RequireMerchant>
@@ -437,7 +437,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin/refunds/pending',
         element: (
-          <RequirePermission permission="payments.refunds:approve">
+          <RequirePermission permission="admin.refunds:approve">
             <PendingRefundApprovalsPage />
           </RequirePermission>
         ),
@@ -485,7 +485,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin/users',
         element: (
-          <RequirePermission permission="team:read">
+          <RequirePermission permission="platform.staff.read">
             <AdminUsersPage />
           </RequirePermission>
         ),
@@ -493,7 +493,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin/roles',
         element: (
-          <RequirePermission permission="roles:read">
+          <RequirePermission permission="platform.staff.read">
             <AdminRolesPage />
           </RequirePermission>
         ),
@@ -547,6 +547,7 @@ export const router = createBrowserRouter([
         ),
       },
     ],
-  },
+  }] : []),
   { path: '*', element: <NotFoundPage /> },
-]);
+];
+export const router=createBrowserRouter(allRoutes);

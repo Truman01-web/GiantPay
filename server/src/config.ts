@@ -21,6 +21,7 @@ const schema = z.object({
   PASSWORD_PEPPER: z.string().min(32),
   COOKIE_SECRET: z.string().min(32),
   FRONTEND_ORIGIN: z.string().url(),
+  STAFF_FRONTEND_ORIGIN: z.string().url().default('http://127.0.0.1:5174'),
   REDIS_URL: z.string().url().optional(),
   TRUSTED_PROXIES: z.string().default(''),
   COOKIE_SECURE: z.enum(['true','false']).optional().transform((value) => value === 'true'),
@@ -86,10 +87,12 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<ty
   if (config.NODE_ENV === 'production' && !config.TRUSTED_PROXIES.trim()) throw new Error('TRUSTED_PROXIES is required in production');
   if (config.NODE_ENV === 'production' && config.COOKIE_SECURE === false) throw new Error('COOKIE_SECURE must not be false in production');
   if (config.NODE_ENV === 'production' && new URL(config.FRONTEND_ORIGIN).protocol !== 'https:') throw new Error('FRONTEND_ORIGIN must use HTTPS in production');
+  if (config.NODE_ENV === 'production' && new URL(config.STAFF_FRONTEND_ORIGIN).protocol !== 'https:') throw new Error('STAFF_FRONTEND_ORIGIN must use HTTPS in production');
   if (config.ONBOARDING_EVIDENCE_MODE === 'sandbox_metadata' && config.DEPLOYMENT_ENVIRONMENT !== 'sandbox') throw new Error('ONBOARDING_EVIDENCE_MODE=sandbox_metadata is restricted to sandbox deployments');
   if (config.DEPLOYMENT_ENVIRONMENT === 'production' && config.PAYMENT_PROVIDER === 'sandbox') throw new Error('PAYMENT_PROVIDER=sandbox is forbidden for production payment deployment');
   if (config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.PAYMENT_PROVIDER !== 'sandbox') throw new Error('Sandbox deployment requires PAYMENT_PROVIDER=sandbox');
   if (config.NODE_ENV === 'production' && config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.FRONTEND_ORIGIN !== 'https://giantpay.mw') throw new Error('Sandbox deployment FRONTEND_ORIGIN must be https://giantpay.mw');
+  if (config.NODE_ENV === 'production' && config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.STAFF_FRONTEND_ORIGIN !== 'https://admin.giantpay.mw') throw new Error('Sandbox deployment STAFF_FRONTEND_ORIGIN must be https://admin.giantpay.mw');
   if (config.NODE_ENV === 'production' && [config.PASSWORD_PEPPER,config.COOKIE_SECRET,config.SANDBOX_WEBHOOK_SECRET].some(value=>/^(.)\1+$/.test(value))) throw new Error('Development-only secrets are forbidden in production');
   if (config.EXTERNAL_DELIVERY_ENABLED) {
     if (config.NODE_ENV === 'test') throw new Error('External delivery is forbidden during automated tests');
