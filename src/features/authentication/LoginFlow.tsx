@@ -11,7 +11,6 @@ import { Alert } from '@/components/feedback/Alert';
 import { Logo } from '@/components/navigation/Logo';
 import { ApiError } from '@/services/api/errors';
 import { safeRedirectPath } from '@/lib/safeRedirect';
-import { env } from '@/app/config/env';
 import { loginSchema, type LoginFormValues } from './schemas';
 import { useLoginMutation } from './useAuthMutations';
 import { MfaChallengeForm } from './MfaChallengeForm';
@@ -35,12 +34,13 @@ function useDemoAccounts(): DemoAccountSummary[] {
   const [accounts, setAccounts] = useState<DemoAccountSummary[]>([]);
 
   useEffect(() => {
-    if (!env.useMockApi) return;
+    // Keep the direct build-time guard so real builds eliminate the fixture import entirely.
+    if (import.meta.env.VITE_USE_MOCK_API !== 'true') return;
     let cancelled = false;
-    import('@/mocks/fixtures/session').then(({ DEMO_ACCOUNTS }) => {
-      if (!cancelled) {
-        setAccounts(DEMO_ACCOUNTS.map((a) => ({ email: a.email, password: a.password, role: a.session.user.role })));
-      }
+    // Demo credentials are intentionally not bundled. Developers may enter
+    // locally provisioned mock credentials without exposing them in assets.
+    Promise.resolve([] as DemoAccountSummary[]).then((items) => {
+      if (!cancelled) setAccounts(items);
     });
     return () => {
       cancelled = true;

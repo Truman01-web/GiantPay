@@ -4,7 +4,7 @@ import { queryClient } from '@/lib/queryClient';
 import { Toaster } from '@/components/feedback/Toaster';
 import { ErrorBoundary } from './providers/ErrorBoundary';
 import { SessionProvider } from './providers/SessionProvider';
-import { router } from './router/router';
+import { router } from '@active-router';
 
 export function App() {
   return (

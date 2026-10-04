@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSession, useSessionStatus } from '@/hooks/useSession';
 import { useSessionStore } from '@/services/auth/sessionStore';
-import { hasPermission, hasAnyPermission, type Permission } from '@/types/auth';
+import { hasPermission, hasAnyPermission, staffLandingPath, type Permission } from '@/types/auth';
 import { PermissionDenied } from '@/components/feedback/PermissionDenied';
 import { FullPageLoader } from '@/components/feedback/FullPageLoader';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -53,7 +53,7 @@ export function RequirePermission({
 export function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
   const status = useSessionStatus();
   const session = useSession();
-  if (status === 'authenticated') return <Navigate to={session?.user.merchantId === null ? '/admin' : '/dashboard'} replace />;
+  if (status === 'authenticated') return <Navigate to={session?.user.merchantId === null ? staffLandingPath(session) : '/dashboard'} replace />;
   return children;
 }
 

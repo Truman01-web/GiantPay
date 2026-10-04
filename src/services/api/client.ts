@@ -33,7 +33,8 @@ export function setActiveCsrfToken(token: string | null): void {
 function getCsrfToken(): string | null {
   if (activeCsrfToken) return activeCsrfToken;
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|;\s*)giantpay_csrf=([^;]*)/);
+  const cookieName=env.portalContext==='staff'?'giantpay_staff_csrf':'giantpay_csrf';
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${cookieName}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : null;
 }
 

@@ -20,7 +20,7 @@ function normalizeApiUrl(value: string): string {
 
 const mockAllowedEnvironments = new Set(['development', 'test', 'e2e']);
 
-export function validateFrontendEnv(source: { VITE_API_URL?: string; VITE_APP_ENV?: string; VITE_USE_MOCK_API?: string }) {
+export function validateFrontendEnv(source: { VITE_API_URL?: string; VITE_APP_ENV?: string; VITE_USE_MOCK_API?: string; VITE_PORTAL_CONTEXT?: string }) {
   const useMockApi = source.VITE_USE_MOCK_API === 'true';
   const appEnv = source.VITE_APP_ENV || 'development';
   if (useMockApi && !mockAllowedEnvironments.has(appEnv)) {
@@ -28,7 +28,10 @@ export function validateFrontendEnv(source: { VITE_API_URL?: string; VITE_APP_EN
       `VITE_USE_MOCK_API=true is forbidden in VITE_APP_ENV=${appEnv}. Mocks are restricted to local development and tests.`,
     );
   }
-  return { apiUrl: normalizeApiUrl(required('VITE_API_URL', source.VITE_API_URL)), appEnv, useMockApi };
+  const portalContext=source.VITE_PORTAL_CONTEXT||'merchant';
+  if(!['merchant','staff'].includes(portalContext))throw new Error('VITE_PORTAL_CONTEXT must be merchant or staff.');
+  if(portalContext==='staff'&&useMockApi)throw new Error('Mock API mode is forbidden for the staff portal.');
+  return { apiUrl: normalizeApiUrl(required('VITE_API_URL', source.VITE_API_URL)), appEnv, useMockApi, portalContext:portalContext as 'merchant'|'staff' };
 }
 
 const validated = validateFrontendEnv(rawEnv);
@@ -38,6 +41,7 @@ export const env = {
   appName: rawEnv.VITE_APP_NAME || 'GiantPay',
   appEnv: validated.appEnv,
   useMockApi: validated.useMockApi,
+  portalContext: validated.portalContext,
   sentryDsn: rawEnv.VITE_SENTRY_DSN || null,
   isProd: Boolean(rawEnv.PROD),
   isDev: Boolean(rawEnv.DEV),

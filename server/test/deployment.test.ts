@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { loadConfig } from '../src/config.js';
 import { runMigrationGate } from '../src/release/migrationGate.js';
 
-const base={DATABASE_URL:'postgres://db.invalid/giantpay?sslmode=verify-full',REDIS_URL:'rediss://cache.invalid',PASSWORD_PEPPER:'pepper-not-a-real-secret-000000000',COOKIE_SECRET:'cookie-not-a-real-secret-000000000',SANDBOX_WEBHOOK_SECRET:'webhook-not-a-real-secret-00000000',WEBHOOK_SECRET_KEY:'key-not-a-real-secret-000000000000',TRUSTED_PROXIES:'10.0.0.0/8',COOKIE_SECURE:'true',FRONTEND_ORIGIN:'https://giantpay.mw',NODE_ENV:'production',DEPLOYMENT_ENVIRONMENT:'sandbox',PAYMENT_PROVIDER:'sandbox'};
+const base={DATABASE_URL:'postgres://db.invalid/giantpay?sslmode=verify-full',REDIS_URL:'rediss://cache.invalid',PASSWORD_PEPPER:'pepper-not-a-real-secret-000000000',COOKIE_SECRET:'cookie-not-a-real-secret-000000000',SANDBOX_WEBHOOK_SECRET:'webhook-not-a-real-secret-00000000',WEBHOOK_SECRET_KEY:'key-not-a-real-secret-000000000000',TRUSTED_PROXIES:'10.0.0.0/8',COOKIE_SECURE:'true',FRONTEND_ORIGIN:'https://giantpay.mw',STAFF_FRONTEND_ORIGIN:'https://admin.giantpay.mw',NODE_ENV:'production',DEPLOYMENT_ENVIRONMENT:'sandbox',PAYMENT_PROVIDER:'sandbox'};
 const file=(name:string)=>readFileSync(resolve(name),'utf8');
 
 describe('Phase 11 deployment controls',()=>{

@@ -71,7 +71,21 @@ export type Permission =
   | 'platform.controls.propose'
   | 'platform.controls.approve'
   | 'platform.incidents.read'
-  | 'platform.incidents.manage';
+  | 'platform.incidents.manage'
+  | 'platform.staff.read'
+  | 'platform.staff.manage'
+  | 'platform.sessions.manage'
+  | 'platform.disputes.read'
+  | 'platform.disputes.assign'
+  | 'platform.disputes.investigate'
+  | 'platform.disputes.decide'
+  | 'platform.disputes.reopen'
+  | 'platform.disputes.request_information'
+  | 'platform.notifications.read'
+  | 'platform.notifications.templates.read'
+  | 'platform.notifications.delivery.read'
+  | 'platform.notifications.delivery.retry'
+  | 'admin.refunds:approve';
 
 export interface MfaChallenge {
   challengeId: string;
@@ -90,6 +104,7 @@ export interface AuthenticatedUser {
   merchantId: string | null;
   merchantName: string | null;
   mfaEnabled: boolean;
+  staffProfile?: 'COMPLIANCE'|'SUPPORT'|'FINANCE'|'OPERATIONS'|'SECURITY_ADMIN';
 }
 
 export type Environment = 'sandbox' | 'production';
@@ -106,4 +121,9 @@ export function hasPermission(session: Session | null, permission: Permission): 
 
 export function hasAnyPermission(session: Session | null, permissions: Permission[]): boolean {
   return permissions.some((p) => hasPermission(session, p));
+}
+
+export function staffLandingPath(session:Session|null):string{
+ const choices:Array<[Permission,string]>=[['compliance:read','/admin/merchant-applications'],['platform.support.read','/admin/support'],['platform.settlements.read','/admin/settlements'],['platform.operations.read','/admin'],['platform.staff.read','/admin/users']];
+ return choices.find(([permission])=>hasPermission(session,permission))?.[1]??'/admin';
 }

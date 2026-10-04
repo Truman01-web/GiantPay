@@ -11,6 +11,7 @@ servers:
   - url: http://127.0.0.1:4000/v1
 tags:
   - name: Authentication
+  - name: Staff authentication
   - name: Merchants
   - name: Payments
   - name: Payment links
@@ -35,6 +36,18 @@ tags:
   - name: Notifications
   - name: Platform notifications
 paths:
+  /staff/auth/login:
+    post: { tags: [Staff authentication], operationId: staffLogin, description: Password verification for an explicitly provisioned exact-domain staff identity. Returns an MFA enrollment or challenge token and never creates a session before MFA., responses: { '200': { description: MFA enrollment or challenge required }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/mfa/enrollment:
+    post: { tags: [Staff authentication], operationId: beginStaffMfaEnrollment, description: Starts mandatory TOTP enrollment using a short-lived password-authenticated staff challenge., responses: { '200': { description: One-time authenticator enrollment material }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/mfa/enrollment/verify:
+    post: { tags: [Staff authentication], operationId: verifyStaffMfaEnrollment, description: Activates TOTP and returns one-time recovery codes. A new login is required afterwards., responses: { '200': { description: MFA enrolled }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/mfa/verify:
+    post: { tags: [Staff authentication], operationId: verifyStaffMfaLogin, description: Consumes a context-bound challenge and issues the host-only staff cookie., responses: { '200': { description: Staff session established }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/session:
+    get: { tags: [Staff authentication], operationId: getStaffSession, security: [{ staffCookieSession: [] }], responses: { '200': { description: Current staff session }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/logout:
+    post: { tags: [Staff authentication], operationId: logoutStaff, security: [{ staffCookieSession: [] }], responses: { '204': { description: Staff session revoked and cookies cleared } } }
   /notifications:
     get:
       operationId: listNotifications
@@ -1337,6 +1350,7 @@ paths:
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }
+    staffCookieSession: { type: apiKey, in: cookie, name: giantpay_staff_session }
     sandboxApiKey: { type: http, scheme: bearer, bearerFormat: gp_test_<identifier>_<secret> }
   parameters:
     Id: { name: id, in: path, required: true, schema: { type: string } }

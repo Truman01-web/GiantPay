@@ -17,7 +17,11 @@ import {
   newId,
   newToken,
   requirePermission,
+  requireStaffPermission,
+  MERCHANT_CSRF_COOKIE,
   SESSION_COOKIE,
+  STAFF_CSRF_COOKIE,
+  STAFF_SESSION_COOKIE,
   tokenHash,
 } from './security.js';
 import { MemoryRateLimitStore, rateLimit, type RateLimitStore } from './rateLimit.js';
@@ -31,6 +35,7 @@ import { registerDisputeRoutes } from './disputes/routes.js';
 import { registerNotificationRoutes } from './notifications/routes.js';
 import { registerOperationsRoutes } from './operations/routes.js';
 import { registerEvidenceRoutes, type EvidenceRuntime } from './evidence/routes.js';
+import { registerStaffRoutes } from './staff/routes.js';
 import { operationalMetrics } from './operations/metrics.js';
 import { operationalControlGuard } from './operations/controls.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
@@ -212,7 +217,7 @@ export async function buildApp(
   });
   await app.register(cookie, { secret: config.COOKIE_SECRET });
   await app.register(cors, {
-    origin: config.FRONTEND_ORIGIN,
+    origin: [config.FRONTEND_ORIGIN, config.STAFF_FRONTEND_ORIGIN],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
@@ -226,7 +231,7 @@ export async function buildApp(
   app.decorateRequest('rawWebhookBody', undefined);
   app.addHook('onRequest', async (request, reply) => {
     const origin = request.headers.origin;
-    if (origin && origin !== config.FRONTEND_ORIGIN) {
+    if (origin && origin !== config.FRONTEND_ORIGIN && origin !== config.STAFF_FRONTEND_ORIGIN) {
       return reply
         .code(403)
         .send(apiError(request, 'ORIGIN_REJECTED', 'Request origin is not allowed.'));
@@ -294,15 +299,17 @@ export async function buildApp(
     if (
       !['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) ||
       request.headers.authorization ||
-      !request.cookies[SESSION_COOKIE]
+      !request.cookies[SESSION_COOKIE] && !request.cookies[STAFF_SESSION_COOKIE]
     )
       return;
     const origin = request.headers.origin;
-    if (origin !== config.FRONTEND_ORIGIN)
+    const staffContext=/^\/v1\/(staff|platform|compliance|admin)(\/|$)/.test(request.url.split('?')[0]??'');
+    if (!request.cookies[staffContext?STAFF_SESSION_COOKIE:SESSION_COOKIE]) return;
+    if (origin !== (staffContext?config.STAFF_FRONTEND_ORIGIN:config.FRONTEND_ORIGIN))
       return reply
         .code(403)
         .send(apiError(request, 'ORIGIN_REJECTED', 'Request origin is not allowed.'));
-    const cookie = request.cookies.giantpay_csrf,
+    const cookie = request.cookies[staffContext?STAFF_CSRF_COOKIE:MERCHANT_CSRF_COOKIE],
       header = request.headers['x-csrf-token'];
     if (
       !cookie ||
@@ -558,7 +565,7 @@ export async function buildApp(
       .object({ email: z.email(), password: z.string().min(1), remember: z.boolean().optional() })
       .parse(request.body);
     const found = await db.query(
-      `SELECT u.*,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions,m.name merchant_name,m.environment FROM users u LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE u.normalized_email=lower(trim($1))`,
+      `SELECT u.*,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions,m.name merchant_name,m.environment FROM users u LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE u.normalized_email=lower(trim($1)) AND u.merchant_id IS NOT NULL`,
       [body.email],
     );
     const user = found.rows[0];
@@ -580,7 +587,7 @@ export async function buildApp(
     if (user.mfa_enabled) {
       const challenge = newToken();
       await db.query(
-        `INSERT INTO authentication_challenges(id,user_id,purpose,expires_at) VALUES($1,$2,'LOGIN',now()+interval '5 minutes')`,
+        `INSERT INTO authentication_challenges(id,user_id,purpose,session_context,expires_at) VALUES($1,$2,'LOGIN','MERCHANT',now()+interval '5 minutes')`,
         [tokenHash(challenge), user.id],
       );
       return {
@@ -754,7 +761,7 @@ export async function buildApp(
         .parse(request.body);
       const result = await transaction(db, async (c) => {
         const x = await c.query(
-          `SELECT ch.id challenge_id,ch.user_id,e.secret_ciphertext,e.last_counter,u.*,m.name merchant_name,m.environment,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions FROM authentication_challenges ch JOIN users u ON u.id=ch.user_id JOIN mfa_enrollments e ON e.user_id=u.id LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE ch.id=$1 AND ch.purpose='LOGIN' AND ch.used_at IS NULL AND ch.expires_at>now() AND u.status='ACTIVE' FOR UPDATE`,
+          `SELECT ch.id challenge_id,ch.user_id,e.secret_ciphertext,e.last_counter,u.*,m.name merchant_name,m.environment,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions FROM authentication_challenges ch JOIN users u ON u.id=ch.user_id JOIN mfa_enrollments e ON e.user_id=u.id LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE ch.id=$1 AND ch.purpose='LOGIN' AND ch.session_context='MERCHANT' AND ch.used_at IS NULL AND ch.expires_at>now() AND u.status='ACTIVE' AND u.merchant_id IS NOT NULL FOR UPDATE`,
           [tokenHash(b.challengeId)],
         );
         if (!x.rowCount) return null;
@@ -1078,6 +1085,7 @@ export async function buildApp(
   await registerTeamRoutes(app, config, db, rateLimits);
   await registerOnboardingRoutes(app, config, db, rateLimits);
   await registerEvidenceRoutes(app, config, db, rateLimits, evidenceRuntime);
+  await registerStaffRoutes(app, config, db, rateLimits);
   await registerPlatformRoutes(app, config, db, rateLimits);
   await registerDisputeRoutes(app, config, db, rateLimits);
   await registerNotificationRoutes(app, config, db, rateLimits);
@@ -1576,7 +1584,7 @@ export async function buildApp(
 
   app.get(
     '/v1/admin/refunds/pending',
-    { preHandler: [auth, requirePermission('admin.refunds:approve')] },
+    { preHandler: [requireStaffPermission(db, config, 'admin.refunds:approve')] },
     async (request) => {
       const q = pageSchema.parse(request.query);
       const total = await db.query(`SELECT count(*) FROM refunds WHERE status='PENDING_APPROVAL'`);
@@ -1594,7 +1602,7 @@ export async function buildApp(
   );
   app.post(
     '/v1/admin/refunds/:id/decision',
-    { preHandler: [auth, requirePermission('admin.refunds:approve'), refundMutationControl] },
+    { preHandler: [requireStaffPermission(db, config, 'admin.refunds:approve'), refundMutationControl] },
     async (request, reply) => {
       const { id } = z.object({ id: z.string() }).parse(request.params);
       const body = z

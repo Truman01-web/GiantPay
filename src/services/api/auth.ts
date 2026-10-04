@@ -1,5 +1,6 @@
 import type { MfaChallenge, Session } from '@/types/auth';
 import { apiClient } from './client';
+import { env } from '@/app/config/env';
 
 export interface LoginRequest {
   email: string;
@@ -8,7 +9,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResult {
-  status: 'AUTHENTICATED' | 'MFA_REQUIRED';
+  status: 'AUTHENTICATED' | 'MFA_REQUIRED' | 'MFA_ENROLLMENT_REQUIRED';
   session?: Session;
   mfaChallenge?: MfaChallenge;
 }
@@ -28,15 +29,15 @@ export interface RegistrationResult {
 }
 
 export const authApi = {
-  login: (payload: LoginRequest) => apiClient.post<LoginResult>('/auth/login', payload),
+  login: (payload: LoginRequest) => apiClient.post<LoginResult>(env.portalContext==='staff'?'/staff/auth/login':'/auth/login', payload),
 
   verifyMfa: (payload: { challengeId: string; code: string }) =>
-    apiClient.post<{ session: Session }>('/auth/mfa/verify', payload),
+    apiClient.post<{ session: Session }>(env.portalContext==='staff'?'/staff/auth/mfa/verify':'/auth/mfa/verify', payload),
 
-  logout: () => apiClient.post<void>('/auth/logout'),
+  logout: () => apiClient.post<void>(env.portalContext==='staff'?'/staff/auth/logout':'/auth/logout'),
 
   getSession: (options?: { signal?: AbortSignal }) =>
-    apiClient.get<{ session: Session | null }>('/auth/session', options),
+    apiClient.get<{ session: Session | null }>(env.portalContext==='staff'?'/staff/auth/session':'/auth/session', options),
 
   forgotPassword: (payload: { email: string }) =>
     apiClient.post<{ accepted: true }>('/auth/password/forgot', payload),

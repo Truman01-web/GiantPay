@@ -21,4 +21,10 @@ describe('frontend environment separation', () => {
     expect(() => validateFrontendEnv({ VITE_APP_ENV: 'sandbox' })).toThrow(/VITE_API_URL/);
     expect(() => validateFrontendEnv({ VITE_API_URL: 'https://user:secret@api.giantpay.mw' })).toThrow(/credential-free/);
   });
+
+  it('requires an explicit valid portal context and forbids staff mocks',()=>{
+    expect(validateFrontendEnv({VITE_API_URL:'https://api.giantpay.mw',VITE_PORTAL_CONTEXT:'staff'}).portalContext).toBe('staff');
+    expect(()=>validateFrontendEnv({VITE_API_URL:'https://api.giantpay.mw',VITE_PORTAL_CONTEXT:'staff',VITE_USE_MOCK_API:'true'})).toThrow(/staff portal/i);
+    expect(()=>validateFrontendEnv({VITE_API_URL:'https://api.giantpay.mw',VITE_PORTAL_CONTEXT:'administrator'})).toThrow(/merchant or staff/i);
+  });
 });
