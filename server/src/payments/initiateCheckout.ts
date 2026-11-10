@@ -32,6 +32,17 @@ export async function initiateCheckout(db: Db, provider: PaymentProvider, input:
     const prior = await c.query('SELECT response_body FROM idempotency_keys WHERE merchant_id=$1 AND operation=$2 AND key=$3', [input.merchantId, input.kind, input.key]);
     if (prior.rowCount) {
       const saved = prior.rows[0].response_body;
+      if (!saved.fingerprint && input.kind === 'checkout') {
+        // Old checkout receipts contain only a reference. Bind them to their
+        // persisted payment before upgrading; never retry provider initiation.
+        const legacy = (await c.query('SELECT * FROM payments WHERE merchant_id=$1 AND reference=$2 FOR UPDATE', [input.merchantId,saved.reference])).rows[0];
+        if (legacy && legacy.payment_link_id === input.sourceId && Number(legacy.gross_minor) === input.amountMinor && legacy.currency === input.currency && legacy.channel === input.channel &&
+          ['name','email','phone'].every(field => (legacy.customer?.[field] ?? null) === (input.customer[field as keyof typeof input.customer] ?? null))) {
+          saved.fingerprint = fingerprint;
+          saved.checkoutUrl = legacy.provider_checkout_url ?? null;
+          await c.query('UPDATE idempotency_keys SET response_body=$1 WHERE merchant_id=$2 AND operation=$3 AND key=$4', [saved,input.merchantId,input.kind,input.key]);
+        }
+      }
       if (saved.fingerprint !== fingerprint) throw Object.assign(new Error('Idempotency key was used for another request.'), { statusCode: 409, code: 'IDEMPOTENCY_CONFLICT' });
       return { created: false, id: '', response: { reference: saved.reference as string, checkoutUrl: saved.checkoutUrl as string | null, status: 'PROCESSING' as const } };
     }

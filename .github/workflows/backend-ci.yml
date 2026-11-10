@@ -58,6 +58,10 @@ jobs:
       - name: Reject compiled tests
         working-directory: server
         run: node scripts/check-dist.mjs
+      - name: Install browser for authenticated API acceptance
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Authenticated merchant and staff browser acceptance
+        run: pnpm run e2e:api
       - name: Reject tracked secrets and generated artifacts
         shell: bash
         run: |

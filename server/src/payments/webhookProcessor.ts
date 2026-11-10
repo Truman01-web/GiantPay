@@ -71,6 +71,10 @@ export async function processPaymentWebhook(
     }
 
     const payment = paymentResult.rows[0];
+    if (provider === 'flutterwave' && event.status === 'SUCCEEDED' && payment.provider_transaction_id && payment.provider_transaction_id !== event.providerPaymentId) {
+      await client.query(`UPDATE webhook_receipts SET processing_status='SUSPICIOUS',failure_code='PROVIDER_TRANSACTION_MISMATCH',processed_at=now() WHERE id=$1`, [receiptId]);
+      return { outcome: 'PAYLOAD_CONFLICT' };
+    }
     const decision = decidePaymentTransition(payment.status as PaymentStatus, event.status);
     if (decision === 'REJECT') {
       await client.query(
@@ -82,7 +86,6 @@ export async function processPaymentWebhook(
 
     if (decision === 'APPLY') {
       if (provider === 'flutterwave' && event.status === 'SUCCEEDED') {
-        if (payment.provider_transaction_id && payment.provider_transaction_id !== event.providerPaymentId) return { outcome: 'PAYLOAD_CONFLICT' };
         await client.query('UPDATE payments SET provider_transaction_id=$1 WHERE id=$2', [event.providerPaymentId, payment.id]);
       }
       await client.query('UPDATE payments SET status=$1,updated_at=now() WHERE id=$2', [event.status, payment.id]);
