@@ -274,7 +274,7 @@ export function CreateScanToPayForm() {
                   <Input
                     type="number"
                     min={1}
-                    {...register('maxSuccessfulPayments', { valueAsNumber: true })}
+                    {...register('maxSuccessfulPayments', { setValueAs: (value: string) => value === '' ? undefined : Number(value) })}
                     placeholder="e.g. 1 for single-use"
                     {...fp}
                   />
