@@ -144,7 +144,7 @@ async function request<T>(
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
-    return undefined as T;
+    throw new ApiError({ status: response.status, code: 'INVALID_RESPONSE', message: GENERIC_ERROR_MESSAGE });
   }
 
   let data: T;

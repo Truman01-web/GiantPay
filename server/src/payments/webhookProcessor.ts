@@ -9,7 +9,7 @@ import { postSuccessfulPayment } from '../ledger/ledgerService.js';
 
 export type WebhookProcessResult =
   | { outcome: 'PROCESSED' | 'DUPLICATE'; paymentStatus?: PaymentStatus }
-  | { outcome: 'PAYLOAD_CONFLICT' | 'UNKNOWN_PAYMENT' | 'INVALID_TRANSITION' };
+  | { outcome: 'PAYLOAD_CONFLICT' | 'UNKNOWN_PAYMENT' | 'INVALID_TRANSITION' | 'PROVIDER_MISMATCH' };
 
 async function existingReceipt(client: pg.PoolClient, provider: string, eventId: string) {
   return client.query(
@@ -27,6 +27,7 @@ export async function processPaymentWebhook(
   const hash = payloadHash(rawBody);
   return transaction(db, async (client) => {
     const paymentResult = await client.query('SELECT * FROM payments WHERE reference=$1 FOR UPDATE', [event.paymentReference]);
+    if (paymentResult.rowCount && paymentResult.rows[0].provider_name !== provider) return { outcome: 'PROVIDER_MISMATCH' };
     const prior = await existingReceipt(client, provider, event.eventId);
     if (prior.rowCount) {
       const receipt = prior.rows[0];
@@ -80,6 +81,10 @@ export async function processPaymentWebhook(
     }
 
     if (decision === 'APPLY') {
+      if (provider === 'flutterwave' && event.status === 'SUCCEEDED') {
+        if (payment.provider_transaction_id && payment.provider_transaction_id !== event.providerPaymentId) return { outcome: 'PAYLOAD_CONFLICT' };
+        await client.query('UPDATE payments SET provider_transaction_id=$1 WHERE id=$2', [event.providerPaymentId, payment.id]);
+      }
       await client.query('UPDATE payments SET status=$1,updated_at=now() WHERE id=$2', [event.status, payment.id]);
       const attemptUpdate = await client.query(
         `UPDATE payment_attempts SET status=$1,provider_payment_id=$2,updated_at=now()
@@ -90,6 +95,12 @@ export async function processPaymentWebhook(
       const ledger = event.status === 'SUCCEEDED'
         ? await postSuccessfulPayment(client, payment, event.eventId)
         : null;
+      if (ledger?.created && payment.scan_to_pay_code_id) {
+        await client.query('UPDATE scan_to_pay_codes SET successful_payments_count=successful_payments_count+1,updated_at=now() WHERE id=$1', [payment.scan_to_pay_code_id]);
+      }
+      if (ledger?.created && payment.payment_link_id) {
+        await client.query('UPDATE payment_links SET successful_payments_count=successful_payments_count+1 WHERE id=$1', [payment.payment_link_id]);
+      }
       await client.query(
         `INSERT INTO payment_events(id,payment_id,type,label,detail)
          VALUES($1,$2,'WEBHOOK_RECEIVED','Verified provider status received',$3)`,

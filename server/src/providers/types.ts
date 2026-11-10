@@ -11,6 +11,14 @@ export interface InitiatePaymentInput {
 export interface ProviderPaymentResult {
   providerPaymentId: string;
   status: Extract<PaymentStatus, 'PROCESSING' | 'PENDING'>;
+  /**
+   * For hosted-checkout providers (e.g. Flutterwave), the URL to redirect
+   * the customer to the provider's hosted payment page.
+   * GiantPay never collects raw card details; the customer completes payment
+   * on the provider's page and is redirected back.
+   * Absent for direct-API providers (e.g. sandbox).
+   */
+  checkoutUrl?: string;
 }
 
 export interface ProviderPaymentStatus {
@@ -30,6 +38,8 @@ export interface ProviderWebhookEvent {
 export interface WebhookHeaders {
   signature?: string;
   timestamp?: string;
+  /** Flutterwave v3 uses verif-hash for webhook authentication */
+  verifHash?: string;
 }
 
 export interface PaymentProvider {

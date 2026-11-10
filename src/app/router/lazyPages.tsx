@@ -29,6 +29,7 @@ export const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'))
 export const VerifyEmailPage = lazy(() => import('@/pages/VerifyEmailPage'));
 
 export const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
+export const QrCheckoutPage = lazy(() => import('@/pages/QrCheckoutPage'));
 export const PaymentStatusPage = lazy(() => import('@/pages/PaymentStatusPage'));
 
 export const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
@@ -38,6 +39,9 @@ export const TransactionDetailPage = lazy(() => import('@/pages/TransactionDetai
 export const PaymentLinksPage = lazy(() => import('@/pages/PaymentLinksPage'));
 export const CreatePaymentLinkPage = lazy(() => import('@/pages/CreatePaymentLinkPage'));
 export const PaymentLinkDetailPage = lazy(() => import('@/pages/PaymentLinkDetailPage'));
+export const ScanToPayPage = lazy(() => import('@/pages/ScanToPayPage'));
+export const CreateScanToPayPage = lazy(() => import('@/pages/CreateScanToPayPage'));
+export const ScanToPayDetailPage = lazy(() => import('@/pages/ScanToPayDetailPage'));
 export const RefundsPage = lazy(() => import('@/pages/RefundsPage'));
 export const RefundDetailPage = lazy(() => import('@/pages/RefundDetailPage'));
 export const SettlementsPage = lazy(() => import('@/pages/SettlementsPage'));
