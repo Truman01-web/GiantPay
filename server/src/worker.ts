@@ -37,7 +37,7 @@ const reconciliationTick = async () => {
   if (stopped) return;
   try {
     if (recovery && await workerAllowed(db, 'PAYMENT_CREATION_PAUSED')) await recovery.tick();
-    await db.query(`SELECT count(*) FROM reconciliation_runs WHERE status='RUNNING' AND started_at < now()-interval '15 minutes'`);
+    if (!stopped) await db.query(`SELECT count(*) FROM reconciliation_runs WHERE status='RUNNING' AND started_at < now()-interval '15 minutes'`);
   } catch { operationalMetrics.increment('worker_jobs_total', { worker: 'payment_recovery', outcome: 'ERROR' }); }
   finally { if (!stopped) timer = setTimeout(() => void reconciliationTick(), config.OUTBOX_POLL_MS); }
 };
@@ -46,7 +46,7 @@ if (role === 'webhook') webhook.start();
 if (role === 'notification') void notificationTick();
 if (role === 'reconciliation') void reconciliationTick();
 
-const lifecycle = new GracefulLifecycle([{ name: role, stopClaims: () => { stopped = true; if (timer) clearTimeout(timer); outbox.stop(); webhook.stop(); }, close: async () => {} }, { name: 'postgres', close: () => db.end() }], config.GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+const lifecycle = new GracefulLifecycle([{ name: role, stopClaims: () => { stopped = true; if (timer) clearTimeout(timer); outbox.stop(); webhook.stop(); recovery?.stop(); }, drain: () => recovery?.drain() ?? Promise.resolve(), close: async () => {} }, { name: 'postgres', close: () => db.end() }], config.GRACEFUL_SHUTDOWN_TIMEOUT_MS);
 const coordinator = new ShutdownCoordinator(lifecycle, config.GRACEFUL_SHUTDOWN_TIMEOUT_MS + 100);
 const shutdown = (signal: 'SIGINT' | 'SIGTERM') => { void coordinator.shutdown(signal).then(result => { process.exitCode = result.timedOut ? 1 : 0; }); };
 process.on('SIGINT', () => shutdown('SIGINT'));

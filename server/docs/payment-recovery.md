@@ -31,22 +31,28 @@ Payments must be at least a minute old. Leases last two minutes; verification ha
 a 45-second worker deadline and the real transport has a 20-second deadline per
 request, including JSON consumption. Retry delays are 60, 120, 240, 480, 960,
 1920, 3600 and 3600 seconds. Eight attempts exhaust the automatic budget.
+Backoff is persisted in the claim transaction, so an expired lease cannot
+accelerate a later retry. Claim audit evidence is committed before provider I/O.
 A restart reclaims expired leases without resetting attempts. A crash on the last
 attempt is escalated on reclamation without another provider request. Lease tokens
-fence completion updates; callback races use the shared payment lock and ledger
+and database wall-clock expiry fence financial posting under the payment lock
+and completion updates; callback races use the shared payment lock and ledger
 uniqueness. A crash after a successful posting leaves the terminal payment outside
 the claim query. It cannot post again.
 
 The existing approved `PAYMENT_CREATION_PAUSED` control also pauses automatic
 recovery claims, and a control-store error fails closed. Stop the worker or disable
-the flag to stop future claims. Already verified work may finish during shutdown;
-an interrupted claim is recoverable after lease expiry.
+the flag to stop future claims. Shutdown cancels verification (including the real
+HTTP transport), stops claims and drains recovery database work before closing
+PostgreSQL. An interrupted claim remains recoverable after both lease expiry and
+its persisted due time.
 
 ## Operator queue and evidence
 
 `worker_jobs_total{worker=payment_recovery,outcome=...}` exposes bounded outcomes
 through the existing protected metrics endpoint. Audit actions are
-`PAYMENT_RECOVERY_CHECKED` and `PAYMENT_RECOVERY_ESCALATED`, with only attempt
+`PAYMENT_RECOVERY_CLAIMED`, `PAYMENT_RECOVERY_CHECKED` and
+`PAYMENT_RECOVERY_ESCALATED`, with only attempt
 count and bounded outcome. Provider bodies, exception messages, customer details,
 checkout URLs and secrets are never included. Audit and schedule updates commit
 together. Existing payment/ledger audit and outbox evidence is retained.

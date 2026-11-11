@@ -9,7 +9,7 @@ import { postSuccessfulPayment } from '../ledger/ledgerService.js';
 
 export type WebhookProcessResult =
   | { outcome: 'PROCESSED' | 'DUPLICATE'; paymentStatus?: PaymentStatus }
-  | { outcome: 'PAYLOAD_CONFLICT' | 'UNKNOWN_PAYMENT' | 'INVALID_TRANSITION' | 'PROVIDER_MISMATCH' };
+  | { outcome: 'PAYLOAD_CONFLICT' | 'UNKNOWN_PAYMENT' | 'INVALID_TRANSITION' | 'PROVIDER_MISMATCH' | 'STALE_RECOVERY_LEASE' };
 
 async function existingReceipt(client: pg.PoolClient, provider: string, eventId: string) {
   return client.query(
@@ -23,10 +23,19 @@ export async function processPaymentWebhook(
   provider: string,
   event: ProviderWebhookEvent,
   rawBody: Buffer,
+  recoveryLease?: { paymentId: string; token: string },
 ): Promise<WebhookProcessResult> {
   const hash = payloadHash(rawBody);
   return transaction(db, async (client) => {
     const paymentResult = await client.query('SELECT * FROM payments WHERE reference=$1 FOR UPDATE', [event.paymentReference]);
+    if (recoveryLease) {
+      // Fence financial effects under the same lock used by callbacks. Database
+      // wall time matters here: this transaction may have waited for that lock.
+      const lease = await client.query(`SELECT id FROM payments WHERE id=$1 AND reference=$2
+        AND recovery_lease_token=$3 AND recovery_lease_until > clock_timestamp()`,
+      [recoveryLease.paymentId,event.paymentReference,recoveryLease.token]);
+      if (!lease.rowCount) return { outcome: 'STALE_RECOVERY_LEASE' };
+    }
     if (paymentResult.rowCount && paymentResult.rows[0].provider_name !== provider) return { outcome: 'PROVIDER_MISMATCH' };
     const prior = await existingReceipt(client, provider, event.eventId);
     if (prior.rowCount) {

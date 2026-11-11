@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   FlutterwavePaymentProvider,
+  RealFlutterwaveHttpClient,
   FlutterwaveVerificationError,
   FlutterwaveClientError,
   mapChannelToFlutterwaveOptions,
@@ -87,7 +88,7 @@ describe('authoritative uncertain-payment recovery', () => {
   it('discovers by reference and independently verifies the numeric ID', async () => {
     const client = { ...makeClient(successCheckout(), successVerify()), verifyByReference: vi.fn().mockResolvedValue(successVerify()) };
     expect(await makeProvider(client).recoverPayment(expected)).toMatchObject({ status: 'SUCCEEDED', flwTransactionId: '999001' });
-    expect(client.verifyTransaction).toHaveBeenCalledWith('999001'); expect(client.initiateCheckout).not.toHaveBeenCalled();
+    expect(client.verifyTransaction).toHaveBeenCalledWith('999001', undefined); expect(client.initiateCheckout).not.toHaveBeenCalled();
   });
   it.each([{ tx_ref: 'wrong' }, { id: 0 }, { id: 1.5 }])('rejects unbound discovery %j', async change => {
     const client = { ...makeClient(successCheckout(), successVerify()), verifyByReference: vi.fn().mockResolvedValue(successVerify(change)) };
@@ -95,6 +96,17 @@ describe('authoritative uncertain-payment recovery', () => {
   });
   it('fails closed when reference lookup is unavailable', async () => {
     await expect(makeProvider(makeClient(successCheckout(),successVerify())).recoverPayment(expected)).rejects.toThrow();
+  });
+  it('propagates recovery cancellation into the real HTTP transport without network calls', async () => {
+    const fetchMock = vi.spyOn(globalThis,'fetch').mockImplementation((_url,options) => new Promise((_resolve,reject) => {
+      options?.signal?.addEventListener('abort',() => reject(new Error('synthetic cancellation')),{once:true});
+    }));
+    try {
+      const controller = new AbortController();
+      const request = new RealFlutterwaveHttpClient('synthetic').verifyByReference('synthetic-ref',controller.signal);
+      controller.abort(); await expect(request).rejects.toThrow('synthetic cancellation');
+      expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+    } finally { fetchMock.mockRestore(); }
   });
 });
 
