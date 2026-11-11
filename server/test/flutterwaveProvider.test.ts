@@ -82,6 +82,22 @@ function makeProvider(client: FlutterwaveHttpClient, opts: {
   );
 }
 
+describe('authoritative uncertain-payment recovery', () => {
+  const expected = { reference: 'GP-1-TEST', amountMinor: 150000, currency: 'MWK', transactionId: null };
+  it('discovers by reference and independently verifies the numeric ID', async () => {
+    const client = { ...makeClient(successCheckout(), successVerify()), verifyByReference: vi.fn().mockResolvedValue(successVerify()) };
+    expect(await makeProvider(client).recoverPayment(expected)).toMatchObject({ status: 'SUCCEEDED', flwTransactionId: '999001' });
+    expect(client.verifyTransaction).toHaveBeenCalledWith('999001'); expect(client.initiateCheckout).not.toHaveBeenCalled();
+  });
+  it.each([{ tx_ref: 'wrong' }, { id: 0 }, { id: 1.5 }])('rejects unbound discovery %j', async change => {
+    const client = { ...makeClient(successCheckout(), successVerify()), verifyByReference: vi.fn().mockResolvedValue(successVerify(change)) };
+    await expect(makeProvider(client).recoverPayment(expected)).rejects.toThrow(); expect(client.verifyTransaction).not.toHaveBeenCalled();
+  });
+  it('fails closed when reference lookup is unavailable', async () => {
+    await expect(makeProvider(makeClient(successCheckout(),successVerify())).recoverPayment(expected)).rejects.toThrow();
+  });
+});
+
 // Build a valid verif-hash webhook body
 function makeWebhookBody(txRef: string, flwTxId: number, status = 'successful'): Buffer {
   return Buffer.from(JSON.stringify({

@@ -52,6 +52,7 @@ export interface FlutterwaveHttpClient {
     payload: FlutterwaveCheckoutPayload,
   ): Promise<FlutterwaveCheckoutResponse>;
   verifyTransaction(transactionId: string): Promise<FlutterwaveVerifyResponse>;
+  verifyByReference?(reference: string): Promise<FlutterwaveVerifyResponse>;
 }
 
 export interface FlutterwaveCheckoutPayload {
@@ -131,7 +132,7 @@ export class RealFlutterwaveHttpClient implements FlutterwaveHttpClient {
           text.slice(0, 500),
         );
       }
-      return res.json() as Promise<T>;
+      return await res.json() as T;
     } finally {
       clearTimeout(timer);
     }
@@ -148,6 +149,10 @@ export class RealFlutterwaveHttpClient implements FlutterwaveHttpClient {
       'GET',
       `/v3/transactions/${encodeURIComponent(transactionId)}/verify`,
     );
+  }
+
+  async verifyByReference(reference: string): Promise<FlutterwaveVerifyResponse> {
+    return this.request('GET', `/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`);
   }
 }
 
@@ -306,6 +311,17 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
     // The generic interface has no expected amount, currency or reference.
     // It cannot safely confirm Flutterwave payments. Use the bound verifier.
     return { providerPaymentId, status: 'PROCESSING' };
+  }
+
+  async recoverPayment(expected: { reference: string; amountMinor: number; currency: string; transactionId: string | null }) {
+    let id = expected.transactionId;
+    if (!id) {
+      const response = await this.httpClient.verifyByReference?.(expected.reference);
+      if (response?.status !== 'success' || !response.data || response.data.tx_ref !== expected.reference || !Number.isSafeInteger(response.data.id) || response.data.id <= 0)
+        throw new FlutterwaveVerificationError('VERIFY_UNAVAILABLE', 'Reference lookup is unresolved.');
+      id = String(response.data.id);
+    }
+    return this.verifyTransactionAfterWebhook({ flwTransactionId: id, expectedTxRef: expected.reference, expectedAmountMinor: expected.amountMinor, expectedCurrency: expected.currency });
   }
 
   // -------------------------------------------------------------------------

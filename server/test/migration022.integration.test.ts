@@ -22,28 +22,28 @@ suite('migration 022 upgrade and repeat safety', () => {
   it('installs all migrations on an empty schema and records each once on repeat', async () => {
     const db = await database();
     try {
-      expect(await applyMigrations(db)).toBe(22);
+      expect(await applyMigrations(db)).toBe(23);
       expect(await applyMigrations(db)).toBe(0);
-      expect((await db.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(22);
+      expect((await db.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(23);
     } finally { await db.end(); }
   });
-  it('upgrades a recorded 021 schema without changing its payment or retry record and repeats safely', async () => {
+  it.each([21, 22])('upgrades a recorded %i schema without changing its payment or retry record and repeats safely', async count => {
     const db = await database();
     try {
       await db.query('CREATE TABLE schema_migrations(name text PRIMARY KEY,checksum char(64),applied_at timestamptz NOT NULL DEFAULT now())');
-      for (const name of EXPECTED_MIGRATIONS.slice(0, 21)) {
+      for (const name of EXPECTED_MIGRATIONS.slice(0, count)) {
         const sql = await readFile(resolve('migrations', name), 'utf8');
         await db.query(sql);
         await db.query('INSERT INTO schema_migrations(name,checksum) VALUES($1,$2)', [name,createHash('sha256').update(sql).digest('hex')]);
       }
       await db.query(`INSERT INTO merchants(id,name) VALUES('legacy','Legacy Merchant'); INSERT INTO payments(id,merchant_id,reference,status,channel,gross_minor,currency) VALUES('legacy-payment','legacy','GP-legacy','PROCESSING','CARD',1000,'MWK'); INSERT INTO idempotency_keys VALUES('legacy','checkout','legacy-retry',202,'{"reference":"GP-legacy"}')`);
-      expect(await applyMigrations(db)).toBe(1);
+      expect(await applyMigrations(db)).toBe(23 - count);
       expect(await applyMigrations(db)).toBe(0);
       const sql = await readFile(resolve('migrations','022_flutterwave_scan_to_pay.sql'), 'utf8');
       await db.query(sql);
       expect((await db.query('SELECT reference,status,provider_transaction_id,provider_checkout_url FROM payments')).rows[0]).toEqual({ reference: 'GP-legacy', status: 'PROCESSING', provider_transaction_id: null, provider_checkout_url: null });
       expect((await db.query('SELECT response_body FROM idempotency_keys')).rows[0].response_body).toEqual({ reference: 'GP-legacy' });
-      expect((await db.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(22);
+      expect((await db.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(23);
     } finally { await db.end(); }
   });
 });
