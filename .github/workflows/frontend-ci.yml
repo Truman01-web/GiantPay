@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22.19.0, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Reject known vulnerable dependencies
+        run: pnpm audit --audit-level=low
       - run: pnpm run typecheck
       - run: pnpm run lint
       - run: pnpm test

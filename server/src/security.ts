@@ -26,6 +26,8 @@ declare module 'fastify' {
 }
 
 export async function authenticate(db: Db, config:Config, request: FastifyRequest, reply: FastifyReply) {
+  if (request.headers.origin && request.headers.origin !== config.FRONTEND_ORIGIN)
+    return reply.code(403).send(apiError(request, 'ORIGIN_REJECTED', 'Request origin is not allowed.'));
   const token = request.cookies[SESSION_COOKIE];
   if (!token) {operationalMetrics.increment('authentication_denials_total',{reason:'missing_session'});return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Sign in is required.'));}
   const result = await db.query(
@@ -44,6 +46,8 @@ export async function authenticate(db: Db, config:Config, request: FastifyReques
 }
 
 export async function authenticateStaff(db: Db, config:Config, request: FastifyRequest, reply: FastifyReply) {
+  if (request.headers.origin && request.headers.origin !== config.STAFF_FRONTEND_ORIGIN)
+    return reply.code(403).send(apiError(request, 'ORIGIN_REJECTED', 'Request origin is not allowed.'));
   if (request.headers.authorization) return reply.code(403).send(apiError(request,'FORBIDDEN','A staff browser session is required.'));
   const token=request.cookies[STAFF_SESSION_COOKIE];
   if(!token)return reply.code(401).send(apiError(request,'UNAUTHENTICATED','Sign in is required.'));

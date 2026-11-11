@@ -41,7 +41,7 @@ disaster-recovery, observability, and hosting procedures are in
 
 ## Toolchain and verification
 
-Use Node 22.19.0 (Node 20.19+ is also supported) and pnpm 10.17.1. The root
+Use Node 22.19.0 and pnpm 10.17.1. The supported Node range is 22.12+ on 22.x, 24.x, or 26+; the updated test tooling no longer supports Node 20. The root
 `pnpm-lock.yaml` is authoritative for both frontend and server; install from the
 repository root with `pnpm install --frozen-lockfile`. Docker Desktop with WSL 2
 or another working virtualization backend is required on Windows.

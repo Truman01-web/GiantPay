@@ -92,7 +92,7 @@ Only what's actually a dependency in `package.json`:
 
 ## Requirements
 
-- **Node.js 20+** (`"engines": { "node": ">=20" }` in `package.json`)
+- **Node.js 22.12+ on the 22.x line, 24.x, or 26+** (CI uses 22.19.0; see `engines` in `package.json`)
 - **pnpm** (the project is pnpm-only)
 - A modern evergreen browser for development (Chrome, Firefox, Edge, Safari)
 

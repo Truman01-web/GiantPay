@@ -54,6 +54,11 @@ test('staff signs in through MFA, restores its session and signs out', async ({ 
   await expect(page).toHaveURL(/\/admin$/);
   await page.reload();
   await expect(page.getByText('Browser Staff', { exact: true })).toBeVisible();
+  await page.goto('http://127.0.0.1:4187/login');
+  const crossPortalStatus = await page.evaluate(async () => (await fetch('http://127.0.0.1:4017/v1/staff/auth/session', { credentials: 'include' })).status);
+  expect(crossPortalStatus).toBe(403);
+  await page.goto('http://127.0.0.1:4188/admin');
+  await expect(page.getByText('Browser Staff', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
   const response = await page.request.get('http://127.0.0.1:4017/v1/staff/auth/session');

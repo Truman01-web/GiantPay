@@ -192,6 +192,7 @@ export async function buildApp(
             level: config.LOG_LEVEL,
             redact: {
               paths: [
+                'req.url',
                 'req.headers.authorization',
                 'req.headers.cookie',
                 'req.headers.x-csrf-token',
@@ -205,6 +206,9 @@ export async function buildApp(
                 '*.phone',
                 'config.DATABASE_URL',
                 'config.REDIS_URL',
+                'err.detail',
+                'err.query',
+                'err.parameters',
               ],
               censor: '[REDACTED]',
             },
@@ -234,7 +238,8 @@ export async function buildApp(
   app.decorateRequest('rawWebhookBody', undefined);
   app.addHook('onRequest', async (request, reply) => {
     const origin = request.headers.origin;
-    if (origin && origin !== config.FRONTEND_ORIGIN && origin !== config.STAFF_FRONTEND_ORIGIN) {
+    const staffRoute = /^\/v1\/(staff|platform|compliance|admin)(\/|$)/.test(request.url.split('?')[0] ?? '');
+    if (origin && (staffRoute ? origin !== config.STAFF_FRONTEND_ORIGIN : origin !== config.FRONTEND_ORIGIN && origin !== config.STAFF_FRONTEND_ORIGIN)) {
       return reply
         .code(403)
         .send(apiError(request, 'ORIGIN_REJECTED', 'Request origin is not allowed.'));
@@ -301,7 +306,6 @@ export async function buildApp(
   app.addHook('preHandler', async (request, reply) => {
     if (
       !['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) ||
-      request.headers.authorization ||
       !request.cookies[SESSION_COOKIE] && !request.cookies[STAFF_SESSION_COOKIE]
     )
       return;
@@ -317,7 +321,7 @@ export async function buildApp(
     if (
       !cookie ||
       typeof header !== 'string' ||
-      cookie.length !== header.length ||
+      Buffer.byteLength(cookie) !== Buffer.byteLength(header) ||
       !timingSafeEqual(Buffer.from(cookie), Buffer.from(header))
     )
       return reply
@@ -734,6 +738,7 @@ export async function buildApp(
         await c.query('UPDATE password_reset_requests SET used_at=now() WHERE id=$1', [
           x.rows[0].id,
         ]);
+        await c.query('UPDATE authentication_challenges SET used_at=now() WHERE user_id=$1 AND used_at IS NULL', [x.rows[0].user_id]);
         await c.query('UPDATE users SET password_hash=$1 WHERE id=$2', [
           passwordHash,
           x.rows[0].user_id,
@@ -773,7 +778,7 @@ export async function buildApp(
         .parse(request.body);
       const result = await transaction(db, async (c) => {
         const x = await c.query(
-          `SELECT ch.id challenge_id,ch.user_id,e.secret_ciphertext,e.last_counter,u.*,m.name merchant_name,m.environment,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions FROM authentication_challenges ch JOIN users u ON u.id=ch.user_id JOIN mfa_enrollments e ON e.user_id=u.id LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE ch.id=$1 AND ch.purpose='LOGIN' AND ch.session_context='MERCHANT' AND ch.used_at IS NULL AND ch.expires_at>now() AND u.status='ACTIVE' AND u.merchant_id IS NOT NULL FOR UPDATE`,
+          `SELECT ch.id challenge_id,ch.user_id,e.secret_ciphertext,e.last_counter,u.*,m.name merchant_name,m.environment,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions FROM authentication_challenges ch JOIN users u ON u.id=ch.user_id JOIN mfa_enrollments e ON e.user_id=u.id AND e.verified_at IS NOT NULL LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE ch.id=$1 AND ch.purpose='LOGIN' AND ch.session_context='MERCHANT' AND ch.used_at IS NULL AND ch.expires_at>now() AND u.status='ACTIVE' AND u.merchant_id IS NOT NULL FOR UPDATE OF ch,u,e`,
           [tokenHash(b.challengeId)],
         );
         if (!x.rowCount) return null;
@@ -794,8 +799,8 @@ export async function buildApp(
         const token = newToken(),
           csrf = newToken();
         await c.query(
-          `INSERT INTO sessions(token_hash,public_id,user_id,expires_at,absolute_expires_at,last_seen_at,mfa_verified_at) VALUES($1,$2,$3,now()+interval '12 hours',now()+interval '24 hours',now(),now())`,
-          [tokenHash(token), newId('ses'), u.user_id],
+          `INSERT INTO sessions(token_hash,public_id,user_id,expires_at,absolute_expires_at,last_seen_at,mfa_verified_at) VALUES($1,$2,$3,now()+($4 || ' hours')::interval,now()+($5 || ' hours')::interval,now(),now())`,
+          [tokenHash(token), newId('ses'), u.user_id, String(Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS)), String(config.SESSION_ABSOLUTE_HOURS)],
         );
         return { u, token, csrf };
       });
@@ -807,14 +812,14 @@ export async function buildApp(
         httpOnly: true,
         sameSite: 'lax',
         secure,
-        maxAge: 43200,
+        maxAge: Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS) * 3600,
       });
       reply.setCookie('giantpay_csrf', result.csrf, {
         path: '/',
         httpOnly: false,
         sameSite: 'strict',
         secure,
-        maxAge: 43200,
+        maxAge: Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS) * 3600,
       });
       const u = result.u,
         actor = {

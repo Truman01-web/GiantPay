@@ -5,6 +5,7 @@ import type { Config } from '../config.js';
 import type { OutboxMessage, OutboxPublisher } from '../outbox/outboxWorker.js';
 import { decryptSecret, signWebhook, validateWebhookUrl } from './webhookSecurity.js';
 import { operationalMetrics } from '../operations/metrics.js';
+import { deliverWebhook } from './webhookTransport.js';
 
 export class MerchantWebhookPublisher implements OutboxPublisher {
   constructor(private db:Db,private maxAttempts:number) {}
@@ -32,7 +33,7 @@ export class WebhookDeliveryWorker {
       await validateWebhookUrl(row.url,this.config.NODE_ENV==='development'&&this.config.WEBHOOK_ALLOW_HTTP_DEVELOPMENT);
       const timestamp=Math.floor(Date.now()/1000),secret=decryptSecret(row.secret_ciphertext,this.config.WEBHOOK_SECRET_KEY??this.config.COOKIE_SECRET);
       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),this.config.WEBHOOK_DELIVERY_TIMEOUT_MS);
-      let response:Response; try { response=await fetch(row.url,{method:'POST',redirect:'manual',signal:controller.signal,headers:{'content-type':'application/json','user-agent':'GiantPay-Webhooks/1.0','GiantPay-Event-Id':row.event_id,'GiantPay-Event-Type':row.event_type,'GiantPay-Timestamp':String(timestamp),'GiantPay-Signature':signWebhook(secret,timestamp,body),'GiantPay-Signature-Version':'v1'},body}); } catch(e){throw new DeliveryError(e instanceof Error&&e.name==='AbortError'?'TIMEOUT':'NETWORK_ERROR',true);} finally {clearTimeout(timer);}
+      let response:Response; try { response=await deliverWebhook(row.url,{'content-type':'application/json','user-agent':'GiantPay-Webhooks/1.0','GiantPay-Event-Id':row.event_id,'GiantPay-Event-Type':row.event_type,'GiantPay-Timestamp':String(timestamp),'GiantPay-Signature':signWebhook(secret,timestamp,body),'GiantPay-Signature-Version':'v1'},body,controller.signal,this.config.WEBHOOK_MAX_RESPONSE_BYTES); } catch(e){throw new DeliveryError(e instanceof Error&&e.name==='AbortError'?'TIMEOUT':'NETWORK_ERROR',true);} finally {clearTimeout(timer);}
       if(response.status>=300&&response.status<400)throw new DeliveryError('REDIRECT_REJECTED',false,response.status);
       const reader=response.body?.getReader();let size=0;const chunks:Uint8Array[]=[];if(reader)while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>this.config.WEBHOOK_MAX_RESPONSE_BYTES){await reader.cancel();throw new DeliveryError('RESPONSE_TOO_LARGE',false,response.status);}chunks.push(value);}
       const excerpt=Buffer.concat(chunks).toString('utf8').replace(/[\r\n\t]+/g,' ').slice(0,1000);
