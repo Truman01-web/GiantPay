@@ -5,6 +5,7 @@ export default mergeConfig(
   viteConfig,
   defineConfig({
     test: {
+      pool: 'threads',
       env: {
         VITE_API_URL: 'http://localhost:4000',
         VITE_APP_ENV: 'test',

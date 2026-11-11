@@ -106,7 +106,7 @@ export async function registerTeamRoutes(
           .parse(r.body),
         result = await transaction(db, async (c) => {
           const x = await c.query(
-            `SELECT ch.id challenge_id,ch.user_id,u.*,m.name merchant_name,m.environment,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions FROM authentication_challenges ch JOIN users u ON u.id=ch.user_id LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE ch.id=$1 AND ch.purpose='LOGIN' AND ch.used_at IS NULL AND ch.expires_at>now() AND u.status='ACTIVE' FOR UPDATE OF ch,u`,
+            `SELECT ch.id challenge_id,ch.user_id,u.*,m.name merchant_name,m.environment,coalesce(mr.name,u.role) effective_role,coalesce(mr.permissions,u.permissions) effective_permissions FROM authentication_challenges ch JOIN users u ON u.id=ch.user_id LEFT JOIN merchants m ON m.id=u.merchant_id LEFT JOIN user_role_assignments a ON a.user_id=u.id LEFT JOIN merchant_roles mr ON mr.id=a.role_id WHERE ch.id=$1 AND ch.purpose='LOGIN' AND ch.session_context='MERCHANT' AND u.merchant_id IS NOT NULL AND ch.used_at IS NULL AND ch.expires_at>now() AND u.status='ACTIVE' FOR UPDATE OF ch,u`,
             [hash(b.challengeId)],
           );
           if (!x.rowCount) return null;
@@ -126,8 +126,8 @@ export async function registerTeamRoutes(
             csrf = newToken(),
             publicId = newId('ses');
           await c.query(
-            `INSERT INTO sessions(token_hash,public_id,user_id,expires_at,absolute_expires_at,last_seen_at,mfa_verified_at) VALUES($1,$2,$3,now()+interval '12 hours',now()+interval '24 hours',now(),now())`,
-            [hash(token), publicId, u.user_id],
+            `INSERT INTO sessions(token_hash,public_id,user_id,expires_at,absolute_expires_at,last_seen_at,mfa_verified_at) VALUES($1,$2,$3,now()+($4 || ' hours')::interval,now()+($5 || ' hours')::interval,now(),now())`,
+            [hash(token), publicId, u.user_id, String(Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS)), String(config.SESSION_ABSOLUTE_HOURS)],
           );
           await c.query(
             `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id) VALUES($1,$2,$3,'MFA_RECOVERY_CODE_USED','user',$2)`,
@@ -143,13 +143,13 @@ export async function registerTeamRoutes(
         httpOnly: true,
         sameSite: 'lax',
         secure,
-        maxAge: 43200,
+        maxAge: Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS) * 3600,
       }).setCookie('giantpay_csrf', result.csrf, {
         path: '/',
         httpOnly: false,
         sameSite: 'strict',
         secure,
-        maxAge: 43200,
+        maxAge: Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS) * 3600,
       });
       const u = result.u;
       return {
