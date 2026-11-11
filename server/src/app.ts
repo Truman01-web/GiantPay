@@ -1,3 +1,4 @@
+import { initiateCheckout } from './payments/initiateCheckout.js';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
@@ -36,6 +37,8 @@ import { registerNotificationRoutes } from './notifications/routes.js';
 import { registerOperationsRoutes } from './operations/routes.js';
 import { registerEvidenceRoutes, type EvidenceRuntime } from './evidence/routes.js';
 import { registerStaffRoutes } from './staff/routes.js';
+import { registerScanToPayRoutes } from './payments/scanToPayRoutes.js';
+import { registerFlutterwaveRoutes } from './payments/flutterwaveRoutes.js';
 import { operationalMetrics } from './operations/metrics.js';
 import { operationalControlGuard } from './operations/controls.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
@@ -322,7 +325,11 @@ export async function buildApp(
         .send(apiError(request, 'CSRF_REJECTED', 'A valid CSRF token is required.'));
   });
   app.addHook('preParsing', async (request, _reply, payload) => {
-    if (request.url.split('?')[0] !== '/v1/webhooks/providers/sandbox') return payload;
+    const path = request.url.split('?')[0];
+    const isWebhook =
+      path === '/v1/webhooks/providers/sandbox' ||
+      path === '/v1/webhooks/providers/flutterwave';
+    if (!isWebhook) return payload;
     const chunks: Buffer[] = [];
     let size = 0;
     for await (const chunk of payload) {
@@ -335,6 +342,11 @@ export async function buildApp(
     return Readable.from(request.rawWebhookBody);
   });
   app.setErrorHandler((error, request, reply) => {
+    if ((error as { code?: string }).code === 'CHECKOUT_EXPIRED') return reply.code(410).send(apiError(request, 'EXPIRED', 'This payment session has expired.'));
+    if ((error as { code?: string }).code === 'CHECKOUT_CAPACITY') return reply.code(409).send(apiError(request, 'CHECKOUT_CAPACITY', 'This checkout already has a payment in progress or has reached its payment limit.'));
+    if ((error as { code?: string }).code === 'IDEMPOTENCY_CONFLICT') {
+      return reply.code(409).send(apiError(request, 'IDEMPOTENCY_CONFLICT', 'This retry key belongs to another payment request.'));
+    }
     if (error instanceof WebhookBodyTooLargeError) {
       return reply
         .code(413)
@@ -1090,6 +1102,8 @@ export async function buildApp(
   await registerDisputeRoutes(app, config, db, rateLimits);
   await registerNotificationRoutes(app, config, db, rateLimits);
   await registerOperationsRoutes(app, config, db, rateLimits);
+  await registerScanToPayRoutes(app, config, db, rateLimits, provider);
+  await registerFlutterwaveRoutes(app, config, db, rateLimits, provider);
 
   app.get(
     '/v1/payments',
@@ -1309,7 +1323,7 @@ export async function buildApp(
       description: x.description,
       merchantReference: x.customer_reference,
       amount: money(x.amount_minor, x.currency),
-      availableChannels: ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
+      availableChannels: provider.name === 'flutterwave' ? ['CARD'] : ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
       requiredCustomerFields: ['name', 'phone'],
       status: expired ? 'EXPIRED' : 'READY',
       expiresAt: x.expires_at ?? new Date(Date.now() + 900000).toISOString(),
@@ -1330,7 +1344,7 @@ export async function buildApp(
         })
         .parse(request.body);
       const linkResult = await db.query(
-        `SELECT * FROM payment_links WHERE token=$1 AND status='ACTIVE' AND (expires_at IS NULL OR expires_at>now())`,
+        `SELECT * FROM payment_links WHERE token=$1`,
         [token],
       );
       if (!linkResult.rowCount)
@@ -1338,58 +1352,13 @@ export async function buildApp(
           .code(410)
           .send(apiError(request, 'EXPIRED', 'This payment session has expired.'));
       const paymentLink = linkResult.rows[0];
-      const response = await transaction(db, async (client) => {
-        const prior = await client.query(
-          `SELECT response_body FROM idempotency_keys WHERE merchant_id=$1 AND operation='checkout' AND key=$2 FOR UPDATE`,
-          [paymentLink.merchant_id, key],
-        );
-        if (prior.rowCount) return prior.rows[0].response_body as { reference: string };
-        const id = newId('pay');
-        const reference = `GP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        const fee = Math.round(Number(paymentLink.amount_minor) * 0.018);
-        const initiated = await provider.initiatePayment({
-          paymentReference: reference,
-          amountMinor: Number(paymentLink.amount_minor),
-          currency: paymentLink.currency,
-          channel: body.channel,
-          customer: body.customer,
-        });
-        await client.query(
-          `INSERT INTO payments(id,merchant_id,payment_link_id,reference,merchant_reference,description,status,channel,provider_name,gross_minor,fee_minor,currency,customer,provider_submitted_at) VALUES($1,$2,$3,$4,$5,$6,'CREATED',$7,$8,$9,$10,$11,$12,now())`,
-          [
-            id,
-            paymentLink.merchant_id,
-            paymentLink.id,
-            reference,
-            paymentLink.customer_reference,
-            paymentLink.description,
-            body.channel,
-            provider.name,
-            paymentLink.amount_minor,
-            fee,
-            paymentLink.currency,
-            body.customer,
-          ],
-        );
-        await client.query(
-          `INSERT INTO payment_attempts(id,payment_id,provider,provider_payment_id,status) VALUES($1,$2,$3,$4,$5)`,
-          [newId('pat'), id, provider.name, initiated.providerPaymentId, initiated.status],
-        );
-        await client.query(`UPDATE payments SET status=$1,updated_at=now() WHERE id=$2`, [
-          initiated.status,
-          id,
-        ]);
-        await client.query(
-          `INSERT INTO payment_events(id,payment_id,type,label) VALUES($1,$2,'PAYMENT_CREATED','Payment created'),($3,$2,'PROVIDER_REQUEST_ACCEPTED','Provider accepted request')`,
-          [newId('evt'), id, newId('evt')],
-        );
-        const result = { reference };
-        await client.query(`INSERT INTO idempotency_keys VALUES($1,'checkout',$2,202,$3)`, [
-          paymentLink.merchant_id,
-          key,
-          result,
-        ]);
-        return result;
+      if (provider.name === 'flutterwave' && body.channel !== 'CARD') return reply.code(422).send(apiError(request, 'CHANNEL_UNAVAILABLE', 'This payment method is not available.'));
+      const response = await initiateCheckout(db, provider, {
+        merchantId: paymentLink.merchant_id, sourceId: paymentLink.id, kind: 'checkout', key,
+        amountMinor: Number(paymentLink.amount_minor), currency: paymentLink.currency,
+        feeMinor: Math.round(Number(paymentLink.amount_minor) * 0.018),
+        description: paymentLink.description, merchantReference: paymentLink.customer_reference,
+        channel: body.channel, customer: body.customer,
       });
       return reply.code(202).send(response);
     },
@@ -1418,6 +1387,7 @@ export async function buildApp(
     { bodyLimit: 64 * 1024, preHandler: operationalControlGuard(db, 'WEBHOOK_DELIVERY_PAUSED') },
     async (request, reply) => {
       const rawBody = request.rawWebhookBody ?? Buffer.alloc(0);
+      if (provider.name !== 'sandbox') return reply.code(404).send(apiError(request, 'NOT_FOUND', 'Provider endpoint is unavailable.'));
       let event;
       try {
         event = provider.parseAndVerifyWebhook(rawBody, {
@@ -1436,6 +1406,7 @@ export async function buildApp(
         throw error;
       }
       const result = await processPaymentWebhook(db, provider.name, event, rawBody);
+      if (result.outcome === 'PROVIDER_MISMATCH') return reply.code(409).send(apiError(request, 'PROVIDER_MISMATCH', 'Payment provider does not match.'));
       if (result.outcome === 'PAYLOAD_CONFLICT')
         return reply
           .code(409)
@@ -1511,6 +1482,28 @@ export async function buildApp(
           reply.code(404);
           return apiError(request, 'NOT_FOUND', 'Payment not found.');
         }
+        const prior = await client.query(
+          `SELECT response_status,response_body FROM idempotency_keys WHERE merchant_id=$1 AND operation='refund' AND key=$2 FOR UPDATE`,
+          [request.actor!.merchantId, key],
+        );
+        if (prior.rowCount) {
+          const saved = prior.rows[0].response_body;
+          if (saved.paymentId !== b.paymentId || saved.amount?.amountMinor !== b.amountMinor || saved.reason !== b.reason) {
+            reply.code(409);
+            return apiError(request, 'IDEMPOTENCY_CONFLICT', 'This retry key belongs to another refund request.');
+          }
+          reply.code(prior.rows[0].response_status);
+          return prior.rows[0].response_body;
+        }
+        if (!['SUCCEEDED', 'PARTIALLY_REFUNDED'].includes(p.rows[0].status)) {
+          reply.code(409);
+          return apiError(request, 'PAYMENT_NOT_REFUNDABLE', 'Only successful payments can be refunded.');
+        }
+        const reserved = await client.query("SELECT coalesce(sum(amount_minor),0) amount FROM refunds WHERE payment_id=$1 AND status IN ('PENDING_APPROVAL','APPROVED','PROCESSING')", [b.paymentId]);
+        if (b.amountMinor > Number(p.rows[0].gross_minor) - Number(p.rows[0].refunded_minor) - Number(reserved.rows[0].amount)) {
+          reply.code(422);
+          return apiError(request, 'AMOUNT_EXCEEDS_REFUNDABLE', 'Refund amount exceeds the unreserved refundable balance.');
+        }
         if (b.amountMinor > Number(p.rows[0].gross_minor) - Number(p.rows[0].refunded_minor)) {
           reply.code(422);
           return apiError(
@@ -1519,16 +1512,8 @@ export async function buildApp(
             'Refund amount exceeds the refundable balance.',
           );
         }
-        const prior = await client.query(
-          `SELECT response_status,response_body FROM idempotency_keys WHERE merchant_id=$1 AND operation='refund' AND key=$2 FOR UPDATE`,
-          [request.actor!.merchantId, key],
-        );
-        if (prior.rowCount) {
-          reply.code(prior.rows[0].response_status);
-          return prior.rows[0].response_body;
-        }
         const id = newId('ref'),
-          reference = `RF-${Date.now()}`;
+          reference = newId('RF');
         await client.query(
           `INSERT INTO refunds(id,merchant_id,payment_id,reference,amount_minor,reason,status,requested_by) VALUES($1,$2,$3,$4,$5,$6,'PENDING_APPROVAL',$7)`,
           [

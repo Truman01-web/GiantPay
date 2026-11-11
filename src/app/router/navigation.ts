@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Receipt,
   Link2,
+  QrCode,
   RotateCcw,
   Landmark,
   GitCompareArrows,
@@ -40,6 +41,7 @@ export const MERCHANT_NAV: NavGroup[] = [
     items: [
       { label: 'Transactions', to: '/transactions', icon: Receipt, permission: 'payments:read' },
       { label: 'Payment links', to: '/payment-links', icon: Link2, permission: 'payments.links:manage' },
+      { label: 'Scan to pay', to: '/scan-to-pay', icon: QrCode, permission: 'payments.links:manage' },
       { label: 'Refunds', to: '/refunds', icon: RotateCcw, permission: 'payments.refunds:request' },
     ],
   },

@@ -30,8 +30,19 @@ const schema = z.object({
   RATE_LIMIT_NAMESPACE: z.string().regex(/^[A-Za-z0-9:_-]+$/).default('giantpay:rate-limit'),
   RATE_LIMIT_GENERAL_MAX: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_GENERAL_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
-  PAYMENT_PROVIDER: z.enum(['sandbox']).default('sandbox'),
+  PAYMENT_PROVIDER: z.enum(['sandbox', 'flutterwave']).default('sandbox'),
   SANDBOX_WEBHOOK_SECRET: z.string().min(32),
+  // Flutterwave v3 credentials. Required when PAYMENT_PROVIDER=flutterwave.
+  // Never commit real values; supply via environment variables or mounted secrets.
+  // Sandbox test credentials are safe to store in .env.local (gitignored).
+  FLW_SECRET_KEY: optionalSecret,
+  FLW_PUBLIC_KEY: optionalSecret,
+  // Secret Hash configured in Flutterwave Dashboard → Settings → Webhooks.
+  // Used for verif-hash header verification on incoming webhooks.
+  FLW_SECRET_HASH: optionalSecret,
+  // Backend base URL for Flutterwave redirect callbacks.
+  // e.g. http://127.0.0.1:4000 (local) or https://api.giantpay.mw (production).
+  FLW_REDIRECT_BASE_URL: optionalText,
   WEBHOOK_TOLERANCE_SECONDS: z.coerce.number().int().positive().max(900).default(300),
   OUTBOX_WORKER_ENABLED: z.enum(['true','false']).default('false').transform((value) => value === 'true'),
   OUTBOX_POLL_MS: z.coerce.number().int().min(100).max(60_000).default(1000),
@@ -58,9 +69,16 @@ const schema = z.object({
   REAL_PAYOUTS_ENABLED: z.literal('false').default('false').transform(()=>false),
 });
 
-export type Config = Omit<z.output<typeof schema>, 'DEPLOYMENT_ENVIRONMENT' | 'ONBOARDING_EVIDENCE_MODE'> & { DEPLOYMENT_ENVIRONMENT?: 'local' | 'sandbox' | 'production'; ONBOARDING_EVIDENCE_MODE?: 'secure_binary' | 'sandbox_metadata' };
+export type Config = Omit<z.output<typeof schema>, 'DEPLOYMENT_ENVIRONMENT' | 'ONBOARDING_EVIDENCE_MODE'> & {
+  DEPLOYMENT_ENVIRONMENT?: 'local' | 'sandbox' | 'production';
+  ONBOARDING_EVIDENCE_MODE?: 'secure_binary' | 'sandbox_metadata';
+};
 
-const mountedSecrets = ['DATABASE_URL', 'REDIS_URL', 'PASSWORD_PEPPER', 'COOKIE_SECRET', 'SANDBOX_WEBHOOK_SECRET', 'WEBHOOK_SECRET_KEY', 'SMTP_PASSWORD'] as const;
+const mountedSecrets = [
+  'DATABASE_URL', 'REDIS_URL', 'PASSWORD_PEPPER', 'COOKIE_SECRET',
+  'SANDBOX_WEBHOOK_SECRET', 'WEBHOOK_SECRET_KEY', 'SMTP_PASSWORD',
+  'FLW_SECRET_KEY', 'FLW_PUBLIC_KEY', 'FLW_SECRET_HASH',
+] as const;
 
 export function resolveMountedSecrets(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const resolved = { ...source };
@@ -94,6 +112,16 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<ty
   if (config.NODE_ENV === 'production' && config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.FRONTEND_ORIGIN !== 'https://giantpay.mw') throw new Error('Sandbox deployment FRONTEND_ORIGIN must be https://giantpay.mw');
   if (config.NODE_ENV === 'production' && config.DEPLOYMENT_ENVIRONMENT === 'sandbox' && config.STAFF_FRONTEND_ORIGIN !== 'https://admin.giantpay.mw') throw new Error('Sandbox deployment STAFF_FRONTEND_ORIGIN must be https://admin.giantpay.mw');
   if (config.NODE_ENV === 'production' && [config.PASSWORD_PEPPER,config.COOKIE_SECRET,config.SANDBOX_WEBHOOK_SECRET].some(value=>/^(.)\1+$/.test(value))) throw new Error('Development-only secrets are forbidden in production');
+  // Flutterwave credential requirements
+  if (config.PAYMENT_PROVIDER === 'flutterwave') {
+    if (!config.FLW_SECRET_KEY) throw new Error('FLW_SECRET_KEY is required when PAYMENT_PROVIDER=flutterwave');
+    if (!config.FLW_PUBLIC_KEY) throw new Error('FLW_PUBLIC_KEY is required when PAYMENT_PROVIDER=flutterwave');
+    if (!config.FLW_SECRET_HASH) throw new Error('FLW_SECRET_HASH is required when PAYMENT_PROVIDER=flutterwave');
+    if (!config.FLW_REDIRECT_BASE_URL) throw new Error('FLW_REDIRECT_BASE_URL is required when PAYMENT_PROVIDER=flutterwave');
+    if (config.NODE_ENV === 'production' && !config.FLW_SECRET_KEY.startsWith('FLWSECK-')) {
+      throw new Error('FLW_SECRET_KEY must be a live Flutterwave secret key in production (starts with FLWSECK-)');
+    }
+  }
   if (config.EXTERNAL_DELIVERY_ENABLED) {
     if (config.NODE_ENV === 'test') throw new Error('External delivery is forbidden during automated tests');
     if (config.EMAIL_PROVIDER !== 'smtp') throw new Error('EMAIL_PROVIDER=smtp is required when external delivery is enabled');

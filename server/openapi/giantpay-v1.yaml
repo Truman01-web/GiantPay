@@ -913,7 +913,8 @@ paths:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/CheckoutSubmit' } } }
       responses:
-        '202': { description: Accepted by configured provider }
+        '202': { description: Durable payment intent recorded. Outcome may be uncertain; poll payment-status using the returned reference. A null checkoutUrl does not mean failure., content: { application/json: { schema: { type: object, required: [reference, checkoutUrl], properties: { reference: { type: string }, checkoutUrl: { type: [string, 'null'] } } } } } }
+        '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /payment-status/{reference}:
@@ -1347,6 +1348,114 @@ paths:
     post: { tags: [Platform disputes], operationId: changeDisputeStatus, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeExpectedStateInput' } } } }, responses: { '200': { description: Allowed expected-state transition }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
   /platform/disputes/{id}/decisions:
     post: { tags: [Platform disputes], operationId: mutateDisputeDecision, security: [{ cookieSession: [] }], description: Proposes or independently reviews a terminal sandbox decision. Financial effects remain pending instructions and cause no payout., parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '200': { description: Independently reviewed decision }, '201': { description: Decision proposal }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /checkout/qr/{token}:
+    get:
+      tags: [Checkout]
+      operationId: getQrCheckout
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Authoritative QR amount or customer-entered bounds and provider-supported channels }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkout/qr/{token}/submit:
+    post:
+      tags: [Checkout]
+      operationId: submitQrCheckout
+      description: Fixed amounts come from the server. Customer-entered amounts must satisfy server bounds. Reuse the same key and payload after an uncertain response.
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel, customer]
+              properties:
+                channel: { enum: [MOBILE_MONEY, CARD, BANK_TRANSFER] }
+                requestedAmountMinor: { type: integer, minimum: 1 }
+                customer:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    email: { type: string, format: email }
+                    phone: { type: string, pattern: '^\+265[0-9]{9}$' }
+      responses:
+        '202': { description: Durable intent with reference and nullable checkoutUrl; poll trusted payment status }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /webhooks/providers/flutterwave:
+    post:
+      tags: [Provider webhooks]
+      operationId: receiveFlutterwaveWebhook
+      description: Active Flutterwave provider only. Charge notifications are reverified against transaction ID, reference, exact amount and currency before ledger effects. Unavailable or pending verification returns 503 for retry.
+      parameters: [{ name: verif-hash, in: header, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        '202': { description: Verified notification processed or duplicate acknowledged }
+        '401': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /webhooks/providers/flutterwave/redirect:
+    get:
+      tags: [Checkout]
+      operationId: returnFromFlutterwave
+      description: Query status is never trusted. If a transaction ID is present, verification is attempted before redirecting to the trusted frontend payment-status page.
+      parameters:
+        - { name: tx_ref, in: query, schema: { type: string } }
+        - { name: transaction_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        '302': { description: Frontend status page }
+        '503': { $ref: '#/components/responses/Error' }
+  /qr:
+    get:
+      tags: [Checkout]
+      operationId: listMerchantQrCodes
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses: { '200': { description: Merchant-scoped paginated QR codes } }
+    post:
+      tags: [Checkout]
+      operationId: createMerchantQrCode
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label, mode]
+              properties:
+                label: { type: string, minLength: 1, maxLength: 100 }
+                mode: { enum: [FIXED, CUSTOMER_ENTERED] }
+                currency: { type: string, pattern: '^[A-Z]{3}$', default: MWK }
+                amountMinor: { type: integer, minimum: 1, description: Required for FIXED mode }
+                minAmountMinor: { type: integer, minimum: 1 }
+                maxAmountMinor: { type: integer, minimum: 1 }
+                maxSuccessfulPayments: { type: integer, minimum: 1 }
+                expiresAt: { type: string, format: date-time }
+      responses: { '201': { description: QR code with opaque checkout URL }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /qr/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Checkout]
+      operationId: getMerchantQrCode
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      responses: { '200': { description: Merchant-scoped QR code }, '404': { $ref: '#/components/responses/Error' } }
+    patch:
+      tags: [Checkout]
+      operationId: disableMerchantQrCode
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [status], properties: { status: { const: DISABLED } } } } } }
+      responses: { '200': { description: Disabled QR code }, '404': { $ref: '#/components/responses/Error' } }
+  /qr/{id}/payments:
+    get:
+      tags: [Checkout]
+      operationId: listMerchantQrPayments
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses: { '200': { description: Merchant-scoped paginated QR payments }, '404': { $ref: '#/components/responses/Error' } }
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }

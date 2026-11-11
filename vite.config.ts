@@ -8,6 +8,7 @@ const mockApiEnabled = process.env.VITE_USE_MOCK_API === 'true';
 const staffPortal = process.env.VITE_PORTAL_CONTEXT === 'staff';
 
 export default defineConfig({
+  cacheDir: staffPortal ? 'node_modules/.vite-staff' : 'node_modules/.vite-merchant',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

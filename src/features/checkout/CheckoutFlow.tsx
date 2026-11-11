@@ -33,6 +33,7 @@ export function CheckoutFlow() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [submittedReference, setSubmittedReference] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [touched, setTouched] = useState(false);
 
   const polled = usePaymentStatusPolling(submittedReference ?? undefined);
@@ -70,6 +71,10 @@ export function CheckoutFlow() {
     );
   }
 
+  if (isRedirecting) {
+    return <FullPageLoader label="Redirecting to secure payment page…" />;
+  }
+
   // Once submitted, the ONLY thing rendered is the trusted, backend-polled
   // status — never an optimistic "paid" state derived from the submit call.
   if (submittedReference) {
@@ -105,6 +110,11 @@ export function CheckoutFlow() {
     if (missingRequired || !channel) return;
     try {
       const result = await submit.mutateAsync({ channel, customer: { name: name || undefined, phone: phone || undefined, email: email || undefined } });
+      if (result.checkoutUrl) {
+        setIsRedirecting(true);
+        window.location.assign(result.checkoutUrl);
+        return;
+      }
       setSubmittedReference(result.reference);
     } catch {
       // Surfaced via submit.error below.

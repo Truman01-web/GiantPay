@@ -31,6 +31,7 @@ import {
   ResetPasswordPage,
   VerifyEmailPage,
   CheckoutPage,
+  QrCheckoutPage,
   PaymentStatusPage,
   DashboardPage,
   OnboardingPage,
@@ -39,6 +40,9 @@ import {
   PaymentLinksPage,
   CreatePaymentLinkPage,
   PaymentLinkDetailPage,
+  ScanToPayPage,
+  CreateScanToPayPage,
+  ScanToPayDetailPage,
   RefundsPage,
   RefundDetailPage,
   SettlementsPage,
@@ -138,10 +142,11 @@ const allRoutes:RouteObject[] = [
     element: <CheckoutLayout />,
     children: [
       { path: '/checkout/:token', element: <CheckoutPage /> },
+      { path: '/checkout/qr/:token', element: <QrCheckoutPage /> },
       { path: '/payment/:reference', element: <PaymentStatusPage /> },
     ],
   },
-  ...(import.meta.env.VITE_PORTAL_CONTEXT === 'staff' ? [{
+  ...(import.meta.env.VITE_PORTAL_CONTEXT !== 'staff' ? [{
     element: (
       <RequireAuth>
         <RequireMerchant><MerchantLayout /></RequireMerchant>
@@ -196,6 +201,31 @@ const allRoutes:RouteObject[] = [
         element: (
           <RequirePermission permission="payments.links:manage">
             <PaymentLinkDetailPage />
+          </RequirePermission>
+        ),
+      },
+
+      {
+        path: '/scan-to-pay',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <ScanToPayPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/scan-to-pay/create',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <CreateScanToPayPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/scan-to-pay/:id',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <ScanToPayDetailPage />
           </RequirePermission>
         ),
       },
