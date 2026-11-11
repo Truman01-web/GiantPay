@@ -51,7 +51,8 @@ export interface FlutterwaveHttpClient {
   initiateCheckout(
     payload: FlutterwaveCheckoutPayload,
   ): Promise<FlutterwaveCheckoutResponse>;
-  verifyTransaction(transactionId: string): Promise<FlutterwaveVerifyResponse>;
+  verifyTransaction(transactionId: string, signal?: AbortSignal): Promise<FlutterwaveVerifyResponse>;
+  verifyByReference?(reference: string, signal?: AbortSignal): Promise<FlutterwaveVerifyResponse>;
 }
 
 export interface FlutterwaveCheckoutPayload {
@@ -109,6 +110,7 @@ export class RealFlutterwaveHttpClient implements FlutterwaveHttpClient {
     method: 'GET' | 'POST',
     path: string,
     body?: unknown,
+    signal?: AbortSignal,
   ): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -121,7 +123,7 @@ export class RealFlutterwaveHttpClient implements FlutterwaveHttpClient {
           Accept: 'application/json',
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([controller.signal,signal]) : controller.signal,
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
@@ -131,7 +133,7 @@ export class RealFlutterwaveHttpClient implements FlutterwaveHttpClient {
           text.slice(0, 500),
         );
       }
-      return res.json() as Promise<T>;
+      return await res.json() as T;
     } finally {
       clearTimeout(timer);
     }
@@ -143,11 +145,16 @@ export class RealFlutterwaveHttpClient implements FlutterwaveHttpClient {
     return this.request<FlutterwaveCheckoutResponse>('POST', '/v3/payments', payload);
   }
 
-  async verifyTransaction(transactionId: string): Promise<FlutterwaveVerifyResponse> {
+  async verifyTransaction(transactionId: string, signal?: AbortSignal): Promise<FlutterwaveVerifyResponse> {
     return this.request<FlutterwaveVerifyResponse>(
       'GET',
       `/v3/transactions/${encodeURIComponent(transactionId)}/verify`,
+      undefined, signal,
     );
+  }
+
+  async verifyByReference(reference: string, signal?: AbortSignal): Promise<FlutterwaveVerifyResponse> {
+    return this.request('GET', `/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`, undefined, signal);
   }
 }
 
@@ -308,6 +315,17 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
     return { providerPaymentId, status: 'PROCESSING' };
   }
 
+  async recoverPayment(expected: { reference: string; amountMinor: number; currency: string; transactionId: string | null }, signal?: AbortSignal) {
+    let id = expected.transactionId;
+    if (!id) {
+      const response = await this.httpClient.verifyByReference?.(expected.reference, signal);
+      if (response?.status !== 'success' || !response.data || response.data.tx_ref !== expected.reference || !Number.isSafeInteger(response.data.id) || response.data.id <= 0)
+        throw new FlutterwaveVerificationError('VERIFY_UNAVAILABLE', 'Reference lookup is unresolved.');
+      id = String(response.data.id);
+    }
+    return this.verifyTransactionAfterWebhook({ flwTransactionId: id, expectedTxRef: expected.reference, expectedAmountMinor: expected.amountMinor, expectedCurrency: expected.currency }, signal);
+  }
+
   // -------------------------------------------------------------------------
   // parseAndVerifyWebhook — authenticates and parses a Flutterwave webhook.
   //
@@ -407,12 +425,12 @@ export class FlutterwavePaymentProvider implements PaymentProvider {
     expectedTxRef: string;
     expectedAmountMinor: number;   // GiantPay stores in minor units
     expectedCurrency: string;
-  }): Promise<{
+  }, signal?: AbortSignal): Promise<{
     flwTransactionId: string;
     flwRef: string;
     status: 'SUCCEEDED' | 'PROCESSING';
   }> {
-    const response = await this.httpClient.verifyTransaction(options.flwTransactionId);
+    const response = await this.httpClient.verifyTransaction(options.flwTransactionId, signal);
 
     if (response.status !== 'success' || !response.data) {
       throw new FlutterwaveVerificationError(

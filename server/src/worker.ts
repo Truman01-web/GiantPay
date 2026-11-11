@@ -6,6 +6,10 @@ import { NotificationDeliveryWorker, NotificationOutboxPublisher } from './notif
 import { workerAllowed } from './operations/controls.js';
 import { GracefulLifecycle, ShutdownCoordinator } from './operations/lifecycle.js';
 import { OutboxWorker } from './outbox/outboxWorker.js';
+import { createPaymentProvider } from './providers/index.js';
+import { FlutterwavePaymentProvider } from './providers/flutterwaveProvider.js';
+import { PaymentRecoveryWorker } from './payments/recoveryWorker.js';
+import { operationalMetrics } from './operations/metrics.js';
 
 type WorkerRole = 'outbox' | 'webhook' | 'notification' | 'reconciliation';
 const role = process.env.WORKER_ROLE as WorkerRole;
@@ -20,6 +24,8 @@ const notificationPublisher = new NotificationOutboxPublisher(db);
 const outbox = new OutboxWorker(db, { publish: async message => { await webhookPublisher.publish(message); if (await workerAllowed(db, 'NOTIFICATION_PROCESSING_PAUSED')) await notificationPublisher.publish(message); } }, config.OUTBOX_POLL_MS, () => workerAllowed(db, 'OUTBOX_PROCESSING_PAUSED'));
 const webhook = new WebhookDeliveryWorker(db, config, config.OUTBOX_POLL_MS, () => workerAllowed(db, 'WEBHOOK_DELIVERY_PAUSED'));
 const notifications = new NotificationDeliveryWorker(db, config.WORKER_LEASE_SECONDS, () => workerAllowed(db, 'NOTIFICATION_PROCESSING_PAUSED'));
+const recoveryProvider = role === 'reconciliation' && config.PAYMENT_RECOVERY_ENABLED && config.PAYMENT_PROVIDER === 'flutterwave' ? createPaymentProvider(config) : null;
+const recovery = recoveryProvider instanceof FlutterwavePaymentProvider ? new PaymentRecoveryWorker(db, recoveryProvider) : null;
 
 const notificationTick = async () => {
   if (stopped) return;
@@ -29,17 +35,18 @@ const notificationTick = async () => {
 };
 const reconciliationTick = async () => {
   if (stopped) return;
-  // Phase 3 reconciliation is request-driven. This worker performs a bounded,
-  // read-only stale-run observation and never creates settlements or payouts.
-  await db.query(`SELECT count(*) FROM reconciliation_runs WHERE status='RUNNING' AND started_at < now()-interval '15 minutes'`);
-  if (!stopped) timer = setTimeout(() => void reconciliationTick(), config.OUTBOX_POLL_MS);
+  try {
+    if (recovery && await workerAllowed(db, 'PAYMENT_CREATION_PAUSED')) await recovery.tick();
+    if (!stopped) await db.query(`SELECT count(*) FROM reconciliation_runs WHERE status='RUNNING' AND started_at < now()-interval '15 minutes'`);
+  } catch { operationalMetrics.increment('worker_jobs_total', { worker: 'payment_recovery', outcome: 'ERROR' }); }
+  finally { if (!stopped) timer = setTimeout(() => void reconciliationTick(), config.OUTBOX_POLL_MS); }
 };
 if (role === 'outbox') outbox.start();
 if (role === 'webhook') webhook.start();
 if (role === 'notification') void notificationTick();
 if (role === 'reconciliation') void reconciliationTick();
 
-const lifecycle = new GracefulLifecycle([{ name: role, stopClaims: () => { stopped = true; if (timer) clearTimeout(timer); outbox.stop(); webhook.stop(); }, close: async () => {} }, { name: 'postgres', close: () => db.end() }], config.GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+const lifecycle = new GracefulLifecycle([{ name: role, stopClaims: () => { stopped = true; if (timer) clearTimeout(timer); outbox.stop(); webhook.stop(); recovery?.stop(); }, drain: () => recovery?.drain() ?? Promise.resolve(), close: async () => {} }, { name: 'postgres', close: () => db.end() }], config.GRACEFUL_SHUTDOWN_TIMEOUT_MS);
 const coordinator = new ShutdownCoordinator(lifecycle, config.GRACEFUL_SHUTDOWN_TIMEOUT_MS + 100);
 const shutdown = (signal: 'SIGINT' | 'SIGTERM') => { void coordinator.shutdown(signal).then(result => { process.exitCode = result.timedOut ? 1 : 0; }); };
 process.on('SIGINT', () => shutdown('SIGINT'));

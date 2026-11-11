@@ -55,6 +55,7 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['fatal','error','warn','info','debug']).default('info'),
   HEALTH_CHECK_TIMEOUT_MS: z.coerce.number().int().min(100).max(10_000).default(1500),
   WORKER_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
+  PAYMENT_RECOVERY_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
   WORKER_LEASE_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
   GRACEFUL_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(15_000),
   EXTERNAL_DELIVERY_ENABLED: z.enum(['true','false']).default('false').transform(value=>value==='true'),
