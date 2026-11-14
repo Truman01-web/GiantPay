@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Zap, HelpCircle, Building2 } from 'lucide-react';
+import { ArrowRight, Check, Zap, HelpCircle, Building2 } from 'lucide-react';
 import { useState } from 'react';
+import { PageHero, GradientText } from '@/components/hero';
 
 const HERO_BG_IMAGE =
   'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=2000&q=80';
@@ -147,62 +148,15 @@ export default function PricingPage() {
 
   return (
     <main className="overflow-hidden bg-white text-slate-900">
-      {/* ── Hero Section with Highly Visible Background Image Layer ── */}
-      <section className="relative isolate flex min-h-[480px] items-center overflow-hidden bg-white pt-24 pb-16 lg:pt-32 lg:pb-24">
-        {/* Background Image Layer — clearly and prominently visible */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 select-none overflow-hidden"
-        >
-          <img
-            src={HERO_BG_IMAGE}
-            onError={(e) => {
-              e.currentTarget.src = HERO_BG_FALLBACK;
-            }}
-            alt=""
-            className="h-full w-full object-cover object-[75%_center] opacity-45 sm:opacity-55"
-            style={{
-              filter: 'contrast(1.08) brightness(1.02)',
-            }}
-          />
-          {/* Subtle overlay keeping the background photo rich and clear while keeping text readable */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-white/40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white" />
-        </div>
-
-        {/* Ambient decorative elements */}
-        <div
-          aria-hidden="true"
-          className="grid-bg absolute inset-0 opacity-60 pointer-events-none"
-        />
-        <div aria-hidden="true" className="hero-glow absolute inset-0 pointer-events-none" />
-
-        <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Back button */}
-          <div className="mb-8">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-[#1B4FD8]"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Link>
-          </div>
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Simple, fair pricing.{' '}
-              <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">
-                No hidden fees.
-              </span>
-            </h1>
-
-            <p className="mt-6 text-base sm:text-lg leading-relaxed text-slate-600">
-              Only pay when you get paid. Scale seamlessly from your first transaction to enterprise
-              volumes with transparent package rates, zero monthly maintenance, and automated
-              settlement.
-            </p>
-
-            {/* Quick Guarantees */}
+      <PageHero
+        image={HERO_BG_IMAGE}
+        imageClassName="object-cover object-[75%_center] opacity-45 sm:opacity-55"
+        decorative
+        padding="pt-24 pb-16 lg:pt-32 lg:pb-24"
+        description={
+          <>
+            Only pay when you get paid. Scale seamlessly from your first transaction to enterprise volumes with
+            transparent package rates, zero monthly maintenance, and automated settlement.
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs sm:text-sm font-medium text-slate-600">
               <span className="flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-emerald-600 font-bold" /> 0 MWK Setup Fee
@@ -217,9 +171,11 @@ export default function PricingPage() {
                 <Check className="h-4 w-4 text-emerald-600 font-bold" /> Sandbox settlement evidence
               </span>
             </div>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      >
+        Simple, fair pricing. <GradientText>No hidden fees.</GradientText>
+      </PageHero>
 
       {/* ── Pricing Packages (Tiers with %) ── */}
       <section className="relative z-10 -mt-8 pb-20 sm:pb-28">

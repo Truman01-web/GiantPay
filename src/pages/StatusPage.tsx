@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Info, RefreshCw } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Info, RefreshCw } from 'lucide-react';
 import { api } from '@/services/api/client';
+import { PageHero } from '@/components/hero';
 
 type Readiness = { status: string; timestamp?: string };
 
@@ -21,16 +21,24 @@ export default function StatusPage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-[#061428] pb-14 pt-28 text-white sm:pb-16 sm:pt-36">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
-          <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to Home
-          </Link>
-          <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-emerald-400">Operational telemetry</p>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">System Status</h1>
-          <p className="mt-2 text-sm text-white/70">Live readiness of the GiantPay sandbox backend.</p>
-        </div>
-      </section>
+      <PageHero
+        variant="dark"
+        flatScrim
+        image="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1920&q=80"
+        imageClassName="object-cover object-center opacity-100"
+        padding="pt-28 pb-14 sm:pt-36 sm:pb-16"
+        containerClassName="mx-auto max-w-4xl px-4 sm:px-6"
+        eyebrow={
+          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            Operational Telemetry
+          </span>
+        }
+        description="Status of GiantPay's sandbox APIs and core platform services."
+      >
+        System Status
+      </PageHero>
+
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
         <div className="rounded-2xl border border-[var(--color-neutral-200)] bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
