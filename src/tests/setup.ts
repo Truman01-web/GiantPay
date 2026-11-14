@@ -5,6 +5,7 @@ import { server } from '@/mocks/server';
 import { resetAuthMockState } from '@/mocks/handlers/auth';
 import { resetMerchantsMockState } from '@/mocks/handlers/merchants';
 import { resetReconciliationMockState } from '@/mocks/handlers/reconciliation';
+import { resetSettlementsMockState } from '@/mocks/handlers/settlements';
 import { submittedReferences } from '@/mocks/fixtures/checkout';
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -21,6 +22,7 @@ afterEach(() => {
   resetAuthMockState();
   resetMerchantsMockState();
   resetReconciliationMockState();
+  resetSettlementsMockState();
   submittedReferences.clear();
 });
 afterAll(() => server.close());

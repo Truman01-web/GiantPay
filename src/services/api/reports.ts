@@ -1,5 +1,6 @@
 import { api, type RequestOptions } from './client';
 import { env } from '@/app/config/env';
+import { itemsPage, type BackendPage } from './contractAdapters';
 
 export type ReportType =
   | 'TRANSACTION_ACTIVITY'
@@ -14,10 +15,12 @@ export interface OperationalReportSummary {
   currency: 'MWK' | 'USD';
   periodStart: string;
   periodEnd: string;
-  totalVolumeMinor: number;
-  totalTransactions: number;
-  totalFeesMinor: number;
-  netSettlementMinor: number;
+  grossPaymentMinor: string;
+  successfulPaymentCount: number;
+  failedPaymentCount: number;
+  refundedMinor: string;
+  feeMinor: string;
+  netMerchantMinor: string;
   generatedAt: string;
 }
 
@@ -28,8 +31,9 @@ export interface OperationalReportExport {
   periodStart: string;
   periodEnd: string;
   rowCount: number;
-  fileSizeBytes: number;
-  sha256Hash: string;
+  sourceSha256: string;
+  contentSha256: string;
+  sandboxOnly: boolean;
   createdAt: string;
   status: 'COMPLETED' | 'FAILED';
 }
@@ -55,7 +59,7 @@ export const reportsApi = {
     if (params?.page) query.set('page', String(params.page));
     if (params?.pageSize) query.set('pageSize', String(params.pageSize));
     const qs = query.toString();
-    return api.get<{ items: OperationalReportExport[]; total: number }>(`/report-exports${qs ? `?${qs}` : ''}`, options);
+    return api.get<BackendPage<OperationalReportExport>>(`/report-exports${qs ? `?${qs}` : ''}`, options).then(itemsPage);
   },
 
   createExport(

@@ -9,6 +9,7 @@ export class ApiError extends Error {
   readonly status: number;
   readonly fields?: Record<string, string>;
   readonly requestId?: string;
+  readonly traceId?: string;
 
   constructor(params: {
     code: string;
@@ -16,6 +17,7 @@ export class ApiError extends Error {
     status: number;
     fields?: Record<string, string>;
     requestId?: string;
+    traceId?: string;
   }) {
     super(params.message);
     this.name = 'ApiError';
@@ -23,6 +25,7 @@ export class ApiError extends Error {
     this.status = params.status;
     this.fields = params.fields;
     this.requestId = params.requestId;
+    this.traceId = params.traceId;
   }
 
   get isUnauthorized(): boolean {
@@ -60,3 +63,13 @@ export const GENERIC_ERROR_MESSAGE =
 
 export const NETWORK_ERROR_MESSAGE =
   'We could not reach GiantPay. Check your connection and try again.';
+
+export const OPERATIONAL_CONTROL_MESSAGE =
+  'This GiantPay service is temporarily paused by an approved operational control. Your request was not processed. Please try again later or contact support.';
+
+/** Keep control-plane details out of feature components while giving merchants
+ * actionable copy instead of exposing a backend control code or generic 503. */
+export function safeApiErrorMessage(code: string, message?: string): string {
+  if (code === 'OPERATIONAL_CONTROL_ACTIVE') return OPERATIONAL_CONTROL_MESSAGE;
+  return message || GENERIC_ERROR_MESSAGE;
+}

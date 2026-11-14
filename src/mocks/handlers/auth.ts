@@ -114,5 +114,31 @@ export const authHandlers = [
 
   http.post(`${base}/auth/email/verify`, () => HttpResponse.json({ verified: true })),
 
-  http.post(`${base}/auth/register`, () => HttpResponse.json({ accepted: true })),
+  http.post(`${base}/auth/register`, () =>
+    HttpResponse.json({
+      accepted: true,
+      verificationRequired: true,
+      challengeId: 'mock-registration-challenge-000000000001',
+      maskedDestination: 'm***@example.invalid',
+      expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+      delivery: { available: false, queued: false, errorCode: 'DELIVERY_UNAVAILABLE' },
+    }),
+  ),
+
+  http.post(`${base}/auth/registration/resend`, () =>
+    HttpResponse.json({
+      accepted: true,
+      verificationRequired: true,
+      challengeId: 'mock-registration-challenge-000000000002',
+      maskedDestination: 'm***@example.invalid',
+      expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+      delivery: { available: false, queued: false, errorCode: 'DELIVERY_UNAVAILABLE' },
+    }),
+  ),
+
+  http.post(`${base}/auth/registration/verify`, () =>
+    HttpResponse.json({ verified: true }),
+  ),
 ];

@@ -117,7 +117,7 @@ suite('transactional webhook processing', () => {
   it('trusted status remains read-only until backend-confirmed state changes', async () => {
     const config: Config = {
       NODE_ENV: 'test', HOST: '127.0.0.1', PORT: 4000, DATABASE_URL: databaseUrl!,
-      PASSWORD_PEPPER: 'p'.repeat(32), COOKIE_SECRET: 'c'.repeat(32), FRONTEND_ORIGIN: 'http://127.0.0.1:5173',
+      PASSWORD_PEPPER: 'p'.repeat(32), COOKIE_SECRET: 'c'.repeat(32), FRONTEND_ORIGIN: 'http://127.0.0.1:5173', STAFF_FRONTEND_ORIGIN: 'http://127.0.0.1:5174',
       TRUSTED_PROXIES: '', COOKIE_SECURE: false, SESSION_IDLE_MINUTES: 30, SESSION_ABSOLUTE_HOURS: 24,
       RATE_LIMIT_NAMESPACE: 'test:rate', RATE_LIMIT_GENERAL_MAX: 300, RATE_LIMIT_GENERAL_WINDOW_SECONDS: 60,
       PAYMENT_PROVIDER: 'sandbox', SANDBOX_WEBHOOK_SECRET: 'w'.repeat(32), WEBHOOK_TOLERANCE_SECONDS: 300,
@@ -126,7 +126,8 @@ suite('transactional webhook processing', () => {
       WEBHOOK_MAX_RESPONSE_BYTES: 8192, WEBHOOK_MAX_ATTEMPTS: 8,
       LOG_LEVEL: 'info', HEALTH_CHECK_TIMEOUT_MS: 1500, WORKER_BATCH_SIZE: 10,
       WORKER_LEASE_SECONDS: 60, GRACEFUL_SHUTDOWN_TIMEOUT_MS: 15000,
-      EXTERNAL_DELIVERY_ENABLED: false, REAL_PAYOUTS_ENABLED: false,
+      EXTERNAL_DELIVERY_ENABLED: false, SMTP_PORT: 465, SMTP_SECURE: true,
+      SMTP_TIMEOUT_MS: 5000, PAYMENT_RECOVERY_ENABLED: false, REAL_PAYOUTS_ENABLED: false,
     };
     const app = await buildApp(config, db, new SandboxPaymentProvider(config.SANDBOX_WEBHOOK_SECRET, 300, 'test'));
     const response = await app.inject({ method: 'GET', url: '/v1/payment-status/GP-TEST-1' });

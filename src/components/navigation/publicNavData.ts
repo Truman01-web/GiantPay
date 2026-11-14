@@ -2,7 +2,7 @@ export interface NavItem {
   label: string;
   to: string;
   description?: string;
-  badge?: 'Planned' | 'Coming soon';
+  badge?: 'Planned';
 }
 
 export interface NavGroup {

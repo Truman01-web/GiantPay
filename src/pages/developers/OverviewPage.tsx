@@ -68,9 +68,12 @@ export default function DeveloperOverviewPage() {
       <section className="relative isolate overflow-hidden bg-white pt-24 pb-20 lg:pt-32 lg:pb-28">
         <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
           <img
-            src="/hero-bg.jpg"
+            src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=2000&q=80"
+            onError={(e) => {
+              e.currentTarget.src = '/hero-bg.jpg';
+            }}
             alt=""
-            className="h-full w-full object-cover object-[75%_center] opacity-45 sm:opacity-55"
+            className="h-full w-full object-cover object-[75%_center] opacity-35 sm:opacity-45"
             style={{ filter: 'contrast(1.08) brightness(1.02)' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/40" />

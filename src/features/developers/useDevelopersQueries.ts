@@ -13,7 +13,7 @@ export function useApiKeysList() {
 export function useCreateApiKey() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => developersApi.createApiKey({ name }),
+    mutationFn: (name: string) => developersApi.createApiKey({ name, scopes: ['payments:read'] }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['developer', 'apiKeys'] });
     },
@@ -51,7 +51,7 @@ export function useCreateWebhook() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { url: string; events: string[] }) =>
-      developersApi.createWebhook(data),
+      developersApi.createWebhook({ name: new URL(data.url).hostname, ...data, enabled: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['developer', 'webhooks'] });
     },

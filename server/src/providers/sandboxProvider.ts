@@ -32,9 +32,9 @@ export class SandboxPaymentProvider implements PaymentProvider {
   constructor(
     private readonly secret: string,
     private readonly toleranceSeconds: number,
-    nodeEnv: 'development' | 'test' | 'production',
+    deploymentEnvironment: 'local' | 'sandbox' | 'development' | 'test' | 'production',
   ) {
-    if (nodeEnv === 'production') throw new Error('Sandbox payment provider is forbidden in production');
+    if (deploymentEnvironment === 'production') throw new Error('Sandbox payment provider is forbidden in production');
   }
 
   async initiatePayment(input: InitiatePaymentInput): Promise<ProviderPaymentResult> {

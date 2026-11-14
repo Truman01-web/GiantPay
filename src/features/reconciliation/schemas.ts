@@ -6,33 +6,30 @@ import type { ReconciliationExceptionStatus } from '@/types/reconciliation';
  * independently enforces this and is authoritative; an invalid transition
  * attempted anyway comes back as a normal 422 handled like any other. */
 export const NEXT_STATUS_OPTIONS: Record<ReconciliationExceptionStatus, { value: ReconciliationExceptionStatus; label: string }[]> = {
-  OPEN: [
-    { value: 'INVESTIGATING', label: 'Start investigating' },
-    { value: 'ESCALATED', label: 'Escalate' },
-  ],
-  INVESTIGATING: [
-    { value: 'ACTION_REQUIRED', label: 'Mark action required' },
+  OPEN: [{ value: 'UNDER_REVIEW', label: 'Start review' }],
+  UNDER_REVIEW: [
     { value: 'RESOLVED', label: 'Resolve' },
-    { value: 'ESCALATED', label: 'Escalate' },
-  ],
-  ACTION_REQUIRED: [
-    { value: 'RESOLVED', label: 'Resolve' },
-    { value: 'ESCALATED', label: 'Escalate' },
+    { value: 'DISMISSED', label: 'Dismiss' },
   ],
   RESOLVED: [],
-  ESCALATED: [{ value: 'INVESTIGATING', label: 'Reopen investigation' }],
+  DISMISSED: [],
 };
 
-const NOTE_REQUIRED_FOR: ReconciliationExceptionStatus[] = ['RESOLVED', 'ESCALATED'];
+const NOTE_REQUIRED_FOR: ReconciliationExceptionStatus[] = ['RESOLVED', 'DISMISSED'];
 
 export const updateExceptionSchema = z
   .object({
-    status: z.enum(['OPEN', 'INVESTIGATING', 'ACTION_REQUIRED', 'RESOLVED', 'ESCALATED']),
+    status: z.enum(['UNDER_REVIEW', 'RESOLVED', 'DISMISSED']),
     note: z.string().max(2000),
+    evidenceRef: z.string().max(200).optional(),
   })
   .refine((v) => !NOTE_REQUIRED_FOR.includes(v.status) || v.note.trim().length >= 5, {
     error: 'Add a short note explaining this update',
     path: ['note'],
+  })
+  .refine((v) => !NOTE_REQUIRED_FOR.includes(v.status) || (v.evidenceRef?.trim().length ?? 0) >= 3, {
+    error: 'Add an evidence reference for a terminal decision',
+    path: ['evidenceRef'],
   });
 
-export type UpdateExceptionFormValues = { status: ReconciliationExceptionStatus; note: string };
+export type UpdateExceptionFormValues = z.infer<typeof updateExceptionSchema>;

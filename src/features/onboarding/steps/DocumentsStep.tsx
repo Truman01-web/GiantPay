@@ -7,9 +7,9 @@ import { describeUploadError } from './describeUploadError';
 import type { UploadedDocument } from '@/types/onboarding';
 
 const CATEGORIES = [
-  { key: 'incorporation', label: 'Certificate of Incorporation' },
-  { key: 'proof_of_address', label: 'Proof of business address' },
-  { key: 'director_id', label: "Director's identification" },
+  { key: 'BUSINESS_REGISTRATION', label: 'Certificate of Incorporation' },
+  { key: 'ADDRESS', label: 'Proof of business address' },
+  { key: 'DIRECTOR_IDENTIFICATION', label: "Director's identification" },
 ];
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
@@ -44,7 +44,7 @@ export function DocumentsStep({ initialDocuments, saving, onBack, onNext }: { in
     [],
   );
 
-  const allCategoriesHaveAtLeastOne = CATEGORIES.every((c) => documents.some((d) => d.category === c.key && d.status === 'UPLOADED'));
+  const allCategoriesHaveAtLeastOne = CATEGORIES.every((c) => documents.some((d) => d.category === c.key && d.status === 'CLEAN'));
 
   async function uploadOne(localId: string, category: string, file: File) {
     if (inFlight.current.has(localId)) return;
@@ -56,11 +56,11 @@ export function DocumentsStep({ initialDocuments, saving, onBack, onNext }: { in
     setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, status: 'UPLOADING', uploadProgress: 0, error: null } : d)));
     try {
       const result = await merchantsApi.uploadDocument(
-        { category, file },
+        { category: category as 'BUSINESS_REGISTRATION' | 'ADDRESS' | 'DIRECTOR_IDENTIFICATION', file, idempotencyKey: localId },
         { signal: controller.signal, onProgress: (percent) => setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, uploadProgress: percent } : d))) },
       );
-      setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, fileName: result.fileName, sizeBytes: result.sizeBytes, status: 'UPLOADED', uploadProgress: 100, error: null } : d)));
-      fileRefs.current.delete(localId);
+      setDocuments((prev) => prev.map((d) => (d.id === localId ? { ...d, id: result.id, fileName: result.fileName, sizeBytes: result.sizeBytes, status: result.scanState, uploadProgress: 100, error: result.failureCode } : d)));
+      if (result.scanState === 'CLEAN' || result.scanState === 'REJECTED') fileRefs.current.delete(localId);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         // Cancelled (removed, or the step unmounted) — not a failure; the
@@ -107,9 +107,9 @@ export function DocumentsStep({ initialDocuments, saving, onBack, onNext }: { in
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
       <h2 className="text-[length:var(--text-h3)] font-semibold text-[var(--color-navy-900)]">KYC/KYB documents</h2>
-      <p className="text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Upload clear copies (PDF, JPG or PNG, up to 10MB each).</p>
+      <p className="text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Upload clear copies (PDF, JPG or PNG, up to 10MB each). Files are quarantined and must pass malware scanning before submission; upload alone does not verify a document.</p>
 
-      {touched && !allCategoriesHaveAtLeastOne && <Alert variant="danger">Upload at least one file for every required document category.</Alert>}
+      {touched && !allCategoriesHaveAtLeastOne && <Alert variant="danger">Each required category needs at least one clean, successfully scanned file before submission.</Alert>}
 
       {CATEGORIES.map((cat) => (
         <FileUpload

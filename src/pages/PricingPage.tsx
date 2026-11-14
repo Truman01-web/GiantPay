@@ -25,15 +25,16 @@ const PRICING_TIERS: PricingTier[] = [
     id: 'starter',
     name: 'Starter',
     badge: 'New & Small Businesses',
-    rate: '1.8%',
-    rateDetail: 'per successful transaction',
-    description: 'Everything needed to launch and start accepting mobile payments immediately with zero upfront capital.',
+    rate: '3% / 2%',
+    rateDetail: 'mobile & card / bank transfer',
+    description:
+      'Everything needed to launch and start accepting mobile payments immediately with zero upfront capital.',
     highlights: [
       'Airtel Money & TNM Mpamba mobile wallets',
       'National Switch bank transfers',
       'Hosted Payment Links & shareable URLs',
       'Full Sandbox API access with test credentials',
-      'Automated T+1 settlements to Malawian banks',
+      'Sandbox settlement accounting and CSV exports',
       'Standard webhook notifications & event logs',
       'Email developer & operations support',
     ],
@@ -45,13 +46,14 @@ const PRICING_TIERS: PricingTier[] = [
     name: 'Growth',
     badge: 'Most Popular',
     popular: true,
-    rate: '1.5%',
-    rateDetail: 'per successful transaction',
-    description: 'Optimized rates and enterprise capabilities for growing digital businesses processing consistent volume.',
+    rate: '3% / 2%',
+    rateDetail: 'mobile & card / bank transfer',
+    description:
+      'Optimized rates and enterprise capabilities for growing digital businesses processing consistent volume.',
     highlights: [
       'Everything in Starter',
       'Visa & Mastercard digital card acceptance',
-      'Lower 1.5% flat transaction rate',
+      'No monthly platform fee',
       'Team member access with role-based permissions',
       'Full ledger reconciliation reports & CSV/PDF export',
       'Advanced webhook retry logic & delivery monitoring',
@@ -64,14 +66,15 @@ const PRICING_TIERS: PricingTier[] = [
     id: 'enterprise',
     name: 'Enterprise',
     badge: 'High-Volume Merchants',
-    rate: 'Custom',
-    rateDetail: 'volume-tiered from 1.2%',
-    description: 'Custom pricing, dedicated infrastructure, and treasury routing for large platforms and financial institutions.',
+    rate: '3% / 2%',
+    rateDetail: 'confirmed channel pricing',
+    description:
+      'Custom pricing, dedicated infrastructure, and treasury routing for large platforms and financial institutions.',
     highlights: [
       'Everything in Growth',
-      'Volume-based interchange discounting from 1.2%',
-      'Bulk payouts & automated disbursements API',
-      'Custom settlement schedule (same-day or multiple daily)',
+      'Provider commercial costs confirmed separately',
+      'Sandbox-only reconciliation and settlement controls',
+      'Production activation subject to provider and regulatory approval',
       'Dedicated integration architect & technical account manager',
       '99.99% uptime Service Level Agreement (SLA)',
       'Custom regulatory, AML & compliance reporting',
@@ -85,32 +88,32 @@ const CHANNELS = [
   {
     name: 'Airtel Money',
     type: 'Mobile Wallet',
-    rate: '1.8%',
-    settlement: 'T+1 Bank Transfer',
+    rate: '3%',
+    settlement: 'Sandbox only; production pending',
     logo: '/brands/airtel-money.svg',
     color: 'bg-red-50 text-red-600 border-red-200',
   },
   {
     name: 'TNM Mpamba',
     type: 'Mobile Wallet',
-    rate: '1.8%',
-    settlement: 'T+1 Bank Transfer',
+    rate: '3%',
+    settlement: 'Sandbox only; production pending',
     logo: '/brands/tnm-mpamba.svg',
     color: 'bg-green-50 text-green-600 border-green-200',
   },
   {
     name: 'Visa & Mastercard',
     type: 'Credit & Debit Cards',
-    rate: '2.2%',
-    settlement: 'T+1 Bank Transfer',
+    rate: '3%',
+    settlement: 'Sandbox only; production pending',
     logo: '/brands/visa.svg',
     color: 'bg-blue-50 text-blue-600 border-blue-200',
   },
   {
     name: 'National Switch',
     type: 'Bank Clearing',
-    rate: '1.5%',
-    settlement: 'Direct Account Clearing',
+    rate: '2%',
+    settlement: 'Sandbox only; production pending',
     logo: '',
     color: 'bg-violet-50 text-violet-600 border-violet-200',
   },
@@ -127,7 +130,7 @@ const PRICING_FAQS = [
   },
   {
     q: 'How does settlement to my bank account work?',
-    a: 'Net funds from reconciled transactions are batched and settled automatically to your registered Malawian business bank account on a T+1 (next business day) schedule, fully reconciled against official provider records.',
+    a: 'The sandbox produces internal settlement batches and deterministic CSV evidence only. It does not execute a bank or mobile-money transfer. Production settlement timing remains unconfirmed.',
   },
   {
     q: 'Can I test all payment channels before going live?',
@@ -135,7 +138,7 @@ const PRICING_FAQS = [
   },
   {
     q: 'Can I get a volume discount if my transaction volume increases?',
-    a: 'Yes. Once your monthly processed volume exceeds MWK 25,000,000, our system automatically unlocks Growth tier pricing, and our sales team can negotiate custom Enterprise tiers with rates scaling down to 1.2%.',
+    a: 'No volume discount is currently confirmed. Published pricing remains 3% for successful mobile-money and card collections and 2% for successful bank-transfer collections.',
   },
 ];
 
@@ -147,7 +150,10 @@ export default function PricingPage() {
       {/* ── Hero Section with Highly Visible Background Image Layer ── */}
       <section className="relative isolate flex min-h-[480px] items-center overflow-hidden bg-white pt-24 pb-16 lg:pt-32 lg:pb-24">
         {/* Background Image Layer — clearly and prominently visible */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 select-none overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 select-none overflow-hidden"
+        >
           <img
             src={HERO_BG_IMAGE}
             onError={(e) => {
@@ -165,7 +171,10 @@ export default function PricingPage() {
         </div>
 
         {/* Ambient decorative elements */}
-        <div aria-hidden="true" className="grid-bg absolute inset-0 opacity-60 pointer-events-none" />
+        <div
+          aria-hidden="true"
+          className="grid-bg absolute inset-0 opacity-60 pointer-events-none"
+        />
         <div aria-hidden="true" className="hero-glow absolute inset-0 pointer-events-none" />
 
         <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -180,8 +189,6 @@ export default function PricingPage() {
             </Link>
           </div>
           <div className="mx-auto max-w-3xl text-center">
-
-
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
               Simple, fair pricing.{' '}
               <span className="bg-gradient-to-r from-[#1B4FD8] via-blue-500 to-sky-400 bg-clip-text text-transparent">
@@ -190,8 +197,9 @@ export default function PricingPage() {
             </h1>
 
             <p className="mt-6 text-base sm:text-lg leading-relaxed text-slate-600">
-              Only pay when you get paid. Scale seamlessly from your first transaction to enterprise volumes with
-              transparent package rates, zero monthly maintenance, and automated settlement.
+              Only pay when you get paid. Scale seamlessly from your first transaction to enterprise
+              volumes with transparent package rates, zero monthly maintenance, and automated
+              settlement.
             </p>
 
             {/* Quick Guarantees */}
@@ -206,7 +214,7 @@ export default function PricingPage() {
                 <Check className="h-4 w-4 text-emerald-600 font-bold" /> Free Unlimited Sandbox
               </span>
               <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 font-bold" /> T+1 Bank Payouts
+                <Check className="h-4 w-4 text-emerald-600 font-bold" /> Sandbox settlement evidence
               </span>
             </div>
           </div>
@@ -260,9 +268,14 @@ export default function PricingPage() {
 
                   {/* Feature Highlights list */}
                   <div className="mt-6 space-y-3.5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Included features</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Included features
+                    </p>
                     {tier.highlights.map((feat) => (
-                      <div key={feat} className="flex items-start gap-3 text-xs sm:text-sm text-slate-700">
+                      <div
+                        key={feat}
+                        className="flex items-start gap-3 text-xs sm:text-sm text-slate-700"
+                      >
                         <Check className="h-4 w-4 shrink-0 text-[#1B4FD8] mt-0.5" />
                         <span>{feat}</span>
                       </div>
@@ -303,12 +316,15 @@ export default function PricingPage() {
       <section className="border-t border-slate-100 bg-slate-50 py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">Payment Channels</p>
+            <p className="text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">
+              Payment Channels
+            </p>
             <h2 className="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">
               Transparent rates per channel
             </h2>
             <p className="mt-4 text-sm sm:text-base text-slate-500">
-              Clear transaction fees across all Malawian mobile money operators and digital card networks.
+              Clear transaction fees across all Malawian mobile money operators and digital card
+              networks.
             </p>
           </div>
 
@@ -320,9 +336,18 @@ export default function PricingPage() {
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <div className={['flex h-10 w-10 items-center justify-center rounded-xl border font-bold text-sm', ch.color].join(' ')}>
+                    <div
+                      className={[
+                        'flex h-10 w-10 items-center justify-center rounded-xl border font-bold text-sm',
+                        ch.color,
+                      ].join(' ')}
+                    >
                       {ch.logo ? (
-                        <img src={ch.logo} alt={ch.name} className="max-h-5 max-w-7 object-contain" />
+                        <img
+                          src={ch.logo}
+                          alt={ch.name}
+                          className="max-h-5 max-w-7 object-contain"
+                        />
                       ) : (
                         <Building2 className="h-5 w-5" />
                       )}
@@ -354,10 +379,13 @@ export default function PricingPage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
                 <Zap className="h-3.5 w-3.5" /> High Volume Solutions
               </div>
-              <h2 className="mt-6 text-3xl font-extrabold sm:text-4xl">Processing over MWK 50M monthly?</h2>
+              <h2 className="mt-6 text-3xl font-extrabold sm:text-4xl">
+                Processing over MWK 50M monthly?
+              </h2>
               <p className="mt-4 text-sm sm:text-base text-slate-300 leading-relaxed">
-                Connect directly with our engineering and treasury leadership to access custom interchange pricing,
-                same-day settlement batches, and specialized enterprise API rate limits.
+                Connect directly with our engineering and treasury leadership to access custom
+                interchange pricing, same-day settlement batches, and specialized enterprise API
+                rate limits.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <a
@@ -385,7 +413,9 @@ export default function PricingPage() {
             <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.3em] text-[#1B4FD8]">
               <HelpCircle className="h-4 w-4" /> FAQ
             </div>
-            <h2 className="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">Pricing questions answered</h2>
+            <h2 className="mt-3 text-3xl font-extrabold text-slate-900 sm:text-4xl">
+              Pricing questions answered
+            </h2>
             <p className="mt-4 text-sm sm:text-base text-slate-500">
               Everything you need to know about transaction costs, settlements, and compliance.
             </p>
@@ -409,7 +439,9 @@ export default function PricingPage() {
                     <span
                       className={[
                         'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-transform duration-200',
-                        isOpen ? 'rotate-45 border-[#1B4FD8] bg-[#1B4FD8] text-white' : 'border-slate-200 text-slate-400',
+                        isOpen
+                          ? 'rotate-45 border-[#1B4FD8] bg-[#1B4FD8] text-white'
+                          : 'border-slate-200 text-slate-400',
                       ].join(' ')}
                     >
                       +

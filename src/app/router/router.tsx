@@ -1,11 +1,10 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { MerchantLayout } from '@/layouts/MerchantLayout';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { CheckoutLayout } from '@/layouts/CheckoutLayout';
-import { RequireAuth, RequirePermission, RedirectIfAuthenticated } from './guards';
-import { FeatureComingSoon } from '@/components/feedback/FeatureComingSoon';
+import { RequireAuth, RequireMerchant, RequirePermission, RequirePlatformAdmin, RedirectIfAuthenticated } from './guards';
 import {
   LandingPage,
   PricingPage,
@@ -32,6 +31,7 @@ import {
   ResetPasswordPage,
   VerifyEmailPage,
   CheckoutPage,
+  QrCheckoutPage,
   PaymentStatusPage,
   DashboardPage,
   OnboardingPage,
@@ -40,6 +40,9 @@ import {
   PaymentLinksPage,
   CreatePaymentLinkPage,
   PaymentLinkDetailPage,
+  ScanToPayPage,
+  CreateScanToPayPage,
+  ScanToPayDetailPage,
   RefundsPage,
   RefundDetailPage,
   SettlementsPage,
@@ -49,13 +52,42 @@ import {
   SettingsPage,
   SecuritySettingsPage,
   ReportsPage,
+  TeamPage,
+  RolesPage,
+  SupportPage,
+  SupportDetailPage,
+  AdminSupportPage,
+  AdminSupportDetailPage,
   DeveloperDashboardPage,
   DeveloperApiKeysPage,
   DeveloperWebhooksPage,
   DeveloperWebhookDetailPage,
+  DeveloperDocumentationPage,
+  AdminHomePage,
+  MerchantApplicationsListPage,
+  MerchantApplicationDetailPage,
+  AdminMerchantsPage,
+  AdminMerchantDetailPage,
+  AdminTransactionsPage,
+  AdminTransactionDetailPage,
+  AdminRefundsPage,
+  PendingRefundApprovalsPage,
+  AdminSettlementsPage,
+  AdminReconciliationPage,
+  AdminExceptionsPage,
+  AdminExceptionDetailPage,
+  AdminProvidersPage,
+  AdminUsersPage,
+  AdminRolesPage,
+  AuditLogsPage,
+  AdminIncidentsPage,
+  AdminSecurityPage,
+  AdminReportsPage,
+  SystemHealthPage,
+  AdminSettingsPage,
 } from './lazyPages';
 
-export const router = createBrowserRouter([
+const allRoutes:RouteObject[] = [
   {
     element: <PublicLayout />,
     children: [
@@ -85,8 +117,22 @@ export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
-      { path: '/login', element: <RedirectIfAuthenticated><LoginPage /></RedirectIfAuthenticated> },
-      { path: '/register', element: <RedirectIfAuthenticated><RegisterPage /></RedirectIfAuthenticated> },
+      {
+        path: '/login',
+        element: (
+          <RedirectIfAuthenticated>
+            <LoginPage />
+          </RedirectIfAuthenticated>
+        ),
+      },
+      {
+        path: '/register',
+        element: (
+          <RedirectIfAuthenticated>
+            <RegisterPage />
+          </RedirectIfAuthenticated>
+        ),
+      },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/verify-email', element: <VerifyEmailPage /> },
@@ -96,28 +142,110 @@ export const router = createBrowserRouter([
     element: <CheckoutLayout />,
     children: [
       { path: '/checkout/:token', element: <CheckoutPage /> },
+      { path: '/checkout/qr/:token', element: <QrCheckoutPage /> },
       { path: '/payment/:reference', element: <PaymentStatusPage /> },
     ],
   },
-  {
+  ...(import.meta.env.VITE_PORTAL_CONTEXT !== 'staff' ? [{
     element: (
       <RequireAuth>
-        <MerchantLayout />
+        <RequireMerchant><MerchantLayout /></RequireMerchant>
       </RequireAuth>
     ),
     children: [
       { path: '/dashboard', element: <DashboardPage /> },
-      { path: '/onboarding', element: <OnboardingPage /> },
+      {
+        path: '/onboarding',
+        element: (
+          <RequirePermission anyOf={['onboarding:read', 'onboarding:write']}>
+            <OnboardingPage />
+          </RequirePermission>
+        ),
+      },
 
-      { path: '/transactions', element: <RequirePermission permission="payments:read"><TransactionsPage /></RequirePermission> },
-      { path: '/transactions/:id', element: <RequirePermission permission="payments:read"><TransactionDetailPage /></RequirePermission> },
+      {
+        path: '/transactions',
+        element: (
+          <RequirePermission permission="payments:read">
+            <TransactionsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/transactions/:id',
+        element: (
+          <RequirePermission permission="payments:read">
+            <TransactionDetailPage />
+          </RequirePermission>
+        ),
+      },
 
-      { path: '/payment-links', element: <RequirePermission permission="payments.links:manage"><PaymentLinksPage /></RequirePermission> },
-      { path: '/payment-links/create', element: <RequirePermission permission="payments.links:manage"><CreatePaymentLinkPage /></RequirePermission> },
-      { path: '/payment-links/:id', element: <RequirePermission permission="payments.links:manage"><PaymentLinkDetailPage /></RequirePermission> },
+      {
+        path: '/payment-links',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <PaymentLinksPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/payment-links/create',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <CreatePaymentLinkPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/payment-links/:id',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <PaymentLinkDetailPage />
+          </RequirePermission>
+        ),
+      },
 
-      { path: '/refunds', element: <RequirePermission permission="payments.refunds:request"><RefundsPage /></RequirePermission> },
-      { path: '/refunds/:id', element: <RequirePermission permission="payments.refunds:request"><RefundDetailPage /></RequirePermission> },
+      {
+        path: '/scan-to-pay',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <ScanToPayPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/scan-to-pay/create',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <CreateScanToPayPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/scan-to-pay/:id',
+        element: (
+          <RequirePermission permission="payments.links:manage">
+            <ScanToPayDetailPage />
+          </RequirePermission>
+        ),
+      },
+
+      {
+        path: '/refunds',
+        element: (
+          <RequirePermission permission="payments.refunds:request">
+            <RefundsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/refunds/:id',
+        element: (
+          <RequirePermission permission="payments.refunds:request">
+            <RefundDetailPage />
+          </RequirePermission>
+        ),
+      },
 
       {
         path: '/settlements',
@@ -196,7 +324,7 @@ export const router = createBrowserRouter([
         path: '/developers/documentation',
         element: (
           <RequirePermission permission="developer.apiKeys:manage">
-            <FeatureComingSoon title="Developer documentation" />
+            <DeveloperDocumentationPage />
           </RequirePermission>
         ),
       },
@@ -204,28 +332,38 @@ export const router = createBrowserRouter([
       {
         path: '/team',
         element: (
-          <RequirePermission permission="team:manage">
-            <FeatureComingSoon title="Team" description="Invite teammates and manage access — on the roadmap." />
+          <RequirePermission permission="team:read">
+            <TeamPage />
           </RequirePermission>
         ),
       },
       {
         path: '/roles',
         element: (
-          <RequirePermission permission="roles:manage">
-            <FeatureComingSoon title="Roles & permissions" />
+          <RequirePermission permission="roles:read">
+            <RolesPage />
           </RequirePermission>
         ),
       },
 
-      { path: '/settings', element: <SettingsPage /> },
-      { path: '/settings/security', element: <SecuritySettingsPage /> },
+      {
+        path: '/settings',
+        element: (
+          <RequirePermission permission="security:manage:self"><SettingsPage /></RequirePermission>
+        ),
+      },
+      {
+        path: '/settings/security',
+        element: (
+          <RequirePermission permission="security:manage:self"><SecuritySettingsPage /></RequirePermission>
+        ),
+      },
 
       {
         path: '/support',
         element: (
           <RequirePermission permission="support:read">
-            <FeatureComingSoon title="Support" description="Support case tracking is on the roadmap." />
+            <SupportPage />
           </RequirePermission>
         ),
       },
@@ -233,7 +371,7 @@ export const router = createBrowserRouter([
         path: '/support/:id',
         element: (
           <RequirePermission permission="support:read">
-            <FeatureComingSoon title="Support case" />
+            <SupportDetailPage />
           </RequirePermission>
         ),
       },
@@ -242,33 +380,204 @@ export const router = createBrowserRouter([
   {
     element: (
       <RequireAuth>
-        <AdminLayout />
+        <RequirePlatformAdmin><AdminLayout /></RequirePlatformAdmin>
       </RequireAuth>
     ),
     children: [
-      { path: '/admin', element: <RequirePermission anyOf={['admin.platform:manage', 'admin.merchants:review']}><FeatureComingSoon title="Admin home" description="Platform-wide health and activity summary — on the roadmap." /></RequirePermission> },
-      { path: '/admin/merchant-applications', element: <RequirePermission permission="admin.merchants:review"><FeatureComingSoon title="Merchant applications" /></RequirePermission> },
-      { path: '/admin/merchant-applications/:id', element: <RequirePermission permission="admin.merchants:review"><FeatureComingSoon title="Merchant application" /></RequirePermission> },
-      { path: '/admin/merchants', element: <RequirePermission permission="admin.merchants:review"><FeatureComingSoon title="Merchants" /></RequirePermission> },
-      { path: '/admin/merchants/:id', element: <RequirePermission permission="admin.merchants:review"><FeatureComingSoon title="Merchant" /></RequirePermission> },
-      { path: '/admin/transactions', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="All transactions" /></RequirePermission> },
-      { path: '/admin/transactions/:id', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Transaction" /></RequirePermission> },
-      { path: '/admin/refunds', element: <RequirePermission permission="admin.refunds:approve"><FeatureComingSoon title="All refunds" /></RequirePermission> },
-      { path: '/admin/refunds/pending', element: <RequirePermission permission="admin.refunds:approve"><FeatureComingSoon title="Refund approvals" description="Maker-checker refund approval queue — on the roadmap." /></RequirePermission> },
-      { path: '/admin/settlements', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Settlements" /></RequirePermission> },
-      { path: '/admin/reconciliation', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Reconciliation" /></RequirePermission> },
-      { path: '/admin/exceptions', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Exceptions" /></RequirePermission> },
-      { path: '/admin/exceptions/:id', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Exception" /></RequirePermission> },
-      { path: '/admin/providers', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Providers" /></RequirePermission> },
-      { path: '/admin/users', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Users" /></RequirePermission> },
-      { path: '/admin/roles', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Roles" /></RequirePermission> },
-      { path: '/admin/audit-logs', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Audit logs" /></RequirePermission> },
-      { path: '/admin/incidents', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Incidents" /></RequirePermission> },
-      { path: '/admin/security', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Security" /></RequirePermission> },
-      { path: '/admin/reports', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Reports" /></RequirePermission> },
-      { path: '/admin/system-health', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="System health" /></RequirePermission> },
-      { path: '/admin/settings', element: <RequirePermission permission="admin.platform:manage"><FeatureComingSoon title="Admin settings" /></RequirePermission> },
+      {
+        path: '/admin/support',
+        element: (
+          <RequirePermission permission="platform.support.read">
+            <AdminSupportPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/support/:id',
+        element: (
+          <RequirePermission permission="platform.support.read">
+            <AdminSupportDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin',
+        element: (
+          <RequirePermission anyOf={['platform.health.read', 'platform.merchants.read']}>
+            <AdminHomePage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/merchant-applications',
+        element: (
+          <RequirePermission permission="compliance:review">
+            <MerchantApplicationsListPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/merchant-applications/:id',
+        element: (
+          <RequirePermission permission="compliance:review">
+            <MerchantApplicationDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/merchants',
+        element: (
+          <RequirePermission permission="platform.merchants.read">
+            <AdminMerchantsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/merchants/:id',
+        element: (
+          <RequirePermission permission="platform.merchants.read">
+            <AdminMerchantDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/transactions',
+        element: (
+          <RequirePermission permission="platform.transactions.read">
+            <AdminTransactionsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/transactions/:id',
+        element: (
+          <RequirePermission permission="platform.transactions.read">
+            <AdminTransactionDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/refunds',
+        element: (
+          <RequirePermission permission="platform.refunds.read">
+            <AdminRefundsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/refunds/pending',
+        element: (
+          <RequirePermission permission="admin.refunds:approve">
+            <PendingRefundApprovalsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/settlements',
+        element: (
+          <RequirePermission permission="platform.settlements.read">
+            <AdminSettlementsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/reconciliation',
+        element: (
+          <RequirePermission permission="platform.reconciliation.read">
+            <AdminReconciliationPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/exceptions',
+        element: (
+          <RequirePermission permission="platform.reconciliation.read">
+            <AdminExceptionsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/exceptions/:id',
+        element: (
+          <RequirePermission permission="platform.reconciliation.read">
+            <AdminExceptionDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/providers',
+        element: (
+          <RequirePermission permission="platform.operations.read">
+            <AdminProvidersPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/users',
+        element: (
+          <RequirePermission permission="platform.staff.read">
+            <AdminUsersPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/roles',
+        element: (
+          <RequirePermission permission="platform.staff.read">
+            <AdminRolesPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/audit-logs',
+        element: (
+          <RequirePermission permission="platform.audit.read">
+            <AuditLogsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/incidents',
+        element: (
+          <RequirePermission permission="platform.incidents.read">
+            <AdminIncidentsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/security',
+        element: (
+          <RequirePermission permission="platform.controls.read">
+            <AdminSecurityPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/reports',
+        element: (
+          <RequirePermission permission="platform.metrics.read">
+            <AdminReportsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/system-health',
+        element: (
+          <RequirePermission permission="platform.health.read">
+            <SystemHealthPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: '/admin/settings',
+        element: (
+          <RequirePermission permission="platform.operations.read">
+            <AdminSettingsPage />
+          </RequirePermission>
+        ),
+      },
     ],
-  },
+  }] : []),
   { path: '*', element: <NotFoundPage /> },
-]);
+];
+export const router=createBrowserRouter(allRoutes);

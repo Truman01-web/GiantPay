@@ -30,6 +30,9 @@ convention, wherever practical.
   allowed there is UI-only state (sidebar collapsed, last-selected date
   range) via `lib/persist.ts`, which is allowlisted to specific, named,
   non-sensitive keys.
+- Real-mode builds gate the MSW dynamic import directly on the compile-time
+  `VITE_USE_MOCK_API` value. This removes the worker and fixture modules from
+  sandbox/production output rather than merely leaving them dormant at runtime.
 - `VITE_`-prefixed env vars are bundled into the client and are **public by
   definition** — `.env.example` contains no secret, and code review of any
   new `VITE_*` var should ask "am I comfortable with this being visible in

@@ -7,14 +7,18 @@ import { DataTable, type DataTableColumn } from '@/components/data-display/DataT
 import { Pagination } from '@/components/data-display/Pagination';
 import { StatusBadge } from '@/components/data-display/StatusBadge';
 import { ErrorState } from '@/components/feedback/ErrorState';
+import { Alert } from '@/components/feedback/Alert';
 import { ApiError } from '@/services/api/errors';
-import { useReconciliationRuns } from './useReconciliationQueries';
+import { useLedgerIntegrity, useReconciliationRuns } from './useReconciliationQueries';
+import { usePermission } from '@/hooks/useSession';
 import type { ReconciliationRunListItem } from '@/types/reconciliation';
 
 export function ReconciliationOverview() {
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
   const query = useReconciliationRuns({ page, pageSize: 20 });
+  const canInspectLedger = usePermission('ledger:integrity');
+  const integrity = useLedgerIntegrity(canInspectLedger);
 
   const latestRun = page === 1 ? query.data?.data[0] : undefined;
 
@@ -37,6 +41,8 @@ export function ReconciliationOverview() {
   return (
     <div>
       <PageHeader title="Reconciliation" description="Matched, unmatched and exception tracking against provider settlement files." />
+      {canInspectLedger && integrity.data && <div className="mb-4"><Alert variant={integrity.data.ok ? 'success' : 'danger'}>{integrity.data.ok ? 'Ledger integrity check passed.' : `Ledger integrity check found ${integrity.data.failures.length} failure(s). No records were changed.`}</Alert></div>}
+      {canInspectLedger && integrity.isError && <div className="mb-4"><Alert variant="danger">Ledger integrity could not be verified. No success is assumed.</Alert></div>}
 
       {query.isError ? (
         <ErrorState message={query.error instanceof ApiError ? query.error.message : 'We could not load reconciliation runs.'} onRetry={() => query.refetch()} />

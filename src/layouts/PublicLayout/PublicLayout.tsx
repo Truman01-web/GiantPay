@@ -172,7 +172,7 @@ export function PublicLayout() {
               © {new Date().getFullYear()} GiantPlus Global Finance Solutions. All rights reserved.
             </p>
             <p className="text-xs text-white/20">
-              Regulated payment services · Malawi
+              Designed for regulatory compliance · Malawi
             </p>
           </div>
         </div>

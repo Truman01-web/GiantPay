@@ -3,6 +3,7 @@ import { Outlet, Link } from 'react-router-dom';
 import { Logo } from '@/components/navigation/Logo';
 import { FullPageLoader } from '@/components/feedback/FullPageLoader';
 import { ErrorBoundary } from '@/app/providers/ErrorBoundary';
+import { env } from '@/app/config/env';
 
 export function AuthLayout() {
   return (
@@ -25,9 +26,7 @@ export function AuthLayout() {
         Skip to content
       </a>
       <header className="relative z-10 px-4 py-6 sm:px-6">
-        <Link to="/" aria-label="GiantPay home">
-          <Logo />
-        </Link>
+        {env.portalContext==='staff'?<span className="text-xl font-extrabold tracking-tight text-slate-950">GiantPlus</span>:<Link to="/" aria-label="GiantPay home"><Logo /></Link>}
       </header>
       <main id="main-content" className="relative z-10 flex flex-1 items-center justify-center px-4 pb-12">
         <div className="w-full max-w-md">

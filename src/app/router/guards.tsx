@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSession, useSessionStatus } from '@/hooks/useSession';
 import { useSessionStore } from '@/services/auth/sessionStore';
-import { hasPermission, hasAnyPermission, type Permission } from '@/types/auth';
+import { hasPermission, hasAnyPermission, staffLandingPath, type Permission } from '@/types/auth';
 import { PermissionDenied } from '@/components/feedback/PermissionDenied';
 import { FullPageLoader } from '@/components/feedback/FullPageLoader';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -52,6 +52,19 @@ export function RequirePermission({
 /** Keeps an authenticated user off the auth screens (login/register/etc). */
 export function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
   const status = useSessionStatus();
-  if (status === 'authenticated') return <Navigate to="/dashboard" replace />;
+  const session = useSession();
+  if (status === 'authenticated') return <Navigate to={session?.user.merchantId === null ? staffLandingPath(session) : '/dashboard'} replace />;
   return children;
+}
+
+export function RequireMerchant({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  return session?.user.merchantId ? children : <PermissionDenied />;
+}
+
+export function RequirePlatformAdmin({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  return session?.user.role === 'PLATFORM_ADMIN' && session.user.merchantId === null
+    ? children
+    : <PermissionDenied />;
 }

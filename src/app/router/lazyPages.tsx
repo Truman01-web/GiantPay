@@ -29,6 +29,7 @@ export const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'))
 export const VerifyEmailPage = lazy(() => import('@/pages/VerifyEmailPage'));
 
 export const CheckoutPage = lazy(() => import('@/pages/CheckoutPage'));
+export const QrCheckoutPage = lazy(() => import('@/pages/QrCheckoutPage'));
 export const PaymentStatusPage = lazy(() => import('@/pages/PaymentStatusPage'));
 
 export const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
@@ -38,6 +39,9 @@ export const TransactionDetailPage = lazy(() => import('@/pages/TransactionDetai
 export const PaymentLinksPage = lazy(() => import('@/pages/PaymentLinksPage'));
 export const CreatePaymentLinkPage = lazy(() => import('@/pages/CreatePaymentLinkPage'));
 export const PaymentLinkDetailPage = lazy(() => import('@/pages/PaymentLinkDetailPage'));
+export const ScanToPayPage = lazy(() => import('@/pages/ScanToPayPage'));
+export const CreateScanToPayPage = lazy(() => import('@/pages/CreateScanToPayPage'));
+export const ScanToPayDetailPage = lazy(() => import('@/pages/ScanToPayDetailPage'));
 export const RefundsPage = lazy(() => import('@/pages/RefundsPage'));
 export const RefundDetailPage = lazy(() => import('@/pages/RefundDetailPage'));
 export const SettlementsPage = lazy(() => import('@/pages/SettlementsPage'));
@@ -48,7 +52,42 @@ export const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 export const SecuritySettingsPage = lazy(() => import('@/pages/SecuritySettingsPage'));
 export const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 
+// Merchant-area pages (team, roles, support)
+export const TeamPage = lazy(() => import('@/pages/TeamPage'));
+export const RolesPage = lazy(() => import('@/pages/RolesPage'));
+export const SupportPage = lazy(() => import('@/pages/SupportPage'));
+export const SupportDetailPage = lazy(() => import('@/pages/SupportDetailPage'));
+export const AdminSupportPage = lazy(() => import('@/pages/admin/AdminSupportPage'));
+export const AdminSupportDetailPage = lazy(() => import('@/pages/admin/AdminSupportDetailPage'));
+
 export const DeveloperDashboardPage = lazy(() => import('@/pages/DeveloperDashboardPage'));
 export const DeveloperApiKeysPage = lazy(() => import('@/pages/DeveloperApiKeysPage'));
 export const DeveloperWebhooksPage = lazy(() => import('@/pages/DeveloperWebhooksPage'));
 export const DeveloperWebhookDetailPage = lazy(() => import('@/pages/DeveloperWebhookDetailPage'));
+export const DeveloperDocumentationPage = lazy(() => import('@/pages/DeveloperDocumentationPage'));
+
+export const AdminHomePage = lazy(() => import('@/pages/AdminHomePage'));
+export const MerchantApplicationsListPage = lazy(() => import('@/pages/MerchantApplicationsListPage'));
+export const MerchantApplicationDetailPage = lazy(() => import('@/pages/MerchantApplicationDetailPage'));
+export const PendingRefundApprovalsPage = lazy(() => import('@/pages/PendingRefundApprovalsPage'));
+export const AuditLogsPage = lazy(() => import('@/pages/AuditLogsPage'));
+export const SystemHealthPage = lazy(() => import('@/pages/SystemHealthPage'));
+
+export const AdminMerchantsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminMerchantsPage })));
+export const AdminMerchantDetailPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminMerchantDetailPage })));
+export const AdminTransactionsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminTransactionsPage })));
+export const AdminTransactionDetailPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminTransactionDetailPage })));
+export const AdminRefundsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminRefundsPage })));
+export const AdminPendingRefundsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminPendingRefundsPage })));
+export const AdminSettlementsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminSettlementsPage })));
+export const AdminReconciliationPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminReconciliationPage })));
+export const AdminExceptionsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminExceptionsPage })));
+export const AdminExceptionDetailPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminExceptionDetailPage })));
+export const AdminProvidersPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminProvidersPage })));
+export const AdminUsersPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminUsersPage })));
+export const AdminRolesPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminRolesPage })));
+export const AdminAuditLogsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminAuditLogsPage })));
+export const AdminIncidentsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminIncidentsPage })));
+export const AdminSecurityPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminSecurityPage })));
+export const AdminReportsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminReportsPage })));
+export const AdminSettingsPage = lazy(() => import('@/pages/admin/PlatformResourcePages').then((module) => ({ default: module.AdminSettingsPage })));

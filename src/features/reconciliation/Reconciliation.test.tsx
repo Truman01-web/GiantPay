@@ -10,10 +10,11 @@ import { useSessionStore } from '@/services/auth/sessionStore';
 import { MOCK_RECONCILIATION_RUNS } from '@/mocks/fixtures/reconciliation';
 import { ReconciliationOverview } from './ReconciliationOverview';
 import { ReconciliationRunDetail } from './ReconciliationRunDetail';
+import type { Permission } from '@/types/auth';
 
 const base = `${env.apiUrl}/v1`;
 
-function renderApp(initialPath: string) {
+function renderApp(initialPath: string, permissions: Permission[] = ['reconciliation:read', 'reconciliation:manage']) {
   useSessionStore.setState({
     status: 'authenticated',
     session: {
@@ -24,7 +25,7 @@ function renderApp(initialPath: string) {
         name: 'Test Owner',
         email: 'owner@example.mw',
         role: 'OWNER',
-        permissions: ['reconciliation:read', 'reconciliation:manage'],
+        permissions,
         merchantId: 'm1',
         merchantName: 'Test Merchant',
         mfaEnabled: false,
@@ -82,10 +83,10 @@ describe('ReconciliationRunDetail', () => {
     // Dialog closes and the row now reflects the backend-confirmed new
     // status — never assumed successful just because the button was clicked.
     await waitFor(() => expect(screen.queryByText('Update exception')).not.toBeInTheDocument());
-    expect(await screen.findByText('Investigating')).toBeInTheDocument();
+    expect(await screen.findByText('Under review')).toBeInTheDocument();
   });
 
-  it('requires a note before resolving or escalating', async () => {
+  it('requires a note before resolving or dismissing', async () => {
     // OPEN only ever offers "investigate" or "escalate" (see
     // NEXT_STATUS_OPTIONS in schemas.ts) — "Resolve" only becomes
     // available from INVESTIGATING, so this drives that transition first
@@ -101,7 +102,7 @@ describe('ReconciliationRunDetail', () => {
     await screen.findByText('Update exception');
     await userEvent.click(screen.getByRole('button', { name: /save update/i })); // default = "Start investigating", no note needed
     await waitFor(() => expect(screen.queryByText('Update exception')).not.toBeInTheDocument());
-    await screen.findByText('Investigating');
+    await screen.findByText('Under review');
 
     await userEvent.click(screen.getAllByRole('button', { name: /^update$/i })[0]);
     await screen.findByText('Update exception');
@@ -117,7 +118,7 @@ describe('ReconciliationRunDetail', () => {
     const exception = withExceptions.exceptions.find((e) => e.status === 'OPEN')!;
 
     server.use(
-      http.patch(`${base}/reconciliation/runs/${withExceptions.id}/exceptions/${exception.id}`, () =>
+      http.post(`${base}/reconciliation/exceptions/${exception.id}/review`, () =>
         HttpResponse.json({ error: { code: 'INTERNAL', message: 'boom' } }, { status: 500 }),
       ),
     );
@@ -134,5 +135,24 @@ describe('ReconciliationRunDetail', () => {
     expect(await screen.findByText('boom')).toBeInTheDocument();
     // Dialog stays open — the failed update was not silently treated as applied.
     expect(screen.getByText('Update exception')).toBeInTheDocument();
+  });
+
+  it('creates an adjustment request but prevents the requester from reviewing it', async () => {
+    const run = MOCK_RECONCILIATION_RUNS.find((item) => item.exceptions.length > 0);
+    if (!run) return;
+    renderApp(`/reconciliation/${run.id}`, ['reconciliation:read', 'reconciliation:manage', 'reconciliation:approve']);
+    await userEvent.click((await screen.findAllByRole('button', { name: /adjustment/i }))[0]);
+    await userEvent.type(screen.getByLabelText(/original journal entry/i), 'jnl_original_1');
+    await userEvent.type(screen.getByLabelText(/^reason/i), 'Correct the confirmed sandbox ledger mismatch.');
+    await userEvent.type(screen.getByLabelText(/evidence reference/i), 'case-123');
+    await userEvent.click(screen.getByRole('button', { name: /request adjustment/i }));
+    expect(await screen.findByText('AWAITING_APPROVAL')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /approve adjustment/i })).toBeDisabled();
+    expect(screen.getByText(/separate reviewer/i)).toBeInTheDocument();
+  });
+
+  it('shows backend ledger-integrity results only to permitted users', async () => {
+    renderApp('/reconciliation', ['reconciliation:read', 'ledger:integrity']);
+    expect(await screen.findByText(/ledger integrity check passed/i)).toBeInTheDocument();
   });
 });

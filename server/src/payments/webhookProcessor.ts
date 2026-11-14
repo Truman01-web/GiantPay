@@ -9,7 +9,7 @@ import { postSuccessfulPayment } from '../ledger/ledgerService.js';
 
 export type WebhookProcessResult =
   | { outcome: 'PROCESSED' | 'DUPLICATE'; paymentStatus?: PaymentStatus }
-  | { outcome: 'PAYLOAD_CONFLICT' | 'UNKNOWN_PAYMENT' | 'INVALID_TRANSITION' };
+  | { outcome: 'PAYLOAD_CONFLICT' | 'UNKNOWN_PAYMENT' | 'INVALID_TRANSITION' | 'PROVIDER_MISMATCH' | 'STALE_RECOVERY_LEASE' };
 
 async function existingReceipt(client: pg.PoolClient, provider: string, eventId: string) {
   return client.query(
@@ -23,10 +23,20 @@ export async function processPaymentWebhook(
   provider: string,
   event: ProviderWebhookEvent,
   rawBody: Buffer,
+  recoveryLease?: { paymentId: string; token: string },
 ): Promise<WebhookProcessResult> {
   const hash = payloadHash(rawBody);
   return transaction(db, async (client) => {
     const paymentResult = await client.query('SELECT * FROM payments WHERE reference=$1 FOR UPDATE', [event.paymentReference]);
+    if (recoveryLease) {
+      // Fence financial effects under the same lock used by callbacks. Database
+      // wall time matters here: this transaction may have waited for that lock.
+      const lease = await client.query(`SELECT id FROM payments WHERE id=$1 AND reference=$2
+        AND recovery_lease_token=$3 AND recovery_lease_until > clock_timestamp()`,
+      [recoveryLease.paymentId,event.paymentReference,recoveryLease.token]);
+      if (!lease.rowCount) return { outcome: 'STALE_RECOVERY_LEASE' };
+    }
+    if (paymentResult.rowCount && paymentResult.rows[0].provider_name !== provider) return { outcome: 'PROVIDER_MISMATCH' };
     const prior = await existingReceipt(client, provider, event.eventId);
     if (prior.rowCount) {
       const receipt = prior.rows[0];
@@ -70,6 +80,10 @@ export async function processPaymentWebhook(
     }
 
     const payment = paymentResult.rows[0];
+    if (provider === 'flutterwave' && event.status === 'SUCCEEDED' && payment.provider_transaction_id && payment.provider_transaction_id !== event.providerPaymentId) {
+      await client.query(`UPDATE webhook_receipts SET processing_status='SUSPICIOUS',failure_code='PROVIDER_TRANSACTION_MISMATCH',processed_at=now() WHERE id=$1`, [receiptId]);
+      return { outcome: 'PAYLOAD_CONFLICT' };
+    }
     const decision = decidePaymentTransition(payment.status as PaymentStatus, event.status);
     if (decision === 'REJECT') {
       await client.query(
@@ -80,6 +94,9 @@ export async function processPaymentWebhook(
     }
 
     if (decision === 'APPLY') {
+      if (provider === 'flutterwave' && event.status === 'SUCCEEDED') {
+        await client.query('UPDATE payments SET provider_transaction_id=$1 WHERE id=$2', [event.providerPaymentId, payment.id]);
+      }
       await client.query('UPDATE payments SET status=$1,updated_at=now() WHERE id=$2', [event.status, payment.id]);
       const attemptUpdate = await client.query(
         `UPDATE payment_attempts SET status=$1,provider_payment_id=$2,updated_at=now()
@@ -90,6 +107,12 @@ export async function processPaymentWebhook(
       const ledger = event.status === 'SUCCEEDED'
         ? await postSuccessfulPayment(client, payment, event.eventId)
         : null;
+      if (ledger?.created && payment.scan_to_pay_code_id) {
+        await client.query('UPDATE scan_to_pay_codes SET successful_payments_count=successful_payments_count+1,updated_at=now() WHERE id=$1', [payment.scan_to_pay_code_id]);
+      }
+      if (ledger?.created && payment.payment_link_id) {
+        await client.query('UPDATE payment_links SET successful_payments_count=successful_payments_count+1 WHERE id=$1', [payment.payment_link_id]);
+      }
       await client.query(
         `INSERT INTO payment_events(id,payment_id,type,label,detail)
          VALUES($1,$2,'WEBHOOK_RECEIVED','Verified provider status received',$3)`,

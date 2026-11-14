@@ -1,9 +1,10 @@
 import { env } from '@/app/config/env';
-import { ApiError, GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE } from './errors';
+import { ApiError, GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE, safeApiErrorMessage } from './errors';
 
 export interface RequestOptions {
   signal?: AbortSignal;
   idempotencyKey?: string;
+  timeoutMs?: number;
 }
 
 interface RawErrorBody {
@@ -12,6 +13,7 @@ interface RawErrorBody {
     message?: string;
     fields?: Record<string, string>;
     requestId?: string;
+    traceId?: string;
   };
 }
 
@@ -31,7 +33,8 @@ export function setActiveCsrfToken(token: string | null): void {
 function getCsrfToken(): string | null {
   if (activeCsrfToken) return activeCsrfToken;
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|;\s*)giantpay_csrf=([^;]*)/);
+  const cookieName=env.portalContext==='staff'?'giantpay_staff_csrf':'giantpay_csrf';
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${cookieName}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -49,6 +52,27 @@ function buildHeaders(hasBody: boolean, options?: RequestOptions, method?: strin
   return headers;
 }
 
+async function requestDownload(path: string, options?: RequestOptions, method: 'GET' | 'POST' = 'POST'): Promise<{ blob: Blob; contentDisposition: string | null }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? 15_000);
+  try {
+    const response = await fetch(`${env.apiUrl}/v1${path}`, {
+      method,
+      credentials: 'include',
+      headers: { ...buildHeaders(false, options, method), Accept: 'text/csv,application/pdf,image/jpeg,image/png' },
+      signal: controller.signal,
+    });
+    if (response.status === 401) onUnauthorized?.();
+    if (!response.ok) throw await parseErrorResponse(response);
+    return { blob: await response.blob(), contentDisposition: response.headers.get('content-disposition') };
+  } catch (cause) {
+    if (cause instanceof ApiError) throw cause;
+    throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function parseErrorResponse(response: Response): Promise<ApiError> {
   let body: RawErrorBody = {};
   try {
@@ -56,22 +80,33 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
   } catch {
     // Non-JSON error body — fall through to a generic message.
   }
+  const code = body.error?.code ?? 'UNKNOWN_ERROR';
   return new ApiError({
     status: response.status,
-    code: body.error?.code ?? 'UNKNOWN_ERROR',
-    message: body.error?.message ?? GENERIC_ERROR_MESSAGE,
+    code,
+    message: safeApiErrorMessage(code, body.error?.message),
     fields: body.error?.fields,
     requestId: body.error?.requestId ?? response.headers.get('x-request-id') ?? undefined,
+    traceId: body.error?.traceId ?? response.headers.get('traceparent')?.split('-')[1] ?? undefined,
   });
 }
 
 async function request<T>(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
   options?: RequestOptions,
 ): Promise<T> {
   const url = `${env.apiUrl}/v1${path}`;
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(options?.signal?.reason);
+  if (options?.signal?.aborted) abortFromCaller();
+  else options?.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options?.timeoutMs ?? 15_000);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -79,13 +114,19 @@ async function request<T>(
       credentials: 'include',
       headers: buildHeaders(body !== undefined, options, method),
       body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: options?.signal,
+      signal: controller.signal,
     });
   } catch (cause) {
+    if (timedOut) {
+      throw new ApiError({ status: 0, code: 'TIMEOUT', message: 'The request timed out. Please try again.' });
+    }
     if (options?.signal?.aborted) {
       throw cause;
     }
     throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE });
+  } finally {
+    clearTimeout(timeout);
+    options?.signal?.removeEventListener('abort', abortFromCaller);
   }
 
   if (response.status === 401) {
@@ -103,10 +144,21 @@ async function request<T>(
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
-    return undefined as T;
+    throw new ApiError({ status: response.status, code: 'INVALID_RESPONSE', message: GENERIC_ERROR_MESSAGE });
   }
 
-  const data = (await response.json()) as T;
+  let data: T;
+  try {
+    data = (await response.json()) as T;
+  } catch {
+    throw new ApiError({
+      status: response.status,
+      code: 'INVALID_RESPONSE',
+      message: GENERIC_ERROR_MESSAGE,
+      requestId: response.headers.get('x-request-id') ?? undefined,
+      traceId: response.headers.get('traceparent')?.split('-')[1] ?? undefined,
+    });
+  }
   if (data && typeof data === 'object' && 'csrfToken' in data) {
     const csrfToken = (data as { csrfToken?: unknown }).csrfToken;
     if (typeof csrfToken === 'string') setActiveCsrfToken(csrfToken);
@@ -132,7 +184,7 @@ export const UPLOAD_TIMEOUT_MESSAGE = 'The upload timed out. Please check your c
 function uploadFile<T>(
   path: string,
   form: FormData,
-  options?: { signal?: AbortSignal; onProgress?: (percent: number) => void; timeoutMs?: number },
+  options?: { signal?: AbortSignal; onProgress?: (percent: number) => void; timeoutMs?: number; idempotencyKey?: string },
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     if (options?.signal?.aborted) {
@@ -152,6 +204,7 @@ function uploadFile<T>(
     xhr.setRequestHeader('X-Request-Id', crypto.randomUUID());
     const csrf = getCsrfToken();
     if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
+    if (options?.idempotencyKey) xhr.setRequestHeader('Idempotency-Key', options.idempotencyKey);
 
     // `xhr.timeout`/`ontimeout` and `xhr.abort()`/`onabort` are the
     // standard browser mechanism and are kept above as the primary path,
@@ -242,10 +295,14 @@ export const apiClient = {
   get: <T>(path: string, options?: RequestOptions) => request<T>('GET', path, undefined, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>('POST', path, body, options),
+  put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>('PUT', path, body, options),
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>('PATCH', path, body, options),
   delete: <T>(path: string, options?: RequestOptions) =>
     request<T>('DELETE', path, undefined, options),
+  postDownload: (path: string, options?: RequestOptions) => requestDownload(path, options, 'POST'),
+  getDownload: (path: string, options?: RequestOptions) => requestDownload(path, options, 'GET'),
   uploadFile,
 };
 

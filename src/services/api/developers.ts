@@ -1,11 +1,13 @@
 import { api, type RequestOptions } from './client';
+import { itemsPage, type BackendPage } from './contractAdapters';
 
 export interface ApiKey {
   id: string;
   name: string;
   prefix: string;
   environment: 'sandbox' | 'production';
-  status: 'ACTIVE' | 'REVOKED';
+  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED';
+  scopes?: string[];
   createdAt: string;
   lastUsedAt: string | null;
   secret?: string; // Only present on create response
@@ -35,12 +37,18 @@ export interface WebhookEndpoint {
   deliveries?: WebhookDelivery[];
 }
 
+type BackendWebhookEndpoint = Omit<WebhookEndpoint, 'secretMasked'> & { secret?: string };
+function webhookView(value: BackendWebhookEndpoint): WebhookEndpoint {
+  const plaintext = value.secret?.startsWith('whsec_') && !value.secret.includes('...') ? value.secret : undefined;
+  return { ...value, secretMasked: plaintext ? `whsec_...${plaintext.slice(-4)}` : (value.secret ?? ''), secret: plaintext };
+}
+
 export const developersApi = {
   listApiKeys(options?: RequestOptions): Promise<{ items: ApiKey[]; total: number }> {
-    return api.get<{ items: ApiKey[]; total: number }>('/developer/api-keys', options);
+    return api.get<BackendPage<ApiKey>>('/developer/api-keys', options).then(itemsPage);
   },
 
-  createApiKey(data: { name: string }, options?: RequestOptions): Promise<ApiKey> {
+  createApiKey(data: { name: string; scopes: string[]; expiresAt?: string }, options?: RequestOptions): Promise<ApiKey> {
     return api.post<ApiKey>('/developer/api-keys', data, options);
   },
 
@@ -49,26 +57,27 @@ export const developersApi = {
   },
 
   listWebhooks(options?: RequestOptions): Promise<{ items: WebhookEndpoint[]; total: number }> {
-    return api.get<{ items: WebhookEndpoint[]; total: number }>('/developer/webhooks', options);
+    return api.get<BackendPage<BackendWebhookEndpoint>>('/developer/webhooks', options)
+      .then((page) => itemsPage({ ...page, data: page.data.map(webhookView) }));
   },
 
-  createWebhook(data: { url: string; events: string[] }, options?: RequestOptions): Promise<WebhookEndpoint> {
-    return api.post<WebhookEndpoint>('/developer/webhooks', data, options);
+  createWebhook(data: { name: string; url: string; events: string[]; enabled?: boolean }, options?: RequestOptions): Promise<WebhookEndpoint> {
+    return api.post<BackendWebhookEndpoint>('/developer/webhooks', data, options).then(webhookView);
   },
 
   getWebhook(id: string, options?: RequestOptions): Promise<WebhookEndpoint> {
-    return api.get<WebhookEndpoint>(`/developer/webhooks/${id}`, options);
+    return api.get<BackendWebhookEndpoint>(`/developer/webhooks/${id}`, options).then(webhookView);
   },
 
   updateWebhook(id: string, data: { url?: string; events?: string[]; enabled?: boolean }, options?: RequestOptions): Promise<WebhookEndpoint> {
-    return api.patch<WebhookEndpoint>(`/developer/webhooks/${id}`, data, options);
+    return api.patch<BackendWebhookEndpoint>(`/developer/webhooks/${id}`, data, options).then(webhookView);
   },
 
   rotateWebhookSecret(id: string, options?: RequestOptions): Promise<{ secret: string }> {
-    return api.post<{ secret: string }>(`/developer/webhooks/${id}/rotate-secret`, {}, options);
+    return api.post<WebhookEndpoint & { secret: string }>(`/developer/webhooks/${id}/rotate-secret`, {}, options);
   },
 
-  retryWebhookDelivery(deliveryId: string, options?: RequestOptions): Promise<{ requeued: boolean }> {
-    return api.post<{ requeued: boolean }>(`/developer/webhook-deliveries/${deliveryId}/retry`, {}, options);
+  retryWebhookDelivery(deliveryId: string, options?: RequestOptions): Promise<{ id: string; status: string }> {
+    return api.post<{ id: string; status: string }>(`/developer/webhook-deliveries/${deliveryId}/retry`, {}, options);
   },
 };

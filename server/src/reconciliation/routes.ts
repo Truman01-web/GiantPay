@@ -61,6 +61,9 @@ const viewBatch = (r: any) => ({
   feesMinor: String(r.fees_minor),
   netMinor: String(r.net_minor),
   createdAt: r.created_at,
+  createdBy: r.created_by ?? null,
+  submittedAt: r.submitted_at ?? null,
+  approvedBy: r.approved_by ?? null,
   approvedAt: r.approved_at,
   exportedAt: r.exported_at,
   externalTransferExecuted: false,
@@ -83,7 +86,7 @@ export async function registerReconciliationRoutes(
       (r) => `${r.actor?.merchantId}:${r.actor?.id}`,
     );
   const reconRead = [auth, requirePermission('reconciliation:read')],
-    reconWrite = [auth, requirePermission('reconciliation:manage'), mutate],
+    reconWrite = [auth, requirePermission('reconciliation:manage'), mutate, operationalControlGuard(db,'SETTLEMENT_PROCESSING_PAUSED')],
     settleRead = [auth, requirePermission('settlements:read')],
     settleWrite = [auth, requirePermission('settlements:manage'), mutate, operationalControlGuard(db,'SETTLEMENT_PROCESSING_PAUSED')];
   app.post('/v1/reconciliation/runs', { preHandler: reconWrite }, async (request, reply) => {
@@ -353,6 +356,10 @@ export async function registerReconciliationRoutes(
           );
         }
         if (x.rows[0].status === 'APPROVED') return x.rows[0];
+        if (x.rows[0].status !== 'AWAITING_APPROVAL') {
+          p.code(409);
+          return apiError(r, 'STATE_CONFLICT', 'Adjustment is not awaiting review.');
+        }
         const entry = await reverseJournalEntry(
           c,
           x.rows[0].original_entry_id,

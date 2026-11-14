@@ -11,6 +11,7 @@ servers:
   - url: http://127.0.0.1:4000/v1
 tags:
   - name: Authentication
+  - name: Staff authentication
   - name: Merchants
   - name: Payments
   - name: Payment links
@@ -35,6 +36,18 @@ tags:
   - name: Notifications
   - name: Platform notifications
 paths:
+  /staff/auth/login:
+    post: { tags: [Staff authentication], operationId: staffLogin, description: Password verification for an explicitly provisioned exact-domain staff identity. Returns an MFA enrollment or challenge token and never creates a session before MFA., responses: { '200': { description: MFA enrollment or challenge required }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/mfa/enrollment:
+    post: { tags: [Staff authentication], operationId: beginStaffMfaEnrollment, description: Starts mandatory TOTP enrollment using a short-lived password-authenticated staff challenge., responses: { '200': { description: One-time authenticator enrollment material }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/mfa/enrollment/verify:
+    post: { tags: [Staff authentication], operationId: verifyStaffMfaEnrollment, description: Activates TOTP and returns one-time recovery codes. A new login is required afterwards., responses: { '200': { description: MFA enrolled }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/mfa/verify:
+    post: { tags: [Staff authentication], operationId: verifyStaffMfaLogin, description: Consumes a context-bound challenge and issues the host-only staff cookie., responses: { '200': { description: Staff session established }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/session:
+    get: { tags: [Staff authentication], operationId: getStaffSession, security: [{ staffCookieSession: [] }], responses: { '200': { description: Current staff session }, '401': { $ref: '#/components/responses/Error' } } }
+  /staff/auth/logout:
+    post: { tags: [Staff authentication], operationId: logoutStaff, security: [{ staffCookieSession: [] }], responses: { '204': { description: Staff session revoked and cookies cleared } } }
   /notifications:
     get:
       operationId: listNotifications
@@ -120,9 +133,9 @@ paths:
     post:
       operationId: retryNotificationDelivery
       tags: [Platform notifications]
-      summary: Request an authorized retry without bypassing disabled providers
+      summary: Request an authorized retry without bypassing disabled providers or active controls
       parameters: [{ in: path, name: id, required: true, schema: { type: string } }, { in: header, name: Idempotency-Key, required: true, schema: { type: string } }]
-      responses: { '200': { description: Retry accepted }, '409': { description: 'Provider disabled, stale state, or idempotency conflict' } }
+      responses: { '200': { description: Retry accepted }, '409': { description: 'Provider disabled, stale state, or idempotency conflict' }, '503': { description: Notification processing is paused or control state cannot be verified } }
   /platform/notification-templates:
     get:
       operationId: listNotificationTemplates
@@ -135,7 +148,17 @@ paths:
       tags: [Merchant support]
       summary: List the authenticated merchant's support cases
       security: [{ cookieSession: [] }]
-      responses: {'200': {description: Tenant-scoped cases}, '401': {$ref: '#/components/responses/Error'}}
+      parameters:
+        - {name: search, in: query, schema: {type: string, maxLength: 160}, description: 'Case reference, subject, GiantPay transaction reference, merchant reference, or approved customer reference.'}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/SupportStatus'}}
+        - {name: priority, in: query, schema: {$ref: '#/components/schemas/SupportPriority'}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+        - {name: sort, in: query, schema: {type: string, enum: [updatedAt, createdAt], default: updatedAt}}
+        - {name: direction, in: query, schema: {type: string, enum: [asc, desc], default: desc}}
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+      responses: {'200': {description: Tenant-scoped cases, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCasePage'}}}}, '401': {$ref: '#/components/responses/Error'}, '422': {$ref: '#/components/responses/Error'}}
     post:
       operationId: createMerchantSupportCase
       tags: [Merchant support]
@@ -143,7 +166,8 @@ paths:
       description: Requires support:write, CSRF, and Idempotency-Key. Do not include passwords, OTPs, secrets, or complete payment credentials.
       security: [{ cookieSession: [] }]
       parameters: [{name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
-      responses: {'201': {description: Durable case}, '409': {$ref: '#/components/responses/Error'}}
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateSupportCase'}}}}
+      responses: {'201': {description: Durable case, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCase'}}}}, '409': {$ref: '#/components/responses/Error'}, '422': {$ref: '#/components/responses/Error'}}
   /support/cases/{id}:
     get:
       operationId: getMerchantSupportCase
@@ -151,7 +175,7 @@ paths:
       summary: View a tenant-owned case and public messages; internal notes are never returned
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
-      responses: {'200': {description: Public case view}, '404': {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: Public case view, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCaseDetail'}}}}, '404': {$ref: '#/components/responses/Error'}}
   /support/cases/{id}/replies:
     post:
       operationId: createMerchantSupportReply
@@ -159,6 +183,7 @@ paths:
       summary: Add an idempotent public merchant reply
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportMessageInput'}}}}
       responses: {'201': {description: Public reply}, '404': {$ref: '#/components/responses/Error'}}
   /support/cases/{id}/status:
     post:
@@ -175,7 +200,23 @@ paths:
       summary: List support cases across merchants with stable filtering
       description: Human platform session with platform.support.read only; API keys and merchant sessions are denied.
       security: [{ cookieSession: [] }]
-      responses: {'200': {description: Redacted support cases}, '403': {$ref: '#/components/responses/Error'}}
+      parameters:
+        - {name: search, in: query, schema: {type: string, maxLength: 160}}
+        - {name: merchantId, in: query, schema: {type: string}}
+        - {name: assignedTo, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/SupportStatus'}}
+        - {name: priority, in: query, schema: {$ref: '#/components/schemas/SupportPriority'}}
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+      responses: {'200': {description: Redacted support cases, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCasePage'}}}}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/support/assignees:
+    get:
+      operationId: listPlatformSupportAssignees
+      tags: [Platform administration]
+      summary: List active platform staff explicitly eligible for support assignment
+      description: Requires platform.support.assign and returns only safe identifiers and display names.
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Eligible support assignees}, '403': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}:
     get:
       operationId: getPlatformSupportCase
@@ -183,7 +224,7 @@ paths:
       summary: View public messages, private internal notes, and append-only history
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}]
-      responses: {'200': {description: Authorized staff view}, '404': {$ref: '#/components/responses/Error'}}
+      responses: {'200': {description: Authorized staff view with internal activity, content: {application/json: {schema: {$ref: '#/components/schemas/SupportCaseDetail'}}}}, '404': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/replies:
     post:
       operationId: createPlatformSupportReply
@@ -191,6 +232,7 @@ paths:
       summary: Add an idempotent public staff reply
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportMessageInput'}}}}
       responses: {'201': {description: Public reply}, '403': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/internal-notes:
     post:
@@ -199,6 +241,7 @@ paths:
       summary: Add an idempotent private staff note that is never merchant-visible
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportMessageInput'}}}}
       responses: {'201': {description: Internal note recorded}, '403': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/assign:
     post:
@@ -207,6 +250,7 @@ paths:
       summary: Assign or reassign eligible active platform staff
       security: [{ cookieSession: [] }]
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportAssignmentInput'}}}}
       responses: {'200': {description: Assignment recorded}, '409': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/status:
     post:
@@ -216,6 +260,7 @@ paths:
       security: [{ cookieSession: [] }]
       description: Requires Idempotency-Key and expectedStatus. Identical retries replay the durable response; changed input conflicts. Includes resolution, closure, and reopening.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportStatusInput'}}}}
       responses: {'200': {description: Transition recorded}, '409': {$ref: '#/components/responses/Error'}}
   /platform/support/cases/{id}/priority:
     post:
@@ -225,6 +270,7 @@ paths:
       security: [{ cookieSession: [] }]
       description: Requires Idempotency-Key and expectedPriority for exactly-one-winner concurrency.
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupportPriorityInput'}}}}
       responses: {'200': {description: Priority history recorded}, '409': {$ref: '#/components/responses/Error'}}
   /platform/merchants:
     get:
@@ -248,6 +294,14 @@ paths:
       summary: Search selected cross-merchant transaction fields without customer or credential data
       security: [{ cookieSession: [] }]
       responses: {'200': {description: Redacted transactions}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/transactions/{id}:
+    get:
+      operationId: getPlatformTransaction
+      tags: [Platform administration]
+      summary: View a safe transaction projection without customer or provider payloads
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Redacted transaction detail}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
   /platform/refunds:
     get:
       operationId: listPlatformRefunds
@@ -269,6 +323,28 @@ paths:
       summary: Read reconciliation exceptions without ledger mutation
       security: [{ cookieSession: [] }]
       responses: {'200': {description: Exception summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/reconciliation/exceptions/{id}:
+    get:
+      operationId: getPlatformReconciliationException
+      tags: [Platform administration]
+      summary: View reconciliation exception status and resolution metadata
+      security: [{ cookieSession: [] }]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Exception detail}, '403': {$ref: '#/components/responses/Error'}, '404': {$ref: '#/components/responses/Error'}}
+  /platform/users:
+    get:
+      operationId: listPlatformUsers
+      tags: [Platform administration]
+      summary: List platform staff without authentication secrets
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Safe platform user summaries}, '403': {$ref: '#/components/responses/Error'}}
+  /platform/roles:
+    get:
+      operationId: listPlatformRoles
+      tags: [Platform administration]
+      summary: List assigned platform roles and effective permissions
+      security: [{ cookieSession: [] }]
+      responses: {'200': {description: Platform role summaries}, '403': {$ref: '#/components/responses/Error'}}
   /platform/audit-events:
     get:
       operationId: listPlatformAuditEvents
@@ -364,6 +440,109 @@ paths:
       responses:
         '200': { description: Database and essential workers are ready }
         '503': { description: A required dependency is unavailable }
+  /platform/operations/overview:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalOverview
+      responses: { '200': { description: Redacted operational counts }, '401': { $ref: '#/components/responses/Error' }, '403': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/metrics:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalMetrics
+      responses: { '200': { description: Private low-cardinality metrics }, '403': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/incidents:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: listOperationalIncidents
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses: { '200': { description: Incident list }, '403': { $ref: '#/components/responses/Error' } }
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: createOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '201': { description: Incident declared }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/incidents/{id}:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses: { '200': { description: Incident detail }, '404': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/notes:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: addOperationalIncidentNote
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Note added }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/assign:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: assignOperationalIncident
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Commander assigned }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/status:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: changeOperationalIncidentStatus
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: State changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/incidents/{id}/severity:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: changeOperationalIncidentSeverity
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Severity changed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: listOperationalControls
+      responses: { '200': { description: Effective controls }, '403': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls/{key}:
+    get:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: getOperationalControl
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { '200': { description: Effective control }, '404': { $ref: '#/components/responses/Error' } }
+  /platform/operations/controls/{key}/proposals:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: proposeOperationalControl
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      responses: { '201': { description: Control proposed }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+  /platform/operations/control-proposals/{id}/approve:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: approveOperationalControl
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Control approved }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } }
+  /platform/operations/control-proposals/{id}/reject:
+    post:
+      tags: [Platform operations]
+      security: [{ cookieSession: [] }]
+      operationId: rejectOperationalControl
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      responses: { '200': { description: Control rejected }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } }
   /auth/register:
     post:
       tags: [Authentication]
@@ -377,8 +556,50 @@ paths:
         '202':
           {
             description: Accepted,
-            content: { application/json: { schema: { $ref: '#/components/schemas/Accepted' } } },
+            content: { application/json: { schema: { $ref: '#/components/schemas/RegistrationAccepted' } } },
           }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/registration/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyRegistrationOtp
+      description: Verifies a single-use six-digit registration email code. Codes expire after ten minutes and are limited to five attempts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeId, code]
+              properties:
+                challengeId: { type: string, minLength: 32 }
+                code: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200': { description: Registration email verified }
+        '401': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/registration/resend:
+    post:
+      tags: [Authentication]
+      operationId: resendRegistrationOtp
+      description: Invalidates the active registration code and queues a replacement only when a delivery adapter is available. A 60-second cooldown and rate limits apply.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeId]
+              properties:
+                challengeId: { type: string, minLength: 32 }
+      responses:
+        '202':
+          description: Request accepted with explicit delivery availability
+          content: { application/json: { schema: { $ref: '#/components/schemas/RegistrationAccepted' } } }
         '422': { $ref: '#/components/responses/Error' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/login:
@@ -468,7 +689,7 @@ paths:
       security: [{ cookieSession: [] }]
       operationId: getOnboarding
       responses:
-        '200': { description: Tenant-scoped application with masked draft data }
+        '200': { description: Tenant-scoped application with masked granular draft data and merchant-visible information requests }
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
     patch:
@@ -510,11 +731,66 @@ paths:
   /merchants/onboarding/questionnaire:
     put: { tags: [Merchant onboarding], operationId: answerComplianceQuestionnaire, security: [{ cookieSession: [] }], description: Records versioned merchant declarations; answers are not externally verified screening results., responses: { '200': { description: Questionnaire saved }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/evidence:
-    post: { tags: [Merchant onboarding], operationId: registerOnboardingEvidence, security: [{ cookieSession: [] }], description: Registers metadata and an encrypted opaque storage reference; file upload is unavailable., responses: { '201': { description: Evidence metadata registered }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+    post:
+      tags: [Merchant onboarding]
+      operationId: registerOnboardingEvidenceMetadata
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      description: Available only when the deployment is explicitly operating in sandbox_metadata mode. Records client-computed filename, type, size and SHA-256 metadata; no binary is uploaded, stored, scanned or verified, and the record remains HISTORICAL_METADATA. Returns 410 in secure_binary mode.
+      responses:
+        '201': { description: Sandbox metadata recorded without a binary object or scanner verdict }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+  /merchants/onboarding/evidence/upload:
+    post:
+      tags: [Merchant onboarding]
+      operationId: uploadOnboardingEvidence
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      description: Secure-binary-mode endpoint. Accepts one bounded PDF, JPEG, or PNG into private quarantine. The authenticated actor and merchant own the record; evidence is usable only after an actual scanner records CLEAN. Returns 503 when private storage or a real scanner is unavailable and never downgrades to metadata-only behavior. Magic-byte validation is preliminary and is not document verification.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [metadata, file]
+              properties:
+                metadata: { type: string, description: JSON containing category, ownerType and optional ownerId }
+                file: { type: string, format: binary }
+      responses:
+        '201': { description: Evidence scanned clean; response contains safe metadata only }
+        '202': { description: Evidence remains in a non-usable processing state }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '415': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /merchants/onboarding/evidence/{id}:
     delete: { tags: [Merchant onboarding], operationId: removeOnboardingEvidence, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '204': { description: Replaceable draft evidence removed }, '404': { $ref: '#/components/responses/Error' } } }
+  /merchants/onboarding/evidence/{id}/download:
+    get:
+      tags: [Merchant onboarding]
+      operationId: downloadOnboardingEvidence
+      security: [{ cookieSession: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      description: Streams tenant-scoped CLEAN evidence after stored size and SHA-256 integrity checks and an audit write. No permanent public URL or private object key is returned.
+      responses:
+        '200':
+          description: Private evidence attachment
+          headers:
+            Cache-Control: { schema: { type: string }, description: "no-store, private" }
+            X-Content-Type-Options: { schema: { type: string }, description: nosniff }
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /merchants/onboarding/information-response:
-    post: { tags: [Merchant onboarding], operationId: respondToComplianceInformationRequest, security: [{ cookieSession: [] }], responses: { '200': { description: Merchant response recorded }, '404': { $ref: '#/components/responses/Error' } } }
+    post: { tags: [Merchant onboarding], operationId: respondToComplianceInformationRequest, security: [{ cookieSession: [] }], description: Responds to a merchant-visible open information request returned in the onboarding snapshot., responses: { '200': { description: Merchant response recorded }, '404': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/resubmit:
     post: { tags: [Merchant onboarding], operationId: resubmitOnboarding, security: [{ cookieSession: [] }], responses: { '200': { description: Application resubmitted }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
   /merchants/onboarding/history:
@@ -637,7 +913,8 @@ paths:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/CheckoutSubmit' } } }
       responses:
-        '202': { description: Accepted by configured provider }
+        '202': { description: Durable payment intent recorded. Outcome may be uncertain; poll payment-status using the returned reference. A null checkoutUrl does not mean failure., content: { application/json: { schema: { type: object, required: [reference, checkoutUrl], properties: { reference: { type: string }, checkoutUrl: { type: [string, 'null'] } } } } } }
+        '409': { $ref: '#/components/responses/Error' }
         '410': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
   /payment-status/{reference}:
@@ -657,7 +934,8 @@ paths:
         over `<X-GiantPay-Timestamp>.<raw request body>` using `SANDBOX_WEBHOOK_SECRET`.
         The timestamp is Unix seconds and must be within the configured tolerance. Valid
         duplicate events are acknowledged without repeating state changes. Event-ID reuse
-        with a different payload is rejected as suspicious.
+        with a different payload is rejected as suspicious. An approved webhook-processing
+        pause is enforced before payload processing; unverifiable control state fails closed.
       parameters:
         - name: X-GiantPay-Timestamp
           in: header
@@ -683,6 +961,7 @@ paths:
                 properties:
                   accepted: { const: true }
                   duplicate: { type: boolean }
+        '503': { description: Webhook processing is paused or control state cannot be verified }
         '401': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
@@ -809,9 +1088,9 @@ paths:
       operationId: startReconciliationRun
       tags: [Reconciliation]
       security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
-      description: Starts deterministic sandbox reconciliation. Requires `reconciliation:manage` and Idempotency-Key.
+      description: Starts deterministic sandbox reconciliation. Requires `reconciliation:manage`, Idempotency-Key, and no approved settlement/reconciliation processing pause.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
-      responses: { '201': { description: Completed or existing restart-safe run }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+      responses: { '201': { description: Completed or existing restart-safe run }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' }, '503': { description: Processing is paused or control state cannot be verified } }
   /reconciliation/runs/{id}:
     get:
       operationId: getReconciliationRun
@@ -877,7 +1156,7 @@ paths:
       operationId: listSandboxSettlements
       tags: [Sandbox settlements]
       security: [{ cookieSession: [] }]
-      responses: { '200': { description: Paginated merchant sandbox settlements } }
+      responses: { '200': { description: 'Paginated merchant sandbox settlements with exact minor-unit strings and nullable creator, submitter and approver evidence' } }
     post:
       operationId: createSandboxSettlement
       tags: [Sandbox settlements]
@@ -891,7 +1170,7 @@ paths:
       tags: [Sandbox settlements]
       security: [{ cookieSession: [] }]
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Sandbox settlement with externalTransferExecuted false }, '404': { $ref: '#/components/responses/Error' } }
+      responses: { '200': { description: 'Sandbox settlement with exact minor-unit strings, creator and approval identities, timestamps, and externalTransferExecuted false' }, '404': { $ref: '#/components/responses/Error' } }
   /settlements/{id}/submit:
     post:
       operationId: submitSandboxSettlement
@@ -921,7 +1200,7 @@ paths:
       security: [{ cookieSession: [] }]
       description: Produces a formula-safe sandbox CSV and audit record. It does not execute a transfer.
       parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses: { '200': { description: Deterministic sandbox CSV }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
+      responses: { '200': { description: Deterministic text/csv attachment with a bounded server filename }, '409': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/TooManyRequests' } }
   /reports/summary:
     get:
       tags: [Operational reports]
@@ -1012,11 +1291,11 @@ paths:
     post: { tags: [Team access], operationId: removeTeamMember, security: [{ cookieSession: [] }], description: Removes merchant access without deleting financial or audit records., parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Removed }, '409': { $ref: '#/components/responses/Error' } } }
   /team/invitations:
     get: { tags: [Team access], operationId: listTeamInvitations, security: [{ cookieSession: [] }], responses: { '200': { description: Pending tenant invitations without token hashes } } }
-    post: { tags: [Team access], operationId: createTeamInvitation, security: [{ cookieSession: [] }], description: Creates a 72-hour hashed invitation and encrypted sandbox outbox delivery. Full delivery material is returned once., responses: { '201': { description: Invitation and one-time delivery token }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+    post: { tags: [Team access], operationId: createTeamInvitation, security: [{ cookieSession: [] }], description: Creates a 72-hour hashed invitation and encrypted sandbox outbox delivery. Development and test responses may expose one-time delivery material; production responses never do., responses: { '201': { description: Safe invitation metadata }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
   /team/invitations/{id}/cancel:
     post: { tags: [Team access], operationId: cancelTeamInvitation, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Durably cancelled }, '404': { $ref: '#/components/responses/Error' } } }
   /team/invitations/{id}/resend:
-    post: { tags: [Team access], operationId: resendTeamInvitation, security: [{ cookieSession: [] }], description: "Rotates the token hash, refreshes the 72-hour expiry, and queues one encrypted delivery.", parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Rotated invitation and one-time delivery token }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
+    post: { tags: [Team access], operationId: resendTeamInvitation, security: [{ cookieSession: [] }], description: "Rotates the token hash, refreshes the 72-hour expiry, and queues one encrypted delivery. Production responses never expose the token.", parameters: [{ $ref: '#/components/parameters/Id' }], responses: { '200': { description: Safe rotated invitation metadata }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
   /team/invitations/accept:
     post: { tags: [Team access], operationId: acceptTeamInvitation, description: "Atomically validates a hashed single-use token and normalized email identity, activates membership, and assigns the role.", responses: { '200': { description: Invitation accepted }, '403': { $ref: '#/components/responses/Error' }, '404': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' }, '410': { $ref: '#/components/responses/Error' } } }
   /roles:
@@ -1069,9 +1348,118 @@ paths:
     post: { tags: [Platform disputes], operationId: changeDisputeStatus, security: [{ cookieSession: [] }], parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DisputeExpectedStateInput' } } } }, responses: { '200': { description: Allowed expected-state transition }, '403': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } } }
   /platform/disputes/{id}/decisions:
     post: { tags: [Platform disputes], operationId: mutateDisputeDecision, security: [{ cookieSession: [] }], description: Proposes or independently reviews a terminal sandbox decision. Financial effects remain pending instructions and cause no payout., parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/IdempotencyKey' }], responses: { '200': { description: Independently reviewed decision }, '201': { description: Decision proposal }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } } }
+  /checkout/qr/{token}:
+    get:
+      tags: [Checkout]
+      operationId: getQrCheckout
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: Authoritative QR amount or customer-entered bounds and provider-supported channels }
+        '404': { $ref: '#/components/responses/Error' }
+  /checkout/qr/{token}/submit:
+    post:
+      tags: [Checkout]
+      operationId: submitQrCheckout
+      description: Fixed amounts come from the server. Customer-entered amounts must satisfy server bounds. Reuse the same key and payload after an uncertain response.
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel, customer]
+              properties:
+                channel: { enum: [MOBILE_MONEY, CARD, BANK_TRANSFER] }
+                requestedAmountMinor: { type: integer, minimum: 1 }
+                customer:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    email: { type: string, format: email }
+                    phone: { type: string, pattern: '^\+265[0-9]{9}$' }
+      responses:
+        '202': { description: Durable intent with reference and nullable checkoutUrl; poll trusted payment status }
+        '409': { $ref: '#/components/responses/Error' }
+        '410': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /webhooks/providers/flutterwave:
+    post:
+      tags: [Provider webhooks]
+      operationId: receiveFlutterwaveWebhook
+      description: Active Flutterwave provider only. Charge notifications are reverified against transaction ID, reference, exact amount and currency before ledger effects. Unavailable or pending verification returns 503 for retry.
+      parameters: [{ name: verif-hash, in: header, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        '202': { description: Verified notification processed or duplicate acknowledged }
+        '401': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /webhooks/providers/flutterwave/redirect:
+    get:
+      tags: [Checkout]
+      operationId: returnFromFlutterwave
+      description: Query status is never trusted. If a transaction ID is present, verification is attempted before redirecting to the trusted frontend payment-status page.
+      parameters:
+        - { name: tx_ref, in: query, schema: { type: string } }
+        - { name: transaction_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        '302': { description: Frontend status page }
+        '503': { $ref: '#/components/responses/Error' }
+  /qr:
+    get:
+      tags: [Checkout]
+      operationId: listMerchantQrCodes
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses: { '200': { description: Merchant-scoped paginated QR codes } }
+    post:
+      tags: [Checkout]
+      operationId: createMerchantQrCode
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label, mode]
+              properties:
+                label: { type: string, minLength: 1, maxLength: 100 }
+                mode: { enum: [FIXED, CUSTOMER_ENTERED] }
+                currency: { type: string, pattern: '^[A-Z]{3}$', default: MWK }
+                amountMinor: { type: integer, minimum: 1, description: Required for FIXED mode }
+                minAmountMinor: { type: integer, minimum: 1 }
+                maxAmountMinor: { type: integer, minimum: 1 }
+                maxSuccessfulPayments: { type: integer, minimum: 1 }
+                expiresAt: { type: string, format: date-time }
+      responses: { '201': { description: QR code with opaque checkout URL }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /qr/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      tags: [Checkout]
+      operationId: getMerchantQrCode
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      responses: { '200': { description: Merchant-scoped QR code }, '404': { $ref: '#/components/responses/Error' } }
+    patch:
+      tags: [Checkout]
+      operationId: disableMerchantQrCode
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [status], properties: { status: { const: DISABLED } } } } } }
+      responses: { '200': { description: Disabled QR code }, '404': { $ref: '#/components/responses/Error' } }
+  /qr/{id}/payments:
+    get:
+      tags: [Checkout]
+      operationId: listMerchantQrPayments
+      security: [{ cookieSession: [] }, { sandboxApiKey: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }, { $ref: '#/components/parameters/Page' }, { $ref: '#/components/parameters/PageSize' }]
+      responses: { '200': { description: Merchant-scoped paginated QR payments }, '404': { $ref: '#/components/responses/Error' } }
 components:
   securitySchemes:
     cookieSession: { type: apiKey, in: cookie, name: giantpay_session }
+    staffCookieSession: { type: apiKey, in: cookie, name: giantpay_staff_session }
     sandboxApiKey: { type: http, scheme: bearer, bearerFormat: gp_test_<identifier>_<secret> }
   parameters:
     Id: { name: id, in: path, required: true, schema: { type: string } }
@@ -1116,6 +1504,46 @@ components:
       description: Normalized error response
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   schemas:
+    SupportStatus: {type: string, enum: [OPEN, IN_PROGRESS, WAITING_ON_MERCHANT, WAITING_FOR_INTERNAL, ESCALATED, RESOLVED, CLOSED]}
+    SupportPriority: {type: string, enum: [LOW, NORMAL, HIGH, URGENT]}
+    SupportCategory: {type: string, enum: [ACCOUNT, ONBOARDING, PAYMENT, REFUND, SETTLEMENT, RECONCILIATION, API_INTEGRATION, WEBHOOK, SECURITY, OTHER]}
+    SupportMessageInput: {type: object, additionalProperties: false, required: [message], properties: {message: {type: string, minLength: 1, maxLength: 10000}}}
+    CreateSupportCase:
+      type: object
+      additionalProperties: false
+      required: [category, subject, message]
+      properties: {category: {$ref: '#/components/schemas/SupportCategory'}, subject: {type: string, minLength: 3, maxLength: 160}, message: {type: string, minLength: 1, maxLength: 10000}, transactionId: {type: string}}
+    SupportAssignmentInput: {type: object, additionalProperties: false, required: [staffId, reason], properties: {staffId: {type: string}, expectedAssigneeId: {type: [string, 'null']}, reason: {type: string, minLength: 3, maxLength: 1000}}}
+    SupportStatusInput: {type: object, additionalProperties: false, required: [status, expectedStatus, reason], properties: {status: {$ref: '#/components/schemas/SupportStatus'}, expectedStatus: {$ref: '#/components/schemas/SupportStatus'}, reason: {type: string, minLength: 3, maxLength: 1000, description: Required resolution summary when status is RESOLVED.}}}
+    SupportPriorityInput: {type: object, additionalProperties: false, required: [priority, expectedPriority, reason], properties: {priority: {$ref: '#/components/schemas/SupportPriority'}, expectedPriority: {$ref: '#/components/schemas/SupportPriority'}, reason: {type: string, minLength: 3, maxLength: 1000}}}
+    SupportCase:
+      type: object
+      required: [id, reference, merchantId, category, subject, status, priority, createdAt, updatedAt]
+      properties:
+        id: {type: string}
+        reference: {type: string}
+        merchantId: {type: string}
+        category: {$ref: '#/components/schemas/SupportCategory'}
+        subject: {type: string}
+        status: {$ref: '#/components/schemas/SupportStatus'}
+        priority: {$ref: '#/components/schemas/SupportPriority'}
+        assignedOwner: {type: [object, 'null'], additionalProperties: false, properties: {id: {type: string}, name: {type: string}}}
+        linkedTransaction: {type: [object, 'null'], additionalProperties: false, properties: {id: {type: string}, reference: {type: string}, merchantReference: {type: [string, 'null']}, status: {type: string}}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        escalatedAt: {type: [string, 'null'], format: date-time}
+        resolvedAt: {type: [string, 'null'], format: date-time}
+        closedAt: {type: [string, 'null'], format: date-time}
+        resolutionSummary: {type: [string, 'null']}
+    SupportActivity:
+      type: object
+      required: [id, type, visibility, actorId, body, createdAt]
+      properties: {id: {type: string}, type: {type: string, enum: [MESSAGE, NOTE, STATUS, ASSIGNMENT, PRIORITY]}, visibility: {type: string, enum: [MERCHANT, INTERNAL]}, actorId: {type: string}, body: {type: string}, from: {type: [string, 'null']}, to: {type: [string, 'null']}, createdAt: {type: string, format: date-time}}
+    SupportCaseDetail:
+      allOf:
+        - {$ref: '#/components/schemas/SupportCase'}
+        - {type: object, required: [description, timeline], properties: {description: {type: string}, timeline: {type: array, items: {$ref: '#/components/schemas/SupportActivity'}}}}
+    SupportCasePage: {type: object, required: [data, total, nextCursor], properties: {data: {type: array, items: {$ref: '#/components/schemas/SupportCase'}}, total: {type: integer, minimum: 0}, nextCursor: {type: [string, 'null']}}}
     CreateDisputeInput:
       type: object
       required: [paymentId, source, reasonCategory, amountMinor, currency, summary]
@@ -1130,6 +1558,23 @@ components:
       type: string
       enum: [TRANSACTION_ACTIVITY, REFUND_ACTIVITY, PLATFORM_FEES, MERCHANT_LEDGER, RECONCILIATION_RESULTS, SANDBOX_SETTLEMENT_SUMMARIES]
     Accepted: { type: object, required: [accepted], properties: { accepted: { const: true } } }
+    RegistrationAccepted:
+      type: object
+      required: [accepted, delivery]
+      properties:
+        accepted: { const: true }
+        verificationRequired: { type: boolean }
+        challengeId: { type: string, minLength: 32 }
+        maskedDestination: { type: string }
+        expiresAt: { type: string, format: date-time }
+        resendAvailableAt: { type: string, format: date-time }
+        delivery:
+          type: object
+          required: [available, queued]
+          properties:
+            available: { type: boolean }
+            queued: { type: boolean }
+            errorCode: { type: string, enum: [DELIVERY_REJECTED, DELIVERY_TIMEOUT, DELIVERY_UNAVAILABLE] }
     Money:
       {
         type: object,

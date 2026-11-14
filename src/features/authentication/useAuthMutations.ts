@@ -24,10 +24,6 @@ export function useMfaVerifyMutation() {
   });
 }
 
-export function useResendMfaMutation() {
-  return useMutation({ mutationFn: (payload: { challengeId: string }) => authApi.resendMfa(payload) });
-}
-
 export function useLogoutMutation() {
   const setSession = useSessionStore((s) => s.setSession);
   const queryClient = useQueryClient();
@@ -45,18 +41,43 @@ export function useLogoutMutation() {
 }
 
 export function useForgotPasswordMutation() {
-  return useMutation({ mutationFn: (payload: { email: string }) => authApi.forgotPassword(payload) });
+  return useMutation({
+    mutationFn: (payload: { email: string }) => authApi.forgotPassword(payload),
+  });
 }
 
 export function useResetPasswordMutation() {
   return useMutation({
     mutationFn: (payload: { token: string; password: string }) => authApi.resetPassword(payload),
-    onSuccess: () => toast({ variant: 'success', title: 'Password updated', description: 'You can now sign in with your new password.' }),
+    onSuccess: () =>
+      toast({
+        variant: 'success',
+        title: 'Password updated',
+        description: 'You can now sign in with your new password.',
+      }),
   });
 }
 
 export function useRegisterMutation() {
   return useMutation({
-    mutationFn: (payload: { businessName: string; email: string; password: string; phone: string }) => authApi.register(payload),
+    mutationFn: (payload: {
+      businessName: string;
+      email: string;
+      password: string;
+      phone: string;
+    }) => authApi.register(payload),
+  });
+}
+
+export function useRegistrationOtpVerifyMutation() {
+  return useMutation({
+    mutationFn: (payload: { challengeId: string; code: string }) =>
+      authApi.verifyRegistrationOtp(payload),
+  });
+}
+
+export function useRegistrationOtpResendMutation() {
+  return useMutation({
+    mutationFn: (payload: { challengeId: string }) => authApi.resendRegistrationOtp(payload),
   });
 }

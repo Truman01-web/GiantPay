@@ -20,8 +20,8 @@ export const MOCK_PAYMENT_LINKS: PaymentLink[] = [
   {
     id: 'plink_02',
     name: 'Donation link',
-    mode: 'CUSTOMER_ENTERED',
-    amount: null,
+    mode: 'FIXED',
+    amount: { amountMinor: 1000, currency: 'MWK' },
     description: 'Support our community programme',
     customerReference: null,
     status: 'ACTIVE',

@@ -11,10 +11,10 @@ const CONFIG: Record<AlertVariant, { icon: typeof Info; classes: string }> = {
   danger: { icon: XCircle, classes: 'bg-[var(--color-red-50)] border-[var(--color-red-600)] text-[var(--color-red-700)]' },
 };
 
-export function Alert({ variant = 'info', title, children }: { variant?: AlertVariant; title?: string; children: ReactNode }) {
+export function Alert({ variant = 'info', title, className, children }: { variant?: AlertVariant; title?: string; className?: string; children: ReactNode }) {
   const { icon: Icon, classes } = CONFIG[variant];
   return (
-    <div role={variant === 'danger' || variant === 'warning' ? 'alert' : 'status'} className={cn('flex gap-3 rounded-[var(--radius-md)] border-l-4 p-4', classes)}>
+    <div role={variant === 'danger' || variant === 'warning' ? 'alert' : 'status'} className={cn('flex gap-3 rounded-[var(--radius-md)] border-l-4 p-4', classes, className)}>
       <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
       <div className="text-[length:var(--text-body)] text-[var(--color-neutral-900)]">
         {title && <p className="font-semibold">{title}</p>}

@@ -27,20 +27,65 @@ export type Permission =
   | 'payments.refunds:request'
   | 'payments.refunds:approve'
   | 'settlements:read'
+  | 'settlements:manage'
+  | 'settlements:approve'
   | 'reconciliation:read'
   | 'reconciliation:manage'
+  | 'reconciliation:approve'
+  | 'ledger:read'
+  | 'ledger:integrity'
   | 'reports:read'
+  | 'reports:export'
+  | 'audit:read'
   | 'developer.apiKeys:manage'
   | 'developer.webhooks:manage'
+  | 'team:read'
   | 'team:manage'
+  | 'roles:read'
   | 'roles:manage'
-  | 'settings:manage'
+  | 'sessions:read'
+  | 'sessions:manage'
+  | 'security:manage:self'
+  | 'onboarding:read'
+  | 'onboarding:write'
+  | 'onboarding:submit'
   | 'support:read'
-  | 'support:manage'
+  | 'support:write'
   | 'compliance:read'
-  | 'admin.merchants:review'
-  | 'admin.refunds:approve'
-  | 'admin.platform:manage';
+  | 'compliance:review'
+  | 'compliance:approve'
+  | 'platform.audit.read'
+  | 'platform.health.read'
+  | 'platform.merchants.read'
+  | 'platform.transactions.read'
+  | 'platform.refunds.read'
+  | 'platform.settlements.read'
+  | 'platform.reconciliation.read'
+  | 'platform.support.read'
+  | 'platform.support.assign'
+  | 'platform.support.reply'
+  | 'platform.support.manage'
+  | 'platform.operations.read'
+  | 'platform.metrics.read'
+  | 'platform.controls.read'
+  | 'platform.controls.propose'
+  | 'platform.controls.approve'
+  | 'platform.incidents.read'
+  | 'platform.incidents.manage'
+  | 'platform.staff.read'
+  | 'platform.staff.manage'
+  | 'platform.sessions.manage'
+  | 'platform.disputes.read'
+  | 'platform.disputes.assign'
+  | 'platform.disputes.investigate'
+  | 'platform.disputes.decide'
+  | 'platform.disputes.reopen'
+  | 'platform.disputes.request_information'
+  | 'platform.notifications.read'
+  | 'platform.notifications.templates.read'
+  | 'platform.notifications.delivery.read'
+  | 'platform.notifications.delivery.retry'
+  | 'admin.refunds:approve';
 
 export interface MfaChallenge {
   challengeId: string;
@@ -59,6 +104,7 @@ export interface AuthenticatedUser {
   merchantId: string | null;
   merchantName: string | null;
   mfaEnabled: boolean;
+  staffProfile?: 'COMPLIANCE'|'SUPPORT'|'FINANCE'|'OPERATIONS'|'SECURITY_ADMIN';
 }
 
 export type Environment = 'sandbox' | 'production';
@@ -75,4 +121,9 @@ export function hasPermission(session: Session | null, permission: Permission): 
 
 export function hasAnyPermission(session: Session | null, permissions: Permission[]): boolean {
   return permissions.some((p) => hasPermission(session, p));
+}
+
+export function staffLandingPath(session:Session|null):string{
+ const choices:Array<[Permission,string]>=[['compliance:read','/admin/merchant-applications'],['platform.support.read','/admin/support'],['platform.settlements.read','/admin/settlements'],['platform.operations.read','/admin'],['platform.staff.read','/admin/users']];
+ return choices.find(([permission])=>hasPermission(session,permission))?.[1]??'/admin';
 }

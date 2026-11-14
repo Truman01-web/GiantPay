@@ -7,9 +7,9 @@ KYC/KYB onboarding, a hosted checkout for customers, and a merchant
 dashboard for managing payments, payment links, refunds, settlements and
 reconciliation.
 
-**No real GiantPay backend exists yet.** Everything in this repository runs
-against a typed API client that is architecturally ready for a real
-backend, backed today by an in-browser mock server (MSW) for development.
+The repository includes the GiantPay sandbox backend under `server/`.
+The frontend uses that API when mock mode is disabled; MSW remains available
+only for tests and explicitly enabled local development.
 See [Backend dependencies](#backend-dependencies) for exactly what that
 means feature by feature, and `HANDOVER.md` for the full status/risk log.
 
@@ -92,7 +92,7 @@ Only what's actually a dependency in `package.json`:
 
 ## Requirements
 
-- **Node.js 20+** (`"engines": { "node": ">=20" }` in `package.json`)
+- **Node.js 22.12+ on the 22.x line, 24.x, or 26+** (CI uses 22.19.0; see `engines` in `package.json`)
 - **pnpm** (the project is pnpm-only)
 - A modern evergreen browser for development (Chrome, Firefox, Edge, Safari)
 

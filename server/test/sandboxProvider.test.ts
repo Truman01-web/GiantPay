@@ -51,6 +51,7 @@ describe('sandbox provider', () => {
 
   it('cannot be constructed in production', () => {
     expect(() => new SandboxPaymentProvider(secret, 300, 'production')).toThrow(/forbidden/i);
+    expect(() => new SandboxPaymentProvider(secret, 300, 'sandbox')).not.toThrow();
   });
 
   it('keeps refund execution disabled', async () => {

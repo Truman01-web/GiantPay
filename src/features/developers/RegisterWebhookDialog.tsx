@@ -15,27 +15,27 @@ interface Props {
 
 const AVAILABLE_EVENTS = [
   {
-    id: 'payment.status.changed',
-    label: 'payment.status.changed',
-    description: 'Triggered when a payment succeeds, fails, or expires.',
+    id: 'payment.succeeded',
+    label: 'payment.succeeded',
+    description: 'Triggered when a sandbox payment completes successfully.',
   },
   {
-    id: 'refund.status.changed',
-    label: 'refund.status.changed',
-    description: 'Triggered when a refund transitions to pending or completed.',
+    id: 'payment.failed',
+    label: 'payment.failed',
+    description: 'Triggered when a sandbox payment fails.',
   },
   {
-    id: 'checkout.expired',
-    label: 'checkout.expired',
-    description: 'Triggered when an uncompleted checkout session expires.',
+    id: 'refund.pending_approval',
+    label: 'refund.pending_approval',
+    description: 'Triggered when a refund requires controlled approval.',
   },
 ];
 
 export function RegisterWebhookDialog({ open, onOpenChange }: Props) {
   const [url, setUrl] = useState('');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([
-    'payment.status.changed',
-    'refund.status.changed',
+    'payment.succeeded',
+    'payment.failed',
   ]);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export function RegisterWebhookDialog({ open, onOpenChange }: Props) {
   function handleClose(nextOpen: boolean) {
     if (!nextOpen) {
       setUrl('');
-      setSelectedEvents(['payment.status.changed', 'refund.status.changed']);
+      setSelectedEvents(['payment.succeeded', 'payment.failed']);
       setRevealedSecret(null);
       setUrlError(null);
       mutation.reset();

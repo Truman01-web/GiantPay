@@ -6,7 +6,7 @@ const FRAMEWORKS = [
   { icon: UserCheck, title: "KYC / KYB Verification", badge: "Customer Due Diligence", body: "All merchants undergo Know Your Customer (KYC) and Know Your Business (KYB) verification before production activation. Identity documents, business certificates, and ownership structures are verified against official records." },
   { icon: AlertTriangle, title: "Anti-Money Laundering (AML)", badge: "Transaction Monitoring", body: "GiantPay applies automated AML screening to transactions, monitoring for suspicious activity patterns, structuring behaviour, and sanctions list matches in real time." },
   { icon: Lock, title: "Data Protection", badge: "Privacy & Security", body: "Merchant and customer data is encrypted at rest and in transit using industry-standard protocols. We maintain strict data access controls and detailed audit logs for all system events." },
-  { icon: FileText, title: "Transaction Reporting", badge: "Financial Transparency", body: "Every transaction processed through GiantPay carries a complete audit trail â€” including timestamps, provider confirmations, fee deductions, and settlement records â€” exportable for compliance reporting." },
+  { icon: FileText, title: "Transaction Reporting", badge: "Financial Transparency", body: "Every transaction processed through GiantPay carries a complete audit trail — including timestamps, provider confirmations, fee deductions, and settlement records — exportable for compliance reporting." },
   { icon: CheckCircle, title: "PCI DSS Alignment", badge: "Card Payment Standards", body: "Card payment processing is designed and implemented in alignment with PCI DSS (Payment Card Industry Data Security Standard) requirements, protecting cardholder data at every stage." },
 ];
 
@@ -51,7 +51,7 @@ export default function CompliancePage() {
               <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300 bg-clip-text text-transparent">at our core.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
-              GiantPay and GiantPlus are built compliance-first. Every product, every API, and every data handling decision is designed to meet the standards required of a regulated payment service provider in Malawi.
+              GiantPay and GiantPlus are built compliance-first. Every product, API, and data-handling decision is designed for regulatory alignment; this does not claim a licence or regulatory approval.
             </p>
           </div>
         </div>

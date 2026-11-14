@@ -1,7 +1,6 @@
 import { Suspense, useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
-import { Logo } from '@/components/navigation/Logo';
 import { IconButton } from '@/components/ui/IconButton';
 import { Drawer, DrawerContent } from '@/components/ui/Drawer';
 import { TooltipProvider } from '@/components/ui/Tooltip';
@@ -26,14 +25,14 @@ export function AdminLayout() {
       <div className="flex min-h-screen bg-[var(--color-neutral-50)]">
         <aside className="hidden w-60 shrink-0 flex-col bg-[var(--color-navy-950)] lg:flex">
           <div className="flex h-16 items-center gap-2 px-4">
-            <Logo inverted />
-            <Badge variant="navy">Admin</Badge>
+            <span className="text-lg font-extrabold tracking-tight text-white">GiantPlus</span>
+            <Badge variant="navy">Staff</Badge>
           </div>
           <SidebarNav groups={ADMIN_NAV} collapsed={false} />
         </aside>
 
         <Drawer open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-          <DrawerContent title="Admin menu">
+          <DrawerContent title="GiantPlus staff menu">
             <div className="bg-[var(--color-navy-950)] pb-4">
               <SidebarNav groups={ADMIN_NAV} collapsed={false} onNavigate={() => setMobileNavOpen(false)} />
             </div>
@@ -46,9 +45,6 @@ export function AdminLayout() {
               <Menu className="h-5 w-5" aria-hidden="true" />
             </IconButton>
             <div className="flex items-center gap-3">
-              <Link to="/dashboard" className="text-[length:var(--text-label)] font-medium text-[var(--color-blue-600)] hover:underline">
-                Merchant view
-              </Link>
               {session && <span className="text-[length:var(--text-label)] text-[var(--color-neutral-600)]">{session.user.name}</span>}
               <IconButton label="Sign out" onClick={() => logout.mutate()}>
                 <LogOut className="h-5 w-5" aria-hidden="true" />

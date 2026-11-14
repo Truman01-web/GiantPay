@@ -58,11 +58,18 @@ jobs:
       - name: Reject compiled tests
         working-directory: server
         run: node scripts/check-dist.mjs
+      - name: Install browser for authenticated API acceptance
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Authenticated merchant and staff browser acceptance
+        run: pnpm run e2e:api
       - name: Reject tracked secrets and generated artifacts
         shell: bash
         run: |
-          ! git grep -nE 'gp_test_[A-Za-z0-9_-]{20,}|whsec_[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY'
-          tracked_artifacts="$(git ls-files 'server/dist/**' 'server/coverage/**' 'server/.env')"
+          if git grep -lE 'gp_test_[A-Za-z0-9_-]{20,}|whsec_[A-Za-z0-9_-]{20,}|FLWSECK-[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY'; then
+            echo "::error::Credential-like content detected in tracked files (filenames only)."
+            exit 1
+          fi
+          tracked_artifacts="$(git ls-files 'dist/**' 'coverage/**' 'server/dist/**' 'server/coverage/**' '.env' 'server/.env' '*.log')"
           if [[ -n "$tracked_artifacts" ]]; then
             echo "::error::Generated artifacts or environment files are tracked:"
             printf '%s\n' "$tracked_artifacts"

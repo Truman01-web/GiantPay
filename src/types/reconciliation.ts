@@ -1,6 +1,6 @@
 export type ReconciliationRunStatus = 'RUNNING' | 'COMPLETED' | 'FAILED';
 
-export type ReconciliationExceptionStatus = 'OPEN' | 'INVESTIGATING' | 'ACTION_REQUIRED' | 'RESOLVED' | 'ESCALATED';
+export type ReconciliationExceptionStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'DISMISSED';
 
 export type ReconciliationExceptionType =
   | 'AMOUNT_MISMATCH'
@@ -46,8 +46,27 @@ export interface ReconciliationException {
   status: ReconciliationExceptionStatus;
   createdAt: string;
   notes: ReconciliationExceptionNote[];
+  evidenceRef?: string | null;
 }
 
 export interface ReconciliationRun extends ReconciliationRunListItem {
   exceptions: ReconciliationException[];
+}
+
+export interface ReconciliationAdjustment {
+  id: string;
+  exceptionId: string;
+  originalEntryId: string;
+  reason: string;
+  evidenceRef: string;
+  status: 'AWAITING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  createdBy: string | null;
+  approvedBy: string | null;
+  journalEntryId: string | null;
+  decidedAt: string | null;
+}
+
+export interface LedgerIntegrityResult {
+  ok: boolean;
+  failures: Array<{ id?: string; source_type?: string; source_id?: string; posting_count?: number; currency_count?: number; imbalance_minor?: string }>;
 }

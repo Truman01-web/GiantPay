@@ -5,14 +5,19 @@
   "type": "module",
   "packageManager": "pnpm@10.17.1",
   "engines": {
-    "node": ">=20.19.0 <21 || >=22.12.0"
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "tsc -p tsconfig.build.json",
     "check:dist": "node scripts/check-dist.mjs",
-    "start": "node dist/index.js",
+    "start": "node dist/launch.js api",
+    "start:api": "node dist/launch.js api",
+    "start:worker": "node dist/launch.js worker",
+    "db:migrate:release": "node dist/migrate.js",
+    "release:metadata": "node scripts/generate-release-metadata.mjs",
+    "release:verify": "node scripts/verify-release.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:ci": "node scripts/run-tests-ci.mjs",
@@ -20,7 +25,8 @@
     "openapi:validate": "node scripts/validate-openapi.mjs",
     "db:verify-migrations": "tsx src/verifyMigrations.ts",
     "db:migrate": "tsx src/migrate.ts",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/seed.ts",
+    "staff:provision": "tsx src/provisionStaff.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
@@ -29,10 +35,10 @@
     "@fastify/multipart": "^9.3.0",
     "argon2": "^0.44.0",
     "dotenv": "^17.2.2",
-    "fastify": "^5.6.1",
+    "fastify": "^5.12.6",
     "pg": "^8.16.3",
     "redis": "5.8.2",
-    "zod": "^4.1.8"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^10.1.1",
@@ -40,6 +46,6 @@
     "@types/pg": "^8.15.5",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.3"
   }
 }

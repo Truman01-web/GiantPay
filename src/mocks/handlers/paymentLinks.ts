@@ -43,7 +43,7 @@ export const paymentLinksHandlers = [
 
     const body = (await request.json()) as {
       name: string;
-      mode: 'FIXED' | 'CUSTOMER_ENTERED';
+      mode: 'FIXED';
       amountMinor?: number;
       currency: string;
       description?: string;
