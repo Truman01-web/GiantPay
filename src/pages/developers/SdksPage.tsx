@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Package } from 'lucide-react';
+import { ArrowRight, Package } from 'lucide-react';
 import { PageHero, GradientText } from '@/components/hero';
 
 const SDKS = [

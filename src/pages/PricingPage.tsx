@@ -5,8 +5,6 @@ import { PageHero, GradientText } from '@/components/hero';
 
 const HERO_BG_IMAGE =
   'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=2000&q=80';
-const HERO_BG_FALLBACK =
-  'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=2000&q=80';
 
 interface PricingTier {
   id: string;

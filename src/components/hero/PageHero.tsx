@@ -34,9 +34,6 @@ export interface PageHeroProps {
   decorative?: boolean;
 }
 
-const DEFAULT_LIGHT_IMAGE =
-  'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2000&q=80';
-
 /**
  * Shared public-page hero. Carries the Company pages' visual identity:
  * back-link pill → eyebrow chip → gradient-text H1 → description → optional CTAs,
@@ -65,7 +62,7 @@ export function PageHero({
     ? { background: 'linear-gradient(160deg, #061428 0%, #0B2445 40%, #0d2d5e 75%, #071a38 100%)' }
     : undefined;
 
-  const backLinkProps = backLink === true ? {} : backLink;
+  const backLinkProps: { to?: string; label?: string } = typeof backLink === 'object' ? backLink : {};
 
   const imageScrim = isDark
     ? ['bg-gradient-to-r from-[#061428] via-[#061428]/90 to-[#0B2445]/80', 'bg-gradient-to-b from-[#061428]/80 via-transparent to-[#061428]']
