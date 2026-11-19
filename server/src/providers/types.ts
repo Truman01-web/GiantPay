@@ -40,6 +40,9 @@ export interface WebhookHeaders {
   timestamp?: string;
   /** Flutterwave v3 uses verif-hash for webhook authentication */
   verifHash?: string;
+  /** OneKhusa sends X-OneKhusa-Webhook-Event to identify which per-event
+   *  webhook secret to verify the signature against. */
+  event?: string;
 }
 
 export interface PaymentProvider {

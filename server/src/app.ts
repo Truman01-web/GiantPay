@@ -39,6 +39,7 @@ import { registerEvidenceRoutes, type EvidenceRuntime } from './evidence/routes.
 import { registerStaffRoutes } from './staff/routes.js';
 import { registerScanToPayRoutes } from './payments/scanToPayRoutes.js';
 import { registerFlutterwaveRoutes } from './payments/flutterwaveRoutes.js';
+import { registerOneKhusaRoutes } from './payments/oneKhusaRoutes.js';
 import { operationalMetrics } from './operations/metrics.js';
 import { operationalControlGuard } from './operations/controls.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
@@ -332,7 +333,8 @@ export async function buildApp(
     const path = request.url.split('?')[0];
     const isWebhook =
       path === '/v1/webhooks/providers/sandbox' ||
-      path === '/v1/webhooks/providers/flutterwave';
+      path === '/v1/webhooks/providers/flutterwave' ||
+      path === '/v1/webhooks/providers/onekhusa';
     if (!isWebhook) return payload;
     const chunks: Buffer[] = [];
     let size = 0;
@@ -1109,6 +1111,7 @@ export async function buildApp(
   await registerOperationsRoutes(app, config, db, rateLimits);
   await registerScanToPayRoutes(app, config, db, rateLimits, provider);
   await registerFlutterwaveRoutes(app, config, db, rateLimits, provider);
+  await registerOneKhusaRoutes(app, config, db, rateLimits, provider);
 
   app.get(
     '/v1/payments',
