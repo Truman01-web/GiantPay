@@ -237,6 +237,7 @@ export async function buildApp(
   app.decorateRequest('actor', null);
   app.decorateRequest('rawWebhookBody', undefined);
   app.addHook('onRequest', async (request, reply) => {
+    reply.header('X-Robots-Tag', 'noindex, nofollow, noarchive');
     const origin = request.headers.origin;
     const staffRoute = /^\/v1\/(staff|platform|compliance|admin)(\/|$)/.test(request.url.split('?')[0] ?? '');
     if (origin && (staffRoute ? origin !== config.STAFF_FRONTEND_ORIGIN : origin !== config.FRONTEND_ORIGIN && origin !== config.STAFF_FRONTEND_ORIGIN)) {

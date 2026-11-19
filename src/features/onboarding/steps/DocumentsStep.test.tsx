@@ -18,7 +18,14 @@ function pdfFile(name = 'certificate.pdf', sizeBytes = 1024) {
 function renderStep(initialDocuments: UploadedDocument[] = []) {
   const onNext = vi.fn();
   const onBack = vi.fn();
-  render(<DocumentsStep initialDocuments={initialDocuments} saving={false} onBack={onBack} onNext={onNext} />);
+  render(
+    <DocumentsStep
+      initialDocuments={initialDocuments}
+      saving={false}
+      onBack={onBack}
+      onNext={onNext}
+    />,
+  );
   return { onNext, onBack };
 }
 
@@ -26,7 +33,11 @@ const CERT_LABEL = /certificate of incorporation/i;
 
 describe('DocumentsStep — file upload', () => {
   it('uploads a valid file and shows it as uploaded', async () => {
-    server.use(http.post(UPLOAD_PATH, () => HttpResponse.json({ id: 'doc_1', fileName: 'certificate.pdf', sizeBytes: 1024 })));
+    server.use(
+      http.post(UPLOAD_PATH, () =>
+        HttpResponse.json({ id: 'doc_1', fileName: 'certificate.pdf', sizeBytes: 1024 }),
+      ),
+    );
     renderStep();
 
     const input = screen.getByLabelText(CERT_LABEL);
@@ -39,7 +50,12 @@ describe('DocumentsStep — file upload', () => {
 
   it('rejects an unsupported file type on the client and never calls the API', async () => {
     let calls = 0;
-    server.use(http.post(UPLOAD_PATH, () => { calls++; return HttpResponse.json({ id: 'x', fileName: 'x', sizeBytes: 1 }); }));
+    server.use(
+      http.post(UPLOAD_PATH, () => {
+        calls++;
+        return HttpResponse.json({ id: 'x', fileName: 'x', sizeBytes: 1 });
+      }),
+    );
     renderStep();
 
     const input = screen.getByLabelText(CERT_LABEL);
@@ -51,13 +67,20 @@ describe('DocumentsStep — file upload', () => {
     // reaches that validation, the same way a drop event would.
     await userEvent.setup({ applyAccept: false }).upload(input, textFile);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/not a supported file type|isn't a supported/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /not a supported file type|isn't a supported/i,
+    );
     expect(calls).toBe(0);
   });
 
   it('rejects an oversized file on the client and never calls the API', async () => {
     let calls = 0;
-    server.use(http.post(UPLOAD_PATH, () => { calls++; return HttpResponse.json({ id: 'x', fileName: 'x', sizeBytes: 1 }); }));
+    server.use(
+      http.post(UPLOAD_PATH, () => {
+        calls++;
+        return HttpResponse.json({ id: 'x', fileName: 'x', sizeBytes: 1 });
+      }),
+    );
     renderStep();
 
     const input = screen.getByLabelText(CERT_LABEL);
@@ -71,7 +94,10 @@ describe('DocumentsStep — file upload', () => {
   it('shows a recoverable failure state on an HTTP error, and stops the loading state', async () => {
     server.use(
       http.post(UPLOAD_PATH, () =>
-        HttpResponse.json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'boom' } }, { status: 413 }),
+        HttpResponse.json(
+          { error: { code: 'PAYLOAD_TOO_LARGE', message: 'boom' } },
+          { status: 413 },
+        ),
       ),
     );
     renderStep();
@@ -104,7 +130,14 @@ describe('DocumentsStep — file upload', () => {
   });
 
   it('authentication failure surfaces a session-expired message without exposing details', async () => {
-    server.use(http.post(UPLOAD_PATH, () => HttpResponse.json({ error: { code: 'UNAUTHORIZED', message: 'token expired' } }, { status: 401 })));
+    server.use(
+      http.post(UPLOAD_PATH, () =>
+        HttpResponse.json(
+          { error: { code: 'UNAUTHORIZED', message: 'token expired' } },
+          { status: 401 },
+        ),
+      ),
+    );
     renderStep();
 
     await userEvent.upload(screen.getByLabelText(CERT_LABEL), pdfFile());
@@ -120,7 +153,11 @@ describe('DocumentsStep — file upload', () => {
       http.post(UPLOAD_PATH, ({ request }) => {
         calls++;
         idempotencyKeys.push(request.headers.get('idempotency-key') ?? '');
-        if (calls === 1) return HttpResponse.json({ error: { code: 'INTERNAL', message: 'boom' } }, { status: 500 });
+        if (calls === 1)
+          return HttpResponse.json(
+            { error: { code: 'INTERNAL', message: 'boom' } },
+            { status: 500 },
+          );
         return HttpResponse.json({ id: 'doc_1', fileName: 'certificate.pdf', sizeBytes: 1024 });
       }),
     );
@@ -160,6 +197,10 @@ describe('DocumentsStep — file upload', () => {
 
   it('cancels the in-flight request when the document is removed', async () => {
     let calls = 0;
+    let releaseResponse!: () => void;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
     // MSW's XHR interceptor doesn't propagate an aborted client request
     // into the handler's own AbortSignal (confirmed against its source —
     // see client.ts's uploadFile comments), so cancellation is verified
@@ -169,7 +210,7 @@ describe('DocumentsStep — file upload', () => {
     server.use(
       http.post(UPLOAD_PATH, async () => {
         calls++;
-        await delay(200);
+        await responseGate;
         return HttpResponse.json({ id: 'doc_1', fileName: 'certificate.pdf', sizeBytes: 1024 });
       }),
     );
@@ -180,6 +221,7 @@ describe('DocumentsStep — file upload', () => {
 
     const removeButton = screen.getByRole('button', { name: /cancel uploading/i });
     await userEvent.click(removeButton);
+    releaseResponse();
 
     expect(screen.queryByText('certificate.pdf')).not.toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -198,7 +240,9 @@ describe('DocumentsStep — file upload', () => {
       }),
     );
     const onNext = vi.fn();
-    const { unmount } = render(<DocumentsStep initialDocuments={[]} saving={false} onBack={vi.fn()} onNext={onNext} />);
+    const { unmount } = render(
+      <DocumentsStep initialDocuments={[]} saving={false} onBack={vi.fn()} onNext={onNext} />,
+    );
 
     await userEvent.upload(screen.getByLabelText(CERT_LABEL), pdfFile());
     await waitFor(() => expect(screen.getByRole('progressbar')).toBeInTheDocument());

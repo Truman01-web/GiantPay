@@ -53,6 +53,9 @@ export async function initiateCheckout(db: Db, provider: PaymentProvider, input:
     }
     const limit = input.kind === 'checkout' && !source.reusable ? 1 : source.max_successful_payments;
     if (limit != null) {
+      if (input.kind === 'qr-checkout' && Number(source.successful_payments_count) >= Number(limit)) {
+        throw Object.assign(new Error('QR successful-payment limit reached.'), { code: 'CHECKOUT_CAPACITY' });
+      }
       const column = input.kind === 'checkout' ? 'payment_link_id' : 'scan_to_pay_code_id';
       const count = await c.query(`SELECT count(*) count FROM payments WHERE ${column}=$1 AND status IN ('PROCESSING','PENDING','SUCCEEDED','REFUND_PENDING','PARTIALLY_REFUNDED','REFUNDED')`, [input.sourceId]);
       if (Number(count.rows[0].count) >= Number(limit)) throw Object.assign(new Error('Payment capacity is reserved.'), { code: 'CHECKOUT_CAPACITY' });

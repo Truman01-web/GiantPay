@@ -23,12 +23,10 @@ export function QrCounterDisplay({ code, merchantName }: QrCounterDisplayProps) 
         </Button>
       </div>
 
-      <div className="w-full max-w-sm rounded-[var(--radius-xl)] border-2 border-[var(--color-navy-900)] bg-white p-6 shadow-md text-center print:border-none print:shadow-none print:p-0">
+      <div className="qr-print-area w-full max-w-sm rounded-[var(--radius-xl)] border-2 border-[var(--color-navy-900)] bg-white p-6 shadow-md text-center print:border-none print:shadow-none print:p-0">
         {/* Header Branding */}
         <div className="flex items-center justify-center gap-2 mb-4">
-          <span className="text-[length:var(--text-h3)] font-black tracking-tight text-[var(--color-navy-900)]">
-            Giant<span className="text-[var(--color-blue-600)]">Pay</span>
-          </span>
+          <img src="/giantpay-logo.png" alt="GiantPay" className="h-16 w-auto object-contain" />
         </div>
 
         <h2 className="text-[length:var(--text-h3)] font-bold text-[var(--color-navy-900)]">
@@ -47,12 +45,7 @@ export function QrCounterDisplay({ code, merchantName }: QrCounterDisplayProps) 
 
         {/* QR Code */}
         <div className="my-2 flex justify-center">
-          <QrCodeDisplay
-            url={code.checkoutUrl}
-            label={code.label}
-            size={220}
-            showActions={false}
-          />
+          <QrCodeDisplay url={code.checkoutUrl} label={code.label} size={220} showActions={false} />
         </div>
 
         {/* Amount Info */}
@@ -74,14 +67,18 @@ export function QrCounterDisplay({ code, merchantName }: QrCounterDisplayProps) 
               <span className="text-[length:var(--text-label)] font-medium text-[var(--color-neutral-700)]">
                 Enter amount on checkout
               </span>
-              {code.minAmountMinor != null && (
+              {(code.minAmountMinor != null || code.maxAmountMinor != null) && (
                 <p className="text-[length:var(--text-help)] text-[var(--color-neutral-500)] mt-0.5">
-                  Min:{' '}
-                  <AmountDisplay
-                    amountMinor={code.minAmountMinor}
-                    currency={code.currency}
-                    size="sm"
-                  />
+                  {code.minAmountMinor != null && (
+                    <>
+                      Min:{' '}
+                      <AmountDisplay
+                        amountMinor={code.minAmountMinor}
+                        currency={code.currency}
+                        size="sm"
+                      />
+                    </>
+                  )}
                   {code.maxAmountMinor != null && (
                     <>
                       {' · '}Max:{' '}
@@ -98,17 +95,31 @@ export function QrCounterDisplay({ code, merchantName }: QrCounterDisplayProps) 
           )}
         </div>
 
+        <div className="mt-3 text-sm text-slate-600">
+          {code.expiresAt && <p>Expires: {new Date(code.expiresAt).toLocaleString()}</p>}
+          {code.maxSuccessfulPayments != null && (
+            <p>Successful-payment limit: {code.maxSuccessfulPayments}</p>
+          )}
+          {code.status !== 'ACTIVE' && (
+            <p className="font-semibold text-red-700">
+              {code.status === 'EXPIRED'
+                ? 'Expired — ask for a new code'
+                : 'Revoked — do not use this code'}
+            </p>
+          )}
+        </div>
+
         {/* Instructions */}
         <div className="mt-6 border-t border-[var(--color-neutral-200)] pt-4 text-left">
           <ol className="text-[length:var(--text-help)] text-[var(--color-neutral-600)] space-y-1 list-decimal list-inside">
             <li>Scan this QR code with your phone camera</li>
-            <li>Select Airtel Money, Mpamba or Card</li>
-            <li>Confirm payment and show receipt</li>
+            <li>Review the merchant, amount and available methods</li>
+            <li>Wait for backend confirmation before treating payment as complete</li>
           </ol>
         </div>
 
         <p className="mt-4 text-[10px] text-[var(--color-neutral-400)] uppercase tracking-widest">
-          Powered by GiantPay · Secure Payments
+          GiantPay sandbox · Live payments disabled
         </p>
       </div>
     </div>

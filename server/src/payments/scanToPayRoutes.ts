@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { transaction as dbTx } from '../db.js';
 import { initiateCheckout } from './initiateCheckout.js';
+import { qrCheckoutUrl } from './qrCheckoutUrl.js';
 /**
  * Scan-to-Pay backend routes.
  *
@@ -58,7 +59,7 @@ const createQrSchema = z.object({
   }
 });
 
-function qrRow(row: any, frontendOrigin: string) {
+function qrRow(row: any) {
   return {
     id: row.id,
     label: row.label,
@@ -67,14 +68,15 @@ function qrRow(row: any, frontendOrigin: string) {
     amountMinor: row.amount_minor != null ? Number(row.amount_minor) : null,
     minAmountMinor: row.min_amount_minor != null ? Number(row.min_amount_minor) : null,
     maxAmountMinor: row.max_amount_minor != null ? Number(row.max_amount_minor) : null,
-    status: row.status,
+    status: row.status === 'ACTIVE' && ((row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) ||
+      (row.max_successful_payments != null && Number(row.successful_payments_count) >= Number(row.max_successful_payments))) ? 'EXPIRED' : row.status,
     expiresAt: row.expires_at ?? null,
     maxSuccessfulPayments: row.max_successful_payments ?? null,
     successfulPaymentsCount: Number(row.successful_payments_count),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     // Checkout URL encodes only the opaque token — never amounts or merchant IDs.
-    checkoutUrl: `${frontendOrigin}/checkout/qr/${row.token}`,
+    checkoutUrl: qrCheckoutUrl(row.token),
   };
 }
 
@@ -108,7 +110,7 @@ export async function registerScanToPayRoutes(
         [merchantId, q.pageSize, (q.page - 1) * q.pageSize],
       );
       return {
-        data: rows.rows.map((r: any) => qrRow(r, config.FRONTEND_ORIGIN)),
+        data: rows.rows.map((r: any) => qrRow(r)),
         page: q.page,
         pageSize: q.pageSize,
         total: Number(total.rows[0].count),
@@ -153,7 +155,7 @@ export async function registerScanToPayRoutes(
             token,
           ],
         );
-        const result = qrRow(row.rows[0], config.FRONTEND_ORIGIN);
+        const result = qrRow(row.rows[0]);
         await client.query("INSERT INTO idempotency_keys VALUES($1,'create-qr',$2,201,$3)", [request.actor!.merchantId,key,{ fingerprint,result }]);
         return result;
       });
@@ -175,7 +177,7 @@ export async function registerScanToPayRoutes(
       );
       if (!row.rowCount)
         return reply.code(404).send(apiError(request, 'NOT_FOUND', 'QR code not found.'));
-      return qrRow(row.rows[0], config.FRONTEND_ORIGIN);
+      return qrRow(row.rows[0]);
     },
   );
 
@@ -195,7 +197,7 @@ export async function registerScanToPayRoutes(
       );
       if (!row.rowCount)
         return reply.code(404).send(apiError(request, 'NOT_FOUND', 'QR code not found.'));
-      return qrRow(row.rows[0], config.FRONTEND_ORIGIN);
+      return qrRow(row.rows[0]);
     },
   );
 
@@ -228,7 +230,7 @@ export async function registerScanToPayRoutes(
       const qr = row.rows[0];
       const expired =
         qr.status !== 'ACTIVE' ||
-        (qr.expires_at && new Date(qr.expires_at) < new Date()) ||
+        (qr.expires_at && new Date(qr.expires_at).getTime() <= Date.now()) ||
         (qr.max_successful_payments != null &&
           Number(qr.successful_payments_count) >= Number(qr.max_successful_payments));
 

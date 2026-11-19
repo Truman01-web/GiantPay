@@ -11,14 +11,17 @@ export default function PrivacyPage() {
       content: (
         <div className="space-y-3">
           <p>
-            GiantPlus Ltd (&quot;GiantPlus&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), operating the
-            <strong> GiantPay</strong> unified payment platform, is committed to safeguarding the privacy,
-            confidentiality, and security of all personal, business, and transactional data entrusted to us.
+            GiantPlus Ltd (&quot;GiantPlus&quot;, &quot;we&quot;, &quot;us&quot;, or
+            &quot;our&quot;), operating the
+            <strong> GiantPay</strong> unified payment platform, is committed to safeguarding the
+            privacy, confidentiality, and security of all personal, business, and transactional data
+            entrusted to us.
           </p>
           <p>
-            This Privacy Policy governs our collection, processing, storage, and sharing of information across all
-            GiantPay services, hosted checkout flows, merchant APIs, and digital applications in compliance with the
-            laws of Malawi, including Reserve Bank of Malawi (RBM) directives and applicable data protection standards.
+            This Privacy Policy governs our collection, processing, storage, and sharing of
+            information across all GiantPay services, hosted checkout flows, merchant APIs, and
+            digital applications in compliance with the laws of Malawi, including Reserve Bank of
+            Malawi (RBM) directives and applicable data protection standards.
           </p>
         </div>
       ),
@@ -28,22 +31,27 @@ export default function PrivacyPage() {
       title: '2. Information We Collect',
       content: (
         <div className="space-y-3">
-          <p>To provide compliant and reliable financial payment services, we collect information in three main categories:</p>
+          <p>
+            To provide compliant and reliable financial payment services, we collect information in
+            three main categories:
+          </p>
           <ul className="list-disc pl-5 space-y-2 text-slate-600">
             <li>
-              <strong>Merchant &amp; Business Profile Information:</strong> Business registration certificates, tax
-              identification numbers (TPIN), registered physical addresses, beneficial ownership records, director
-              identification documents, and authorized representative contact details (KYC/KYB compliance).
+              <strong>Merchant &amp; Business Profile Information:</strong> Business registration
+              certificates, tax identification numbers (TPIN), registered physical addresses,
+              beneficial ownership records, director identification documents, and authorized
+              representative contact details (KYC/KYB compliance).
             </li>
             <li>
-              <strong>Transactional Data:</strong> Payment amounts, currency denominations (MWK), transaction timestamps,
-              merchant references, payer phone numbers (for Airtel Money and TNM Mpamba), masked card identifiers (first 6
-              and last 4 digits only), settlement bank account numbers, and reconciliation logs.
+              <strong>Transactional Data:</strong> Payment amounts, currency denominations (MWK),
+              transaction timestamps, merchant references, payer phone numbers (for Airtel Money and
+              TNM Mpamba), masked card identifiers (first 6 and last 4 digits only), settlement bank
+              account numbers, and reconciliation logs.
             </li>
             <li>
-              <strong>Technical &amp; Telemetry Data:</strong> IP addresses, browser user-agents, device fingerprints, API
-              request signatures, webhook delivery telemetry, and session logs used strictly for fraud prevention and
-              system diagnostics.
+              <strong>Technical &amp; Telemetry Data:</strong> IP addresses, browser user-agents,
+              device fingerprints, API request signatures, webhook delivery telemetry, and session
+              logs used strictly for fraud prevention and system diagnostics.
             </li>
           </ul>
         </div>
@@ -54,30 +62,37 @@ export default function PrivacyPage() {
       title: '3. How We Use Your Information',
       content: (
         <div className="space-y-3">
-          <p>We process collected data solely for lawful financial and operational purposes, specifically:</p>
+          <p>
+            We process collected data solely for lawful financial and operational purposes,
+            specifically:
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 pt-1">
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
               <h4 className="font-bold text-slate-800 text-sm">Payment Execution</h4>
               <p className="mt-1 text-xs text-slate-500">
-                Routing payment instructions to telecommunications operators, card networks, and the National Switch.
+                Routing payment instructions to telecommunications operators, card networks, and the
+                National Switch.
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
               <h4 className="font-bold text-slate-800 text-sm">AML/CFT Compliance</h4>
               <p className="mt-1 text-xs text-slate-500">
-                Fulfilling Anti-Money Laundering and Counter-Financing of Terrorism verification required by Malawian regulators.
+                Fulfilling Anti-Money Laundering and Counter-Financing of Terrorism verification
+                required by Malawian regulators.
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
               <h4 className="font-bold text-slate-800 text-sm">Reconciliation &amp; Settlement</h4>
               <p className="mt-1 text-xs text-slate-500">
-                Auditing funds received against provider ledgers to calculate and disburse merchant net payouts.
+                Auditing funds received against provider ledgers to calculate and disburse merchant
+                net payouts.
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
               <h4 className="font-bold text-slate-800 text-sm">Fraud &amp; Risk Mitigation</h4>
               <p className="mt-1 text-xs text-slate-500">
-                Detecting unusual patterns, velocity anomalies, unauthorized access attempts, and chargeback disputes.
+                Detecting unusual patterns, velocity anomalies, unauthorized access attempts, and
+                chargeback disputes.
               </p>
             </div>
           </div>
@@ -90,14 +105,23 @@ export default function PrivacyPage() {
       content: (
         <div className="space-y-3">
           <p>
-            <strong>We do not sell, rent, or monetize your personal or financial data.</strong> Data is only shared with
-            authorized entities necessary to complete payment fulfillment:
+            <strong>We do not sell, rent, or monetize your personal or financial data.</strong> Data
+            is only shared with authorized entities necessary to complete payment fulfillment:
           </p>
           <ul className="list-disc pl-5 space-y-1 text-slate-600">
-            <li>Licensed Mobile Money Operators (Airtel Malawi, TNM Mpamba) to process mobile wallet debits.</li>
-            <li>Card Processing Schemes (Visa, Mastercard) and acquiring banking partners for card authorization.</li>
+            <li>
+              Licensed Mobile Money Operators (Airtel Malawi, TNM Mpamba) to process mobile wallet
+              debits.
+            </li>
+            <li>
+              Card Processing Schemes (Visa, Mastercard) and acquiring banking partners for card
+              authorization.
+            </li>
             <li>National Switch / Clearing House operators for interbank electronic transfers.</li>
-            <li>Statutory regulatory bodies and law enforcement agencies when legally required by valid judicial order.</li>
+            <li>
+              Statutory regulatory bodies and law enforcement agencies when legally required by
+              valid judicial order.
+            </li>
           </ul>
         </div>
       ),
@@ -108,29 +132,32 @@ export default function PrivacyPage() {
       content: (
         <div className="space-y-3">
           <p>
-            GiantPay implements industry-grade protective controls to safeguard financial records against interception,
-            loss, and unauthorized alteration:
+            GiantPay implements industry-grade protective controls to safeguard financial records
+            against interception, loss, and unauthorized alteration:
           </p>
           <div className="space-y-2 text-slate-600">
             <p className="flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-1 shrink-0" />
               <span>
-                <strong>Encryption in Transit &amp; At Rest:</strong> All external API communications require TLS 1.3
-                encryption. Database records and backups are secured using AES-256 standards.
+                <strong>Encryption in Transit &amp; At Rest:</strong> All external API
+                communications require TLS 1.3 encryption. Database records and backups are secured
+                using AES-256 standards.
               </span>
             </p>
             <p className="flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-1 shrink-0" />
               <span>
-                <strong>Zero Card Storage:</strong> GiantPay does not store full 16-digit card numbers or CVV/CVC codes on
-                its application servers. Tokenization is managed through certified payment gateways.
+                <strong>Zero Card Storage:</strong> GiantPay does not store full 16-digit card
+                numbers or CVV/CVC codes on its application servers. Tokenization is managed through
+                certified payment gateways.
               </span>
             </p>
             <p className="flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-1 shrink-0" />
               <span>
-                <strong>Role-Based Access Control:</strong> Internal system access is strictly restricted on a
-                need-to-know basis, protected by multi-factor authentication and immutable audit logs.
+                <strong>Role-Based Access Control:</strong> Internal system access is strictly
+                restricted on a need-to-know basis, protected by multi-factor authentication and
+                immutable audit logs.
               </span>
             </p>
           </div>
@@ -143,12 +170,14 @@ export default function PrivacyPage() {
       content: (
         <div className="space-y-3">
           <p>
-            In accordance with Malawian financial regulations, transaction and KYC records must be retained for a
-            minimum of seven (7) years following account closure for statutory audit trails.
+            In accordance with Malawian financial regulations, transaction and KYC records must be
+            retained for a minimum of seven (7) years following account closure for statutory audit
+            trails.
           </p>
           <p>
-            You have the right to request access to your registered business profile, rectify inaccurate records, export
-            historical transaction ledgers, and request termination of your merchant processing agreement.
+            You have the right to request access to your registered business profile, rectify
+            inaccurate records, export historical transaction ledgers, and request termination of
+            your merchant processing agreement.
           </p>
         </div>
       ),
@@ -159,12 +188,15 @@ export default function PrivacyPage() {
       content: (
         <div className="space-y-2">
           <p>
-            For privacy inquiries, audit requests, or data protection questions, please contact our Compliance Officer:
+            For privacy inquiries, audit requests, or data protection questions, please contact our
+            Compliance Officer:
           </p>
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm space-y-1.5">
-            <p className="font-semibold text-slate-900">GiantPlus Ltd — GiantPay Compliance Office</p>
+            <p className="font-semibold text-slate-900">
+              GiantPlus Ltd — GiantPay Compliance Office
+            </p>
             <p className="text-slate-600">Golden Peacock Office Complex, Lilongwe, Malawi</p>
-            <p className="text-slate-600">Email: compliance@giantpay.mw | legal@giantplus.mw</p>
+            <p className="text-slate-600">Email: info@giantplus-mw.com</p>
           </div>
         </div>
       ),
@@ -175,11 +207,15 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-slate-50/50">
       {/* Hero Header */}
       <section className="relative overflow-hidden text-white pt-28 pb-14 sm:pt-36 sm:pb-16 bg-[#061428]">
-        <div aria-hidden className="pointer-events-none absolute inset-0 select-none overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 select-none overflow-hidden"
+        >
           <img
             src="https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=2000&q=80"
             onError={(e) => {
-              e.currentTarget.src = "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=2000&q=80";
+              e.currentTarget.src =
+                'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=2000&q=80';
             }}
             alt=""
             className="h-full w-full object-cover object-center opacity-25"
@@ -201,9 +237,12 @@ export default function PrivacyPage() {
             <Shield className="h-4 w-4" />
             <span>Legal &amp; Regulatory Compliance</span>
           </div>
-          <h1 className="mt-3 text-3xl sm:text-5xl font-black tracking-tight text-white">Privacy Policy</h1>
+          <h1 className="mt-3 text-3xl sm:text-5xl font-black tracking-tight text-white">
+            Privacy Policy
+          </h1>
           <p className="mt-3 text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
-            How GiantPay collects, protects, and handles merchant data, customer payment transactions, and regulatory records.
+            How GiantPay collects, protects, and handles merchant data, customer payment
+            transactions, and regulatory records.
           </p>
           <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
             <Clock className="h-3.5 w-3.5" />
@@ -216,8 +255,8 @@ export default function PrivacyPage() {
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <div className="space-y-8">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm leading-relaxed text-amber-950">
-            This page describes sandbox data handling. The production privacy policy still requires GiantPlus legal and
-            compliance approval before production activation.
+            This page describes sandbox data handling. The production privacy policy still requires
+            GiantPlus legal and compliance approval before production activation.
           </div>
           {sections.map((section) => (
             <div
@@ -242,7 +281,9 @@ export default function PrivacyPage() {
             </div>
             <div>
               <p className="text-sm font-bold text-slate-900">Have questions about your data?</p>
-              <p className="text-xs text-slate-500">Our compliance team responds to all data requests within 48 hours.</p>
+              <p className="text-xs text-slate-500">
+                Our compliance team responds to all data requests within 48 hours.
+              </p>
             </div>
           </div>
           <Link
