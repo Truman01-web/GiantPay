@@ -20,7 +20,7 @@ function normalizeApiUrl(value: string): string {
 
 const mockAllowedEnvironments = new Set(['development', 'test', 'e2e']);
 
-export function validateFrontendEnv(source: { VITE_API_URL?: string; VITE_APP_ENV?: string; VITE_USE_MOCK_API?: string; VITE_PORTAL_CONTEXT?: string }) {
+export function validateFrontendEnv(source: { VITE_API_URL?: string; VITE_APP_ENV?: string; VITE_USE_MOCK_API?: string; VITE_PORTAL_CONTEXT?: string; VITE_PUBLIC_CHECKOUT_ORIGIN?: string }) {
   const useMockApi = source.VITE_USE_MOCK_API === 'true';
   const appEnv = source.VITE_APP_ENV || 'development';
   if (useMockApi && !mockAllowedEnvironments.has(appEnv)) {
@@ -31,7 +31,14 @@ export function validateFrontendEnv(source: { VITE_API_URL?: string; VITE_APP_EN
   const portalContext=source.VITE_PORTAL_CONTEXT||'merchant';
   if(!['merchant','staff'].includes(portalContext))throw new Error('VITE_PORTAL_CONTEXT must be merchant or staff.');
   if(portalContext==='staff'&&useMockApi)throw new Error('Mock API mode is forbidden for the staff portal.');
-  return { apiUrl: normalizeApiUrl(required('VITE_API_URL', source.VITE_API_URL)), appEnv, useMockApi, portalContext:portalContext as 'merchant'|'staff' };
+  let publicCheckoutOrigin: string | null = null;
+  if (source.VITE_PUBLIC_CHECKOUT_ORIGIN) {
+    const origin = new URL(source.VITE_PUBLIC_CHECKOUT_ORIGIN);
+    if (origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash || !['http:', 'https:'].includes(origin.protocol)) throw new Error('VITE_PUBLIC_CHECKOUT_ORIGIN must be a credential-free HTTP(S) origin');
+    if (origin.protocol === 'http:' && (!['development', 'test', 'e2e'].includes(appEnv) || !['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname))) throw new Error('VITE_PUBLIC_CHECKOUT_ORIGIN must use HTTPS except on local loopback');
+    publicCheckoutOrigin = origin.origin;
+  }
+  return { apiUrl: normalizeApiUrl(required('VITE_API_URL', source.VITE_API_URL)), appEnv, useMockApi, portalContext:portalContext as 'merchant'|'staff', publicCheckoutOrigin };
 }
 
 const validated = validateFrontendEnv(rawEnv);
@@ -42,6 +49,7 @@ export const env = {
   appEnv: validated.appEnv,
   useMockApi: validated.useMockApi,
   portalContext: validated.portalContext,
+  publicCheckoutOrigin: validated.publicCheckoutOrigin,
   sentryDsn: rawEnv.VITE_SENTRY_DSN || null,
   isProd: Boolean(rawEnv.PROD),
   isDev: Boolean(rawEnv.DEV),

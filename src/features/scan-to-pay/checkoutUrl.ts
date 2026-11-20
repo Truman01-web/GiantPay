@@ -1,8 +1,11 @@
-export function isGiantPayQrUrl(value: string): boolean {
+import { env } from '@/app/config/env';
+
+export function isGiantPayQrUrl(value: string, frontendOrigin = env.publicCheckoutOrigin ?? window.location.origin): boolean {
   try {
     const url = new URL(value);
     return (
-      url.origin === 'https://giantpay.mw' &&
+      url.origin === frontendOrigin &&
+      (url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) &&
       !url.username &&
       !url.password &&
       !url.search &&

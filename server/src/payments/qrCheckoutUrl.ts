@@ -1,4 +1,4 @@
-/** Stable public QR target. Local browser tests map this URL to their disposable frontend. */
-export function qrCheckoutUrl(token: string): string {
-  return `https://giantpay.mw/checkout/qr/${encodeURIComponent(token)}`;
+/** The origin is validated configuration, never a request Host header. */
+export function qrCheckoutUrl(origin: string, token: string): string {
+  return `${origin}/checkout/qr/${encodeURIComponent(token)}`;
 }

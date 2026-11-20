@@ -10,7 +10,7 @@ The reconciliation worker is deliberately read-only: Phase 3 reconciliation rema
 
 ## Configuration and secrets
 
-Set `NODE_ENV=production`, `DEPLOYMENT_ENVIRONMENT=sandbox`, `PAYMENT_PROVIDER=sandbox`, `FRONTEND_ORIGIN=https://giantpay.mw`, `COOKIE_SECURE=true`, and exact proxy CIDRs in `TRUSTED_PROXIES`. The API accepts CORS only from the configured origin; local development must explicitly use its approved local origin. `DATABASE_URL` must require certificate verification and `REDIS_URL` must use `rediss://`.
+Set `NODE_ENV=production`, `DEPLOYMENT_ENVIRONMENT=sandbox`, `PAYMENT_PROVIDER=sandbox`, `FRONTEND_ORIGIN=https://giantpay.mw`, `COOKIE_SECURE=true`, and exact proxy CIDRs in `TRUSTED_PROXIES`. `FRONTEND_ORIGIN` is also the public QR checkout origin. If the merchant frontend is served from a different origin, configure its `VITE_PUBLIC_CHECKOUT_ORIGIN` to match. Hosted origins must use HTTPS; local HTTP is limited to loopback. The API accepts CORS only from the configured origin. `DATABASE_URL` must require certificate verification and `REDIS_URL` must use `rediss://`.
 
 Inject `DATABASE_URL`, `REDIS_URL`, `PASSWORD_PEPPER`, `COOKIE_SECRET`, `SANDBOX_WEBHOOK_SECRET`, and `WEBHOOK_SECRET_KEY` through the corresponding `_FILE` variables and mounted secret files. Never place values in images, Compose files, logs, examples, or Git. Rotate one secret at a time through the platform secret manager, restart all processes, invalidate affected sessions or signatures, and retain old webhook decryption material only for an explicitly bounded migration window.
 

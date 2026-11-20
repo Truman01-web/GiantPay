@@ -28,13 +28,27 @@ suite('QR management preserves merchant controls and safe URLs', () => {
   async function create(extra = {}) {
     return app.inject({ method: 'POST', url: '/v1/qr', headers: { ...headers(), 'idempotency-key': randomUUID() }, payload: { label: 'Synthetic Counter', mode: 'FIXED', amountMinor: 10000, ...extra } });
   }
-  it('creates a canonical opaque HTTPS URL and preserves fixed/custom constraints', async () => {
+  it('creates a configured local opaque URL and preserves fixed/custom constraints', async () => {
     const response = await create(); expect(response.statusCode, response.body).toBe(201);
-    expect(response.json().checkoutUrl).toMatch(/^https:\/\/giantpay\.mw\/checkout\/qr\/[A-Za-z0-9_-]{43}$/);
+    expect(response.json().checkoutUrl).toMatch(/^http:\/\/127\.0\.0\.1:5173\/checkout\/qr\/[A-Za-z0-9_-]{43}$/);
     expect(response.json().amountMinor).toBe(10000);
     const custom = await create({ mode: 'CUSTOMER_ENTERED', amountMinor: undefined, minAmountMinor: 5000, maxAmountMinor: 20000, maxSuccessfulPayments: 2 });
     expect(custom.statusCode, custom.body).toBe(201);
     expect(custom.json()).toMatchObject({ minAmountMinor: 5000, maxAmountMinor: 20000, maxSuccessfulPayments: 2 });
+  });
+  it('uses configured origin on reads and idempotent retries regardless of Host', async () => {
+    const key = randomUUID();
+    const options = { method: 'POST' as const, url: '/v1/qr', headers: { ...headers(), host: 'attacker.example', 'idempotency-key': key }, payload: { label: 'Stable', mode: 'FIXED', amountMinor: 100 } };
+    const first = await app.inject(options);
+    expect(first.statusCode).toBe(201);
+    const code = first.json();
+    await db.query("UPDATE idempotency_keys SET response_body = jsonb_set(response_body, '{result,checkoutUrl}', '\"https://old.example/checkout/qr/stale\"'::jsonb) WHERE merchant_id='m1' AND operation='create-qr' AND key=$1", [key]);
+    const retry = await app.inject(options);
+    expect(retry.json().id).toBe(code.id);
+    expect(retry.json().checkoutUrl).toBe(code.checkoutUrl);
+    expect((await app.inject({ url: `/v1/qr/${code.id}`, headers: { ...headers(), host: 'attacker.example' } })).json().checkoutUrl).toBe(code.checkoutUrl);
+    const list = await app.inject({ url: '/v1/qr', headers: headers() });
+    expect(list.json().data.find((item: { id: string }) => item.id === code.id).checkoutUrl).toBe(code.checkoutUrl);
   });
   it('requires login, tenant permissions and CSRF on QR mutations', async () => {
     expect((await app.inject('/v1/qr')).statusCode).toBe(401);

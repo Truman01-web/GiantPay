@@ -3,7 +3,7 @@ import jsQR from 'jsqr';
 import { generateQrMatrix } from './qrSvg';
 
 describe('QR checkout encoding', () => {
-  it.each(['https://giantpay.mw/checkout/qr/' + 'a'.repeat(43), 'https://giantpay.mw/checkout/qr/' + 'b'.repeat(190), 'https://giantpay.mw/checkout/qr/' + 'c'.repeat(250)])('decodes the complete opaque checkout URL (%s)', (url) => {
+  it.each(['http://127.0.0.1:4187/checkout/qr/' + 'a'.repeat(43), 'https://checkout.example.test/checkout/qr/' + 'a'.repeat(43), 'https://giantpay.mw/checkout/qr/' + 'b'.repeat(190), 'https://giantpay.mw/checkout/qr/' + 'c'.repeat(250)])('decodes the complete opaque checkout URL (%s)', (url) => {
     const matrix = generateQrMatrix(url), scale = 5, width = (matrix.length + 8) * scale;
     const pixels = new Uint8ClampedArray(width * width * 4).fill(255);
     matrix.forEach((row, y) => row.forEach((black, x) => {

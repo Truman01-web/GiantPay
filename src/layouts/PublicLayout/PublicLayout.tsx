@@ -3,8 +3,10 @@ import { Outlet, Link } from 'react-router-dom';
 import { PublicNavbar } from '@/components/navigation/PublicNavbar';
 import { FullPageLoader } from '@/components/feedback/FullPageLoader';
 import { ErrorBoundary } from '@/app/providers/ErrorBoundary';
+import { statusColour, useApiStatus } from '@/features/status/useApiStatus';
 
 export function PublicLayout() {
+  const status = useApiStatus();
   return (
     <div className="public-shell">
       <a href="#public-main" className="public-skip">
@@ -48,6 +50,7 @@ export function PublicLayout() {
           <Link to="/terms">Terms</Link>
           <Link to="/company/compliance">Readiness</Link>
           <Link to="/company/contact">Contact</Link>
+          <Link to="/status">API Status <span aria-hidden="true" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: statusColour(status.state), marginInline: 4 }} /> ({status.state === 'Unknown' ? 'Unable to verify' : status.state})</Link>
           <p>© {new Date().getFullYear()} GiantPlus</p>
         </nav>
       </footer>

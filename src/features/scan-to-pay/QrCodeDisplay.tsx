@@ -60,7 +60,7 @@ export function QrCodeDisplay({ url, label, size = 240, showActions = true }: Qr
   if (!path)
     return (
       <p role="alert">
-        Unable to display this QR: a GiantPay HTTPS checkout URL with an opaque token is required.
+          Unable to display this QR: a checkout URL on this frontend with an opaque token is required.
         Refresh or ask support for help.
       </p>
     );

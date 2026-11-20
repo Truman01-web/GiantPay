@@ -30,7 +30,7 @@ const schema = z.object({
   RATE_LIMIT_NAMESPACE: z.string().regex(/^[A-Za-z0-9:_-]+$/).default('giantpay:rate-limit'),
   RATE_LIMIT_GENERAL_MAX: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_GENERAL_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
-  PAYMENT_PROVIDER: z.enum(['sandbox', 'flutterwave']).default('sandbox'),
+  PAYMENT_PROVIDER: z.enum(['sandbox', 'flutterwave', 'onekhusa']).default('sandbox'),
   SANDBOX_WEBHOOK_SECRET: z.string().min(32),
   // Flutterwave v3 credentials. Required when PAYMENT_PROVIDER=flutterwave.
   // Never commit real values; supply via environment variables or mounted secrets.
@@ -43,6 +43,28 @@ const schema = z.object({
   // Backend base URL for Flutterwave redirect callbacks.
   // e.g. http://127.0.0.1:4000 (local) or https://api.giantpay.mw (production).
   FLW_REDIRECT_BASE_URL: optionalText,
+  // OneKhusa credentials. Required when PAYMENT_PROVIDER=onekhusa.
+  // Never commit real values; supply via environment variables or mounted secrets.
+  // Sandbox test credentials are safe to store in .env.local (gitignored).
+  ONEKHUSA_API_KEY: optionalSecret,
+  ONEKHUSA_API_SECRET: optionalSecret,
+  // Settings → Profile in the OneKhusa portal.
+  ONEKHUSA_ORGANISATION_ID: optionalText,
+  // Merchants menu in the OneKhusa portal (8-digit account number).
+  ONEKHUSA_MERCHANT_ACCOUNT_NUMBER: z.coerce.number().int().min(10_000_000).max(99_999_999).optional(),
+  // Connectors in the OneKhusa portal — Airtel Money and TNM Mpamba are
+  // separate connector IDs; the provider picks one by phone-number prefix.
+  ONEKHUSA_AIRTEL_CONNECTOR_ID: z.coerce.number().int().positive().optional(),
+  ONEKHUSA_TNM_CONNECTOR_ID: z.coerce.number().int().positive().optional(),
+  // OneKhusa's "capturedBy" field is the operator/service-account email that
+  // captured the transaction, not the paying customer's email.
+  ONEKHUSA_CAPTURED_BY_EMAIL: optionalText,
+  // Per-event webhook secrets from Developers → Webhooks → Manage → View —
+  // NOT the API Secret. Each of pushpayment.success/.failed/.reversed has
+  // its own secret.
+  ONEKHUSA_WEBHOOK_SECRET_SUCCESS: optionalSecret,
+  ONEKHUSA_WEBHOOK_SECRET_FAILED: optionalSecret,
+  ONEKHUSA_WEBHOOK_SECRET_REVERSED: optionalSecret,
   WEBHOOK_TOLERANCE_SECONDS: z.coerce.number().int().positive().max(900).default(300),
   OUTBOX_WORKER_ENABLED: z.enum(['true','false']).default('false').transform((value) => value === 'true'),
   OUTBOX_POLL_MS: z.coerce.number().int().min(100).max(60_000).default(1000),
@@ -79,6 +101,8 @@ const mountedSecrets = [
   'DATABASE_URL', 'REDIS_URL', 'PASSWORD_PEPPER', 'COOKIE_SECRET',
   'SANDBOX_WEBHOOK_SECRET', 'WEBHOOK_SECRET_KEY', 'SMTP_PASSWORD',
   'FLW_SECRET_KEY', 'FLW_PUBLIC_KEY', 'FLW_SECRET_HASH',
+  'ONEKHUSA_API_KEY', 'ONEKHUSA_API_SECRET',
+  'ONEKHUSA_WEBHOOK_SECRET_SUCCESS', 'ONEKHUSA_WEBHOOK_SECRET_FAILED', 'ONEKHUSA_WEBHOOK_SECRET_REVERSED',
 ] as const;
 
 export function resolveMountedSecrets(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -100,6 +124,10 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<ty
   const resolved = resolveMountedSecrets(source);
   if (resolved.NODE_ENV === 'production' && !resolved.DEPLOYMENT_ENVIRONMENT) resolved.DEPLOYMENT_ENVIRONMENT = 'production';
   const config = schema.parse(resolved);
+  const frontendOrigin = new URL(config.FRONTEND_ORIGIN);
+  if (frontendOrigin.username || frontendOrigin.password || frontendOrigin.pathname !== '/' || frontendOrigin.search || frontendOrigin.hash || !['http:', 'https:'].includes(frontendOrigin.protocol)) throw new Error('FRONTEND_ORIGIN must be a credential-free HTTP(S) origin without a path, query or fragment');
+  if (frontendOrigin.protocol === 'http:' && (config.DEPLOYMENT_ENVIRONMENT !== 'local' || !['localhost', '127.0.0.1', '[::1]'].includes(frontendOrigin.hostname))) throw new Error('FRONTEND_ORIGIN must use HTTPS except for local loopback development');
+  config.FRONTEND_ORIGIN = frontendOrigin.origin;
   if (config.NODE_ENV === 'production' && !/[?&]sslmode=(require|verify-ca|verify-full)(?:&|$)/i.test(config.DATABASE_URL)) throw new Error('DATABASE_URL must require TLS in production');
   if (config.NODE_ENV === 'production' && (!config.WEBHOOK_SECRET_KEY || config.WEBHOOK_ALLOW_HTTP_DEVELOPMENT)) throw new Error('Production webhook secret key and HTTPS-only mode are required');
   if (config.NODE_ENV === 'production' && (!config.REDIS_URL || !config.REDIS_URL.startsWith('rediss://'))) throw new Error('REDIS_URL must use TLS in production');
@@ -121,6 +149,23 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<ty
     if (!config.FLW_REDIRECT_BASE_URL) throw new Error('FLW_REDIRECT_BASE_URL is required when PAYMENT_PROVIDER=flutterwave');
     if (config.NODE_ENV === 'production' && !config.FLW_SECRET_KEY.startsWith('FLWSECK-')) {
       throw new Error('FLW_SECRET_KEY must be a live Flutterwave secret key in production (starts with FLWSECK-)');
+    }
+  }
+  // OneKhusa credential requirements
+  if (config.PAYMENT_PROVIDER === 'onekhusa') {
+    if (!config.ONEKHUSA_API_KEY) throw new Error('ONEKHUSA_API_KEY is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_API_SECRET) throw new Error('ONEKHUSA_API_SECRET is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_ORGANISATION_ID) throw new Error('ONEKHUSA_ORGANISATION_ID is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_MERCHANT_ACCOUNT_NUMBER) throw new Error('ONEKHUSA_MERCHANT_ACCOUNT_NUMBER is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_AIRTEL_CONNECTOR_ID) throw new Error('ONEKHUSA_AIRTEL_CONNECTOR_ID is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_TNM_CONNECTOR_ID) throw new Error('ONEKHUSA_TNM_CONNECTOR_ID is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_CAPTURED_BY_EMAIL) throw new Error('ONEKHUSA_CAPTURED_BY_EMAIL is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_WEBHOOK_SECRET_SUCCESS) throw new Error('ONEKHUSA_WEBHOOK_SECRET_SUCCESS is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_WEBHOOK_SECRET_FAILED) throw new Error('ONEKHUSA_WEBHOOK_SECRET_FAILED is required when PAYMENT_PROVIDER=onekhusa');
+    if (!config.ONEKHUSA_WEBHOOK_SECRET_REVERSED) throw new Error('ONEKHUSA_WEBHOOK_SECRET_REVERSED is required when PAYMENT_PROVIDER=onekhusa');
+    // Production base URL and KYC are not yet confirmed — see oneKhusaProvider.ts.
+    if (config.DEPLOYMENT_ENVIRONMENT === 'production') {
+      throw new Error('OneKhusa production collections are disabled: base URL and credentials are not yet confirmed.');
     }
   }
   if (config.EXTERNAL_DELIVERY_ENABLED) {
