@@ -247,7 +247,7 @@ export async function registerScanToPayRoutes(
         maxAmountMinor: qr.max_amount_minor != null ? Number(qr.max_amount_minor) : null,
         // Available channels reflect current provider configuration.
         // Mark Flutterwave channels as DEMONSTRATION until credentials are active.
-        availableChannels: provider.name === 'flutterwave' ? ['CARD'] : ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
+        availableChannels: provider.name === 'flutterwave' ? ['CARD'] : provider.name === 'onekhusa' ? ['MOBILE_MONEY'] : ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
         status: expired ? 'EXPIRED' : 'READY',
         expiresAt: qr.expires_at ?? null,
         label: qr.label,
@@ -302,6 +302,7 @@ export async function registerScanToPayRoutes(
 
       const qr = qrResult.rows[0];
       if (provider.name === 'flutterwave' && body.channel !== 'CARD') return reply.code(422).send(apiError(request, 'CHANNEL_UNAVAILABLE', 'This payment method is not available.'));
+      if (provider.name === 'onekhusa' && body.channel !== 'MOBILE_MONEY') return reply.code(422).send(apiError(request, 'CHANNEL_UNAVAILABLE', 'This payment method is not available.'));
 
       // Determine the authoritative amount.
       // FIXED: server amount, ignoring any client-supplied value.

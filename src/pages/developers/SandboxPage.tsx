@@ -1,1 +1,1 @@
-﻿export { default } from '../PublicFeaturePage';
+export { default } from '../PublicFeaturePage';

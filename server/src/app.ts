@@ -39,6 +39,7 @@ import { registerEvidenceRoutes, type EvidenceRuntime } from './evidence/routes.
 import { registerStaffRoutes } from './staff/routes.js';
 import { registerScanToPayRoutes } from './payments/scanToPayRoutes.js';
 import { registerFlutterwaveRoutes } from './payments/flutterwaveRoutes.js';
+import { registerOneKhusaRoutes } from './payments/oneKhusaRoutes.js';
 import { operationalMetrics } from './operations/metrics.js';
 import { operationalControlGuard } from './operations/controls.js';
 import { decideRefundState, RefundDecisionError } from './refundDecision.js';
@@ -333,7 +334,8 @@ export async function buildApp(
     const path = request.url.split('?')[0];
     const isWebhook =
       path === '/v1/webhooks/providers/sandbox' ||
-      path === '/v1/webhooks/providers/flutterwave';
+      path === '/v1/webhooks/providers/flutterwave' ||
+      path === '/v1/webhooks/providers/onekhusa';
     if (!isWebhook) return payload;
     const chunks: Buffer[] = [];
     let size = 0;
@@ -373,6 +375,9 @@ export async function buildApp(
             ? 409
             : 422;
       return reply.code(status).send(apiError(request, error.code, error.message));
+    }
+    if ((error as { code?: string }).code === 'PROVIDER_VALIDATION' && Number.isInteger((error as { statusCode?: number }).statusCode)) {
+      return reply.code((error as { statusCode: number }).statusCode).send(apiError(request, 'PROVIDER_VALIDATION', (error as Error).message));
     }
     if (
       (error as any)?.code === '23514' &&
@@ -1110,6 +1115,7 @@ export async function buildApp(
   await registerOperationsRoutes(app, config, db, rateLimits);
   await registerScanToPayRoutes(app, config, db, rateLimits, provider);
   await registerFlutterwaveRoutes(app, config, db, rateLimits, provider);
+  await registerOneKhusaRoutes(app, config, db, rateLimits, provider);
 
   app.get(
     '/v1/payments',
@@ -1329,7 +1335,7 @@ export async function buildApp(
       description: x.description,
       merchantReference: x.customer_reference,
       amount: money(x.amount_minor, x.currency),
-      availableChannels: provider.name === 'flutterwave' ? ['CARD'] : ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
+      availableChannels: provider.name === 'flutterwave' ? ['CARD'] : provider.name === 'onekhusa' ? ['MOBILE_MONEY'] : ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
       requiredCustomerFields: ['name', 'phone'],
       status: expired ? 'EXPIRED' : 'READY',
       expiresAt: x.expires_at ?? new Date(Date.now() + 900000).toISOString(),
@@ -1359,6 +1365,7 @@ export async function buildApp(
           .send(apiError(request, 'EXPIRED', 'This payment session has expired.'));
       const paymentLink = linkResult.rows[0];
       if (provider.name === 'flutterwave' && body.channel !== 'CARD') return reply.code(422).send(apiError(request, 'CHANNEL_UNAVAILABLE', 'This payment method is not available.'));
+      if (provider.name === 'onekhusa' && body.channel !== 'MOBILE_MONEY') return reply.code(422).send(apiError(request, 'CHANNEL_UNAVAILABLE', 'This payment method is not available.'));
       const response = await initiateCheckout(db, provider, {
         merchantId: paymentLink.merchant_id, sourceId: paymentLink.id, kind: 'checkout', key,
         amountMinor: Number(paymentLink.amount_minor), currency: paymentLink.currency,

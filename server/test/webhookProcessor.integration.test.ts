@@ -78,6 +78,56 @@ suite('transactional webhook processing', () => {
     expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE source_id='p1'`)).rows[0].count)).toBe(1);
   });
 
+  it('resolves a distinct OneKhusa source reference and posts a ledger only for an exact amount', async () => {
+    await db.query(`UPDATE payments SET reference='ONEKHUSA-MERCHANT-REF',provider_name='onekhusa',gross_minor=50000 WHERE id='p1';
+      UPDATE payment_attempts SET provider='onekhusa' WHERE id='pa1'`);
+    const event: ProviderWebhookEvent = {
+      eventId: 'onekhusa-distinct-refs', eventType: 'payment.status.changed',
+      paymentReference: 'ONEKHUSA-MERCHANT-REF', paymentReferenceCandidates: ['ONEKHUSA-SOURCE-REF'],
+      providerPaymentId: 'ONEKHUSA-SOURCE-REF', status: 'SUCCEEDED', occurredAt: '2026-11-20T10:00:00Z', amountMinor: 50_000,
+    };
+    await db.query(`UPDATE payments SET reference='ONEKHUSA-SOURCE-REF' WHERE id='p1'`);
+    expect(await processPaymentWebhook(db, 'onekhusa', event, raw(event))).toMatchObject({ outcome: 'PROCESSED', paymentStatus: 'SUCCEEDED' });
+    expect((await db.query(`SELECT payment_reference FROM webhook_receipts WHERE provider_event_id=$1`, [event.eventId])).rows[0].payment_reference).toBe('ONEKHUSA-SOURCE-REF');
+    expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE source_id='p1'`)).rows[0].count)).toBe(1);
+  });
+
+  it('rejects a OneKhusa amount mismatch before ledger or payment state changes', async () => {
+    await db.query(`UPDATE payments SET provider_name='onekhusa',gross_minor=50000 WHERE id='p1';
+      UPDATE payment_attempts SET provider='onekhusa' WHERE id='pa1'`);
+    const event: ProviderWebhookEvent = { ...baseEvent, eventId: 'onekhusa-wrong-amount', providerPaymentId: 'onekhusa-ref', amountMinor: 49_999 };
+    expect(await processPaymentWebhook(db, 'onekhusa', event, raw(event))).toEqual({ outcome: 'PAYLOAD_CONFLICT' });
+    expect((await db.query(`SELECT status FROM payments WHERE id='p1'`)).rows[0].status).toBe('PROCESSING');
+    expect((await db.query(`SELECT processing_status,failure_code FROM webhook_receipts WHERE provider_event_id=$1`, [event.eventId])).rows[0]).toMatchObject({ processing_status: 'SUSPICIOUS', failure_code: 'AMOUNT_MISMATCH' });
+    expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE source_id='p1'`)).rows[0].count)).toBe(0);
+  });
+
+  it('rejects a callback when both OneKhusa reference candidates identify different local payments', async () => {
+    await db.query(`UPDATE payments SET provider_name='onekhusa',gross_minor=1000 WHERE id='p1';
+      UPDATE payment_attempts SET provider='onekhusa' WHERE id='pa1';
+      INSERT INTO payments(id,merchant_id,reference,status,channel,provider_name,gross_minor,currency,customer)
+      VALUES('p2','m1','GP-SECOND','PROCESSING','MOBILE_MONEY','onekhusa',1000,'MWK','{}')`);
+    const event: ProviderWebhookEvent = { ...baseEvent, eventId: 'onekhusa-ambiguous-reference', paymentReferenceCandidates: ['GP-SECOND'], amountMinor: 1000 };
+    expect(await processPaymentWebhook(db, 'onekhusa', event, raw(event))).toEqual({ outcome: 'PAYLOAD_CONFLICT' });
+    expect((await db.query(`SELECT processing_status,failure_code FROM webhook_receipts WHERE provider_event_id=$1`, [event.eventId])).rows[0]).toMatchObject({ processing_status: 'SUSPICIOUS', failure_code: 'AMBIGUOUS_PAYMENT_REFERENCE' });
+    expect((await db.query(`SELECT status FROM payments WHERE id IN ('p1','p2') ORDER BY id`)).rows.map(row => row.status)).toEqual(['PROCESSING','PROCESSING']);
+    expect(Number((await db.query(`SELECT count(*) FROM journal_entries WHERE source_id IN ('p1','p2')`)).rows[0].count)).toBe(0);
+  });
+
+  it('posts one balanced ledger reversal for a verified OneKhusa reversal callback', async () => {
+    await db.query(`UPDATE payments SET provider_name='onekhusa',gross_minor=1000,fee_minor=0 WHERE id='p1';
+      UPDATE payment_attempts SET provider='onekhusa' WHERE id='pa1'`);
+    const success: ProviderWebhookEvent = { ...baseEvent, eventId: 'onekhusa-success-before-reversal', providerPaymentId: 'onekhusa-ref', amountMinor: 1000 };
+    expect(await processPaymentWebhook(db, 'onekhusa', success, raw(success))).toMatchObject({ outcome: 'PROCESSED' });
+    const reversal: ProviderWebhookEvent = { ...success, eventId: 'onekhusa-reversal', status: 'REFUNDED' };
+    expect(await processPaymentWebhook(db, 'onekhusa', reversal, raw(reversal))).toMatchObject({ outcome: 'PROCESSED', paymentStatus: 'REFUNDED' });
+    expect(await processPaymentWebhook(db, 'onekhusa', reversal, raw(reversal))).toEqual({ outcome: 'DUPLICATE' });
+    expect((await db.query(`SELECT status,refunded_minor FROM payments WHERE id='p1'`)).rows[0]).toMatchObject({ status: 'REFUNDED', refunded_minor: '1000' });
+    expect((await db.query(`SELECT count(*)::int count FROM journal_entries WHERE source_id IN (SELECT id FROM journal_entries WHERE source_type='PAYMENT_SUCCESS' AND source_id='p1')`)).rows[0].count).toBe(1);
+    expect((await db.query(`SELECT count(*)::int count FROM journal_entries WHERE source_type='PROVIDER_REVERSAL' AND source_event_id='onekhusa:onekhusa-reversal'`)).rows[0].count).toBe(1);
+    expect((await db.query(`SELECT event_type FROM outbox_events WHERE deduplication_key='payment.refunded:p1:onekhusa-reversal'`)).rows[0].event_type).toBe('payment.refunded');
+  });
+
   it('rejects reuse of an event id with a changed payload and records it as suspicious', async () => {
     await processPaymentWebhook(db, 'sandbox', baseEvent, raw(baseEvent));
     const changed = { ...baseEvent, status: 'FAILED' as const };

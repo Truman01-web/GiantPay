@@ -24,4 +24,19 @@ describe('durable checkout intent', () => {
     await expect(initiateCheckout(db, provider, { ...input, amountMinor: 2000 })).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
     expect(provider.initiatePayment).toHaveBeenCalledTimes(1);
   });
+
+  it('runs deterministic provider validation before opening a transaction or reserving an intent', async () => {
+    const connect = vi.fn();
+    const db = { connect } as unknown as Db;
+    const provider = {
+      name: 'onekhusa', initiatePayment: vi.fn(),
+      validatePaymentInput: vi.fn(() => { throw Object.assign(new Error('minimum amount'), { code: 'PROVIDER_VALIDATION', statusCode: 422 }); }),
+    } as unknown as PaymentProvider;
+    await expect(initiateCheckout(db, provider, {
+      merchantId: 'm', sourceId: 'link', kind: 'checkout', key: 'low-amount', amountMinor: 49_999,
+      currency: 'MWK', feeMinor: 0, description: null, channel: 'MOBILE_MONEY', customer: { phone: '+265991234567' },
+    })).rejects.toMatchObject({ code: 'PROVIDER_VALIDATION', statusCode: 422 });
+    expect(connect).not.toHaveBeenCalled();
+    expect(provider.initiatePayment).not.toHaveBeenCalled();
+  });
 });

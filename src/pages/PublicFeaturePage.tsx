@@ -1,6 +1,7 @@
 ﻿import { Link, useLocation } from 'react-router-dom';
 import { publicPages } from '@/content/publicPages';
 import { CurrencyQuoteDemo } from '@/features/exchange/CurrencyQuoteDemo';
+import { PageHero } from '@/components/hero';
 
 export default function PublicFeaturePage() {
   const { pathname } = useLocation();
@@ -14,14 +15,16 @@ export default function PublicFeaturePage() {
     );
   return (
     <main className="public-content">
-      <header className="product-intro">
-        <Link className="public-back" to="/">
-          GiantPay / Products & resources
-        </Link>
-        <p className="brand-eyebrow">{content.eyebrow}</p>
-        <h1>{content.title}</h1>
-        <p className="public-lead">{content.description}</p>
-      </header>
+      <PageHero
+        className="product-intro"
+        padding="pb-12"
+        containerClassName=""
+        backLink={{ to: '/', label: 'GiantPay / Products & resources' }}
+        eyebrow={content.eyebrow}
+        description={content.description}
+      >
+        {content.title}
+      </PageHero>
       {pathname === '/products/merchant-devices' && (
         <figure className="device-reference">
           <img

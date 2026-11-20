@@ -9,7 +9,7 @@ import { API_KEY_SCOPES, apiKeyVerifier, generateApiKey } from './apiKeys.js';
 import { encryptSecret, validateWebhookUrl } from './webhookSecurity.js';
 import { rateLimit, type RateLimitStore } from '../rateLimit.js';
 
-const events=['payment.processing','payment.succeeded','payment.failed','refund.pending_approval','refund.approved','refund.rejected'] as const;
+const events=['payment.processing','payment.succeeded','payment.failed','payment.refunded','refund.pending_approval','refund.approved','refund.rejected'] as const;
 const keyView=(r:any)=>({id:r.id,name:r.name,prefix:r.fingerprint,environment:'sandbox',scopes:r.scopes,createdAt:r.created_at,expiresAt:r.expires_at,lastUsedAt:r.last_used_at,revokedAt:r.revoked_at,status:r.revoked_at?'REVOKED':r.expires_at&&new Date(r.expires_at)<=new Date()?'EXPIRED':'ACTIVE'});
 const endpointView=(r:any)=>({id:r.id,name:r.name,url:r.url,enabled:r.enabled,events:r.event_types,secret:r.secret_fingerprint,createdAt:r.created_at,updatedAt:r.updated_at});
 
