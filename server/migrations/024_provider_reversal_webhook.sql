@@ -1,5 +1,5 @@
 ALTER TABLE merchant_webhook_endpoints
-  DROP CONSTRAINT merchant_webhook_endpoints_event_types_check;
+  DROP CONSTRAINT IF EXISTS merchant_webhook_endpoints_event_types_check;
 
 ALTER TABLE merchant_webhook_endpoints
   ADD CONSTRAINT merchant_webhook_endpoints_event_types_check
