@@ -67,7 +67,7 @@ for (const width of [1440, 390]) {
       const guest = await browser.newContext({ viewport: { width, height: 1000 } });
       try {
         const checkout = await guest.newPage();
-        expect(checkoutUrl).toMatch(/^https:\/\/giantpay\.mw\/checkout\/qr\/[A-Za-z0-9_-]{43}$/);
+        expect(checkoutUrl).toMatch(/^http:\/\/127\.0\.0\.1:4187\/checkout\/qr\/[A-Za-z0-9_-]{43}$/);
         await checkout.goto(new URL(checkoutUrl).pathname);
         await checkout.getByText('Mobile Money (Airtel / Mpamba)', { exact: true }).click();
         const submission = checkout.waitForResponse(
