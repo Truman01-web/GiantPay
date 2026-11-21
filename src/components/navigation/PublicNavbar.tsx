@@ -4,15 +4,39 @@ import { Logo } from '@/components/navigation/Logo';
 import { PUBLIC_NAV_GROUPS, type NavGroup } from './publicNavData';
 import { cn } from '@/lib/cn';
 
+// Matches the mobile menu's close transition below — keep in sync.
+const MOBILE_MENU_TRANSITION_MS = 200;
+
 export function PublicNavbar() {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileMenuMounted, setMobileMenuMounted] = useState(false);
   const [expandedMobileGroups, setExpandedMobileGroups] = useState<Record<string, boolean>>({});
 
   const navRef = useRef<HTMLElement>(null);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Close both the desktop dropdown and the mobile panel on every navigation
+  // (including via the logo or the top-bar "Get Started" link, which have no
+  // individual onClick handler of their own).
+  useEffect(() => {
+    setActiveGroup(null);
+    setMobileOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Keep the mobile panel mounted through its close transition so it can
+  // animate out instead of vanishing instantly.
+  useEffect(() => {
+    if (mobileOpen) {
+      setMobileMenuMounted(true);
+      return;
+    }
+    const timeout = setTimeout(() => setMobileMenuMounted(false), MOBILE_MENU_TRANSITION_MS);
+    return () => clearTimeout(timeout);
+  }, [mobileOpen]);
 
   // Passive, efficient scroll listener (threshold: 8px)
   useEffect(() => {
@@ -26,11 +50,12 @@ export function PublicNavbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Click outside to close desktop dropdown
+  // Click/tap outside to close the desktop dropdown or the mobile panel
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
         setActiveGroup(null);
+        setMobileOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -83,7 +108,7 @@ export function PublicNavbar() {
       ref={navRef}
       role="banner"
       className={cn(
-        'fixed top-0 inset-x-0 z-50 transition-all duration-300 ease-in-out motion-reduce:transition-none',
+        'fixed top-0 inset-x-0 z-[1000] transition-all duration-300 ease-in-out motion-reduce:transition-none',
         isScrolled || mobileOpen
           ? 'border-b border-slate-200/80 bg-white/80 backdrop-blur-xl shadow-sm shadow-slate-900/5'
           : 'border-b border-transparent bg-transparent shadow-none backdrop-blur-none'
@@ -236,7 +261,7 @@ export function PublicNavbar() {
         <div className="flex items-center gap-2 sm:hidden">
           <Link
             to="/register"
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500"
+            className="inline-flex min-h-[44px] items-center rounded-lg px-3 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500"
           >
             Get Started
           </Link>
@@ -261,12 +286,21 @@ export function PublicNavbar() {
       </div>
 
       {/* Mobile Menu Drawer Overlay */}
-      {mobileOpen && (
+      {mobileMenuMounted && (
         <div
           role="dialog"
           aria-modal="true"
+          aria-hidden={!mobileOpen}
+          inert={!mobileOpen}
           aria-label="Mobile Navigation Menu"
-          className="fixed inset-x-0 top-16 sm:top-20 bottom-0 z-40 bg-[#061428]/95 backdrop-blur-2xl border-t border-white/10 overflow-y-auto px-4 py-6 sm:px-6 flex flex-col justify-between"
+          className={cn(
+            'fixed inset-x-0 top-[var(--header-height)] z-[1001] bg-[#061428]/95 backdrop-blur-2xl border-t border-white/10',
+            'max-h-[calc(100dvh-var(--header-height))] overflow-y-auto overscroll-contain',
+            'px-4 pt-6 sm:px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]',
+            'flex flex-col justify-between',
+            'transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+            mobileOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-2 pointer-events-none',
+          )}
         >
           <div className="flex flex-col gap-3">
             {PUBLIC_NAV_GROUPS.map((group) => {
