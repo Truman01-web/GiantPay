@@ -28,6 +28,7 @@ export const EXPECTED_MIGRATIONS = [
   '021_staff_portal_access.sql',
   '022_flutterwave_scan_to_pay.sql',
   '023_payment_recovery.sql',
+  '024_provider_reversal_webhook.sql',
 ] as const;
 
 export async function applyMigrations(db: Db, directory = resolve('migrations')) {

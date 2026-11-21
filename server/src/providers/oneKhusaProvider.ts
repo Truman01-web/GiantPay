@@ -55,7 +55,7 @@ function base62DecodeToHex(encoded: string, hexLength: number): string | undefin
 // validation) for any shape that isn't GiantPay's standard checkout reference.
 function encodeSourceReferenceNumber(paymentReference: string): string {
   const match = GIANTPAY_REFERENCE_PATTERN.exec(paymentReference);
-  if (match) return base62EncodeHex(match[1]!);
+  if (match) return `GPX${base62EncodeHex(match[1]!)}`;
   if (paymentReference.length < 5 || paymentReference.length > 25) {
     throw new OneKhusaClientError(
       `paymentReference must be 5-25 characters for OneKhusa (got ${paymentReference.length}).`,
@@ -70,8 +70,10 @@ function encodeSourceReferenceNumber(paymentReference: string): string {
 // doesn't decode to a GiantPay-shaped reference (e.g. a non-standard
 // paymentReference that went through the raw fallback above).
 function decodeSourceReferenceNumber(sourceReferenceNumber: string): string {
-  const hex = base62DecodeToHex(sourceReferenceNumber, 32);
-  return hex ? `GP_${hex}` : sourceReferenceNumber;
+  const match = /^GPX([0-9A-Za-z]{21,22})$/.exec(sourceReferenceNumber);
+  if (!match) return sourceReferenceNumber;
+  const hex = base62DecodeToHex(match[1]!, 32);
+  return hex && base62EncodeHex(hex) === match[1] ? `GP_${hex}` : sourceReferenceNumber;
 }
 
 // ---------------------------------------------------------------------------
@@ -98,8 +100,7 @@ function decodeSourceReferenceNumber(sourceReferenceNumber: string): string {
 //     only be called as a fallback, not routinely.
 //   - Sandbox base URL: https://api.onekhusa.com/sandbox/v1
 //
-// WEBHOOK VERIFICATION — confirmed empirically against real sandbox
-// deliveries (2026-11-18), not just docs:
+// WEBHOOK VERIFICATION — checked against sandbox deliveries and current docs:
 //   - Header: X-OneKhusa-Webhook-Signature, lowercase hex.
 //   - Algorithm: HMAC-SHA512 over the raw, unparsed request body (confirmed:
 //     signatures are 128 hex chars). The docs' own examples looked like
@@ -107,10 +108,10 @@ function decodeSourceReferenceNumber(sourceReferenceNumber: string): string {
 //   - Each event (pushpayment.success / .failed / .reversed) has its OWN
 //     secret, from Developers → Webhooks → Manage → View per event — NOT the
 //     API Secret.
-//   - Correlation key: `merchantReferenceNumber` on every event type (equals
-//     the sourceReferenceNumber GiantPay sent at initiation). The docs'
-//     example payload for pushpayment.failed omitted this field entirely,
-//     which looked like a real gap — it isn't; real captures include it.
+//   - Published success/reversal examples have distinct sourceReferenceNumber
+//     and merchantReferenceNumber values; an earlier sandbox capture reportedly
+//     matched our submitted reference in merchantReferenceNumber. Preserve both
+//     as candidates and match them against a durable payment before use.
 //   - No timestamp/replay protection is provided by OneKhusa itself. Because
 //     the signature is a true HMAC bound to the exact payload (unlike
 //     Flutterwave's static verif-hash), signature verification alone is
@@ -218,34 +219,35 @@ export interface OneKhusaHttpClient {
   inquireTransactionStatus(
     request: OneKhusaTransactionStatusRequest,
     accessToken: string,
+    signal?: AbortSignal,
   ): Promise<OneKhusaTransactionStatusResponse>;
 }
 
 // ---------------------------------------------------------------------------
-// Webhook payload schemas — field names and shapes confirmed against real
-// sandbox deliveries, not just docs. `.passthrough()` tolerates fields we
+// Webhook payload schemas. `.passthrough()` tolerates fields we
 // don't use; only the ones GiantPay actually needs are required.
 // ---------------------------------------------------------------------------
 const pushPaymentSuccessOrReversedSchema = z.object({
   merchantReferenceNumber: z.string().min(1).max(200),
+  sourceReferenceNumber: z.string().min(1).max(200).optional(),
   transactionReferenceNumber: z.string().min(1).max(200).optional(),
-  transactionAmount: z.number(),
-  transactionDate: z.string().min(1),
+  transactionAmount: z.number().finite().positive(),
+  transactionDate: z.string().min(1).refine(value => Number.isFinite(Date.parse(value))),
   transactionStatusCode: z.enum(['S', 'R']),
   responseCode: z.string().min(1),
 }).passthrough();
 
 const pushPaymentFailedSchema = z.object({
   merchantReferenceNumber: z.string().min(1).max(200),
-  transactionAmount: z.number(),
-  transactionDate: z.string().min(1),
+  sourceReferenceNumber: z.string().min(1).max(200).optional(),
+  transactionAmount: z.number().finite().positive(),
+  transactionDate: z.string().min(1).refine(value => Number.isFinite(Date.parse(value))),
   transactionStatusCode: z.literal('F'),
   responseCode: z.string().min(1),
 }).passthrough();
 
-// For WEBHOOK payloads only. Confirmed against real pushpayment.success/
-// .failed deliveries: transactionStatusCode there genuinely means the
-// payment outcome (S/F/R).
+// Published webhook examples use transactionStatusCode for the payment
+// outcome (S/F/R).
 function oneKhusaStatusToGiantPay(code: string): 'SUCCEEDED' | 'FAILED' | 'REFUNDED' | 'PROCESSING' {
   switch (code) {
     case 'S': return 'SUCCEEDED';
@@ -269,7 +271,10 @@ function oneKhusaStatusToGiantPay(code: string): 'SUCCEEDED' | 'FAILED' | 'REFUN
 // responseMessage "Successful transaction" appeared on the same call where
 // transactionStatusCode said "Unreconciled". Error-class codes observed so
 // far (e.g. "E256") are prefixed "E"; treat that prefix as failure.
-function oneKhusaInquiryResponseCodeToGiantPay(responseCode: string): 'SUCCEEDED' | 'FAILED' | 'PROCESSING' {
+function oneKhusaInquiryResponseCodeToGiantPay(statusCode: string, responseCode: string): 'SUCCEEDED' | 'FAILED' | 'PROCESSING' {
+  if (statusCode === 'S') return 'SUCCEEDED';
+  if (['F', 'E', 'X', 'C'].includes(statusCode)) return 'FAILED';
+  if (['R', 'T', 'D', 'P'].includes(statusCode)) return 'PROCESSING';
   if (responseCode === 'S100') return 'SUCCEEDED';
   if (/^E\d+$/.test(responseCode)) return 'FAILED';
   return 'PROCESSING';
@@ -283,6 +288,8 @@ export class OneKhusaClientError extends Error {
   ) {
     super(message);
   }
+  get statusCode() { return this.httpStatus; }
+  get code() { return this.httpStatus < 500 ? 'PROVIDER_VALIDATION' : 'PROVIDER_UNAVAILABLE'; }
 }
 
 // ---------------------------------------------------------------------------
@@ -351,12 +358,14 @@ export class RealOneKhusaHttpClient implements OneKhusaHttpClient {
   async inquireTransactionStatus(
     request: OneKhusaTransactionStatusRequest,
     accessToken: string,
+    signal?: AbortSignal,
   ): Promise<OneKhusaTransactionStatusResponse> {
     return this.request<OneKhusaTransactionStatusResponse>(
       'POST',
       '/collections/inquiry/transactionStatus',
       request,
       { Authorization: `Bearer ${accessToken}` },
+      signal,
     );
   }
 }
@@ -466,33 +475,30 @@ export class OneKhusaPaymentProvider implements PaymentProvider {
   // responseCode "I100" only confirms the prompt was dispatched — the
   // customer still has to approve it on their phone. GiantPay therefore
   // reports PROCESSING here, matching the interface's constraint, and relies
-  // on the (not-yet-built) webhook handler for the final outcome.
+  // on the signed webhook handler for the final outcome.
   // -------------------------------------------------------------------------
-  async initiatePayment(input: InitiatePaymentInput): Promise<ProviderPaymentResult> {
+  validatePaymentInput(input: InitiatePaymentInput): void {
     if (input.channel !== 'MOBILE_MONEY') {
-      throw new OneKhusaClientError(
-        `OneKhusa channel ${input.channel} is not implemented. Only MOBILE_MONEY is supported currently.`,
-        422,
-        '',
-      );
+      throw new OneKhusaClientError(`OneKhusa channel ${input.channel} is not implemented. Only MOBILE_MONEY is supported currently.`, 422, '');
     }
     if (input.currency !== 'MWK') {
-      throw new OneKhusaClientError(
-        `Currency ${input.currency} is not supported for OneKhusa collections.`,
-        422,
-        '',
-      );
+      throw new OneKhusaClientError(`Currency ${input.currency} is not supported for OneKhusa collections.`, 422, '');
     }
     if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) {
       throw new OneKhusaClientError('Invalid payment amount.', 422, '');
     }
-    // Confirmed against the sandbox: amounts below MWK 500.00 are rejected.
     if (input.amountMinor < 50_000) {
       throw new OneKhusaClientError('OneKhusa requires a minimum amount of MWK 500.00.', 422, '');
     }
     if (!input.customer.phone) {
       throw new OneKhusaClientError('A payer phone number (MSISDN) is required for OneKhusa push payments.', 422, '');
     }
+    this.resolveConnectorId(input.customer.phone);
+    encodeSourceReferenceNumber(input.paymentReference);
+  }
+
+  async initiatePayment(input: InitiatePaymentInput): Promise<ProviderPaymentResult> {
+    this.validatePaymentInput(input);
     // sourceReferenceNumber must fit OneKhusa's 5-25 char constraint —
     // GiantPay's own "GP_"+32-hex references are always 35 chars, so this
     // reversibly shrinks them (see encodeSourceReferenceNumber above).
@@ -507,11 +513,11 @@ export class OneKhusaPaymentProvider implements PaymentProvider {
     // Confirmed against the sandbox: "Payer Account Number should contain
     // only numbers" — OneKhusa rejects the leading "+" GiantPay's own
     // customer.phone validation requires (E.164, e.g. "+265991234567").
-    const payerAccountNumber = input.customer.phone.replace(/\D/g, '');
+    const payerAccountNumber = input.customer.phone!.replace(/\D/g, '');
 
     const payload: OneKhusaPushPaymentPayload = {
       merchantAccountNumber: this.merchantAccountNumber,
-      connectorId: this.resolveConnectorId(input.customer.phone),
+      connectorId: this.resolveConnectorId(input.customer.phone!),
       payerAccountNumber,
       sourceReferenceNumber,
       // OneKhusa rejects anything but letters, digits and spaces here (confirmed
@@ -572,10 +578,29 @@ export class OneKhusaPaymentProvider implements PaymentProvider {
         { merchantAccountNumber: this.merchantAccountNumber, sourceReferenceNumber: providerPaymentId },
         accessToken,
       );
-      return { providerPaymentId, status: oneKhusaInquiryResponseCodeToGiantPay(response.transaction.responseCode) };
+      return { providerPaymentId, status: oneKhusaInquiryResponseCodeToGiantPay(response.transaction.transactionStatusCode, response.transaction.responseCode) };
     } catch {
       return { providerPaymentId, status: 'PROCESSING' };
     }
+  }
+
+  async recoverPayment(expected: { reference: string; amountMinor: number; currency: string; transactionId: string | null }, signal?: AbortSignal) {
+    const sourceReferenceNumber = encodeSourceReferenceNumber(expected.reference);
+    const accessToken = await this.getAccessToken();
+    const response = await this.httpClient.inquireTransactionStatus(
+      { merchantAccountNumber: this.merchantAccountNumber, sourceReferenceNumber },
+      accessToken,
+      signal,
+    );
+    const amountMinor = Math.round(response.source.amountSent * 100);
+    if (response.source.sourceReferenceNumber !== sourceReferenceNumber ||
+      response.source.currencyCode !== expected.currency ||
+      !Number.isSafeInteger(amountMinor) || amountMinor !== expected.amountMinor ||
+      expected.currency !== 'MWK') {
+      throw new Error('OneKhusa recovery inquiry did not match the durable payment intent.');
+    }
+    const status = oneKhusaInquiryResponseCodeToGiantPay(response.transaction.transactionStatusCode, response.transaction.responseCode);
+    return { providerPaymentId: sourceReferenceNumber, status };
   }
 
   // -------------------------------------------------------------------------
@@ -629,6 +654,12 @@ export class OneKhusaPaymentProvider implements PaymentProvider {
 
     const occurredAt = new Date(data.transactionDate).toISOString();
     const transactionReferenceNumber = 'transactionReferenceNumber' in data ? data.transactionReferenceNumber : undefined;
+    const amountMinor = Math.round(data.transactionAmount * 100);
+    if (!Number.isSafeInteger(amountMinor) || Math.abs(data.transactionAmount * 100 - amountMinor) > 1e-7) {
+      throw new WebhookVerificationError('INVALID_PAYLOAD', 422, 'OneKhusa transactionAmount must be a valid MWK amount with at most two decimal places.');
+    }
+    const merchantReference = decodeSourceReferenceNumber(data.merchantReferenceNumber);
+    const sourceReference = data.sourceReferenceNumber ? decodeSourceReferenceNumber(data.sourceReferenceNumber) : undefined;
 
     // Failed events carry no OneKhusa-side transaction reference, only our
     // own merchantReferenceNumber — fold in the timestamp so a genuine
@@ -641,17 +672,18 @@ export class OneKhusaPaymentProvider implements PaymentProvider {
     return {
       eventId,
       eventType: 'payment.status.changed',
-      // merchantReferenceNumber is whatever we sent as sourceReferenceNumber
-      // (see encodeSourceReferenceNumber) — decode it back to GiantPay's own
-      // "GP_..." reference, since processPaymentWebhook looks payments up by
-      // exact match on payments.reference.
-      paymentReference: decodeSourceReferenceNumber(data.merchantReferenceNumber),
+      // Keep merchantReferenceNumber as the primary candidate for compatibility
+      // with prior sandbox captures. The processor tries sourceReferenceNumber
+      // if this value does not match a durable payment.
+      paymentReference: merchantReference,
+      paymentReferenceCandidates: sourceReference && sourceReference !== merchantReference ? [sourceReference] : undefined,
       // providerPaymentId stays in OneKhusa's own reference space (the
       // encoded form) — getPaymentStatus() calls back into OneKhusa with
       // this value directly, so it must be what OneKhusa itself recognizes.
       providerPaymentId: data.merchantReferenceNumber,
       status: oneKhusaStatusToGiantPay(data.transactionStatusCode),
       occurredAt,
+      amountMinor,
     };
   }
 

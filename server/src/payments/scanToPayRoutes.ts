@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { transaction as dbTx } from '../db.js';
 import { initiateCheckout } from './initiateCheckout.js';
+import { qrCheckoutUrl } from './qrCheckoutUrl.js';
 /**
  * Scan-to-Pay backend routes.
  *
@@ -58,7 +59,7 @@ const createQrSchema = z.object({
   }
 });
 
-function qrRow(row: any, frontendOrigin: string) {
+function qrRow(row: any, origin: string) {
   return {
     id: row.id,
     label: row.label,
@@ -67,14 +68,15 @@ function qrRow(row: any, frontendOrigin: string) {
     amountMinor: row.amount_minor != null ? Number(row.amount_minor) : null,
     minAmountMinor: row.min_amount_minor != null ? Number(row.min_amount_minor) : null,
     maxAmountMinor: row.max_amount_minor != null ? Number(row.max_amount_minor) : null,
-    status: row.status,
+    status: row.status === 'ACTIVE' && ((row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) ||
+      (row.max_successful_payments != null && Number(row.successful_payments_count) >= Number(row.max_successful_payments))) ? 'EXPIRED' : row.status,
     expiresAt: row.expires_at ?? null,
     maxSuccessfulPayments: row.max_successful_payments ?? null,
     successfulPaymentsCount: Number(row.successful_payments_count),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     // Checkout URL encodes only the opaque token — never amounts or merchant IDs.
-    checkoutUrl: `${frontendOrigin}/checkout/qr/${row.token}`,
+    checkoutUrl: qrCheckoutUrl(origin, row.token),
   };
 }
 
@@ -132,7 +134,9 @@ export async function registerScanToPayRoutes(
         if (prior.rowCount) {
           const saved = prior.rows[0].response_body;
           if (saved.fingerprint !== fingerprint) throw Object.assign(new Error('Retry payload differs.'), { code: 'IDEMPOTENCY_CONFLICT' });
-          return saved.result;
+          const existing = await client.query('SELECT token FROM scan_to_pay_codes WHERE id=$1 AND merchant_id=$2', [saved.result.id, request.actor!.merchantId]);
+          if (!existing.rowCount) throw new Error('Previously created QR code is missing');
+          return { ...saved.result, checkoutUrl: qrCheckoutUrl(config.FRONTEND_ORIGIN, existing.rows[0].token) };
         }
         const id = newId('qr');
         const token = newToken();
@@ -228,7 +232,7 @@ export async function registerScanToPayRoutes(
       const qr = row.rows[0];
       const expired =
         qr.status !== 'ACTIVE' ||
-        (qr.expires_at && new Date(qr.expires_at) < new Date()) ||
+        (qr.expires_at && new Date(qr.expires_at).getTime() <= Date.now()) ||
         (qr.max_successful_payments != null &&
           Number(qr.successful_payments_count) >= Number(qr.max_successful_payments));
 
@@ -243,7 +247,7 @@ export async function registerScanToPayRoutes(
         maxAmountMinor: qr.max_amount_minor != null ? Number(qr.max_amount_minor) : null,
         // Available channels reflect current provider configuration.
         // Mark Flutterwave channels as DEMONSTRATION until credentials are active.
-        availableChannels: provider.name === 'flutterwave' ? ['CARD'] : ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
+        availableChannels: provider.name === 'flutterwave' ? ['CARD'] : provider.name === 'onekhusa' ? ['MOBILE_MONEY'] : ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER'],
         status: expired ? 'EXPIRED' : 'READY',
         expiresAt: qr.expires_at ?? null,
         label: qr.label,
@@ -298,6 +302,7 @@ export async function registerScanToPayRoutes(
 
       const qr = qrResult.rows[0];
       if (provider.name === 'flutterwave' && body.channel !== 'CARD') return reply.code(422).send(apiError(request, 'CHANNEL_UNAVAILABLE', 'This payment method is not available.'));
+      if (provider.name === 'onekhusa' && body.channel !== 'MOBILE_MONEY') return reply.code(422).send(apiError(request, 'CHANNEL_UNAVAILABLE', 'This payment method is not available.'));
 
       // Determine the authoritative amount.
       // FIXED: server amount, ignoring any client-supplied value.

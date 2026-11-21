@@ -5,7 +5,10 @@ import type { ScanToPayCode, QrCheckoutInfo, QrPaymentItem } from '@/types/scanT
 
 const base = `${env.apiUrl}/v1`;
 const codes: ScanToPayCode[] = [...MOCK_SCAN_TO_PAY_CODES];
-const seenIdempotencyKeys = new Map<string, { reference: string; status: string; checkoutUrl: null }>();
+const seenIdempotencyKeys = new Map<
+  string,
+  { reference: string; status: string; checkoutUrl: null }
+>();
 
 const MOCK_QR_PAYMENTS: Record<string, QrPaymentItem[]> = {
   qr_demo_1: [
@@ -62,7 +65,7 @@ export const scanToPayHandlers = [
   http.post(`${base}/qr`, async ({ request }) => {
     const body = (await request.json()) as ScanToPayCode;
     const id = `qr_${Math.random().toString(36).slice(2, 9)}`;
-    const token = `token_${Math.random().toString(36).slice(2, 12)}`;
+    const token = crypto.randomUUID().replaceAll('-', '');
 
     const newCode: ScanToPayCode = {
       id,
@@ -78,7 +81,7 @@ export const scanToPayHandlers = [
       successfulPaymentsCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      checkoutUrl: `http://localhost:5173/checkout/qr/${token}`,
+      checkoutUrl: `https://giantpay.mw/checkout/qr/${token}`,
     };
 
     codes.unshift(newCode);
@@ -118,7 +121,7 @@ export const scanToPayHandlers = [
   // Public checkout QR info
   http.get(`${base}/checkout/qr/:token`, ({ params }) => {
     const token = params.token as string;
-    if (token === 'demo_qr_expired') {
+    if (token === 'demo_qr_expired_____________________________') {
       const info: QrCheckoutInfo = {
         token,
         merchantDisplayName: 'Kambaza Traders',
@@ -135,7 +138,7 @@ export const scanToPayHandlers = [
       return HttpResponse.json(info);
     }
 
-    if (token === 'demo_qr_custom') {
+    if (token === 'demo_qr_custom______________________________') {
       const info: QrCheckoutInfo = {
         token,
         merchantDisplayName: 'Kambaza Traders',
@@ -172,7 +175,8 @@ export const scanToPayHandlers = [
   // Public checkout submit
   http.post(`${base}/checkout/qr/:token/submit`, async ({ request }) => {
     const key = request.headers.get('Idempotency-Key');
-    if (key && seenIdempotencyKeys.has(key)) return HttpResponse.json(seenIdempotencyKeys.get(key), { status: 202 });
+    if (key && seenIdempotencyKeys.has(key))
+      return HttpResponse.json(seenIdempotencyKeys.get(key), { status: 202 });
     const reference = `GP-QR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     if (key) seenIdempotencyKeys.set(key, { reference, status: 'PROCESSING', checkoutUrl: null });
 

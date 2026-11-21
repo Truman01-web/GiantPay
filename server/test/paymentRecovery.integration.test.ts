@@ -83,6 +83,15 @@ suite('uncertain payment recovery with real PostgreSQL', () => {
     await processPaymentWebhook(db,'flutterwave',callback,Buffer.from(JSON.stringify(callback)));
     expect((await payment()).status).toBe('SUCCEEDED'); expect(await journals()).toBe(1);
   });
+  it('recovers OneKhusa inquiries only for matching payment references and records authoritative failure', async () => {
+    await db.query(`UPDATE payments SET provider_name='onekhusa',channel='MOBILE_MONEY' WHERE id='p';
+      UPDATE payment_attempts SET provider='onekhusa' WHERE payment_id='p'`);
+    const verifier = { recoverPayment: vi.fn().mockResolvedValue({ providerPaymentId: 'onekhusa-source-ref', status: 'FAILED' as const }) };
+    await new PaymentRecoveryWorker(db,verifier,5000,'onekhusa').tick();
+    expect(verifier.recoverPayment).toHaveBeenCalledWith({ reference:'GP-recovery',amountMinor:1000,currency:'MWK',transactionId:null },expect.any(AbortSignal));
+    expect((await payment()).status).toBe('FAILED');
+    expect(await journals()).toBe(0);
+  });
   it('prevents two recovery workers from verifying the same live lease', async () => {
     let release!: (value: FlutterwaveVerifyResponse) => void;
     let started!: () => void;

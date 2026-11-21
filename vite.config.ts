@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
+import { seoPages } from './src/content/seo.ts';
+import { publicPages } from './src/content/publicPages.ts';
 
 // https://vite.dev/config/
 const mockApiEnabled = process.env.VITE_USE_MOCK_API === 'true';
@@ -9,11 +11,32 @@ const staffPortal = process.env.VITE_PORTAL_CONTEXT === 'staff';
 
 export default defineConfig({
   cacheDir: staffPortal ? 'node_modules/.vite-staff' : 'node_modules/.vite-merchant',
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'private-preview-fallback',
+      configurePreviewServer(server) {
+        server.middlewares.use((request, response, next) => {
+          const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+          if (publicPages[pathname] && pathname !== '/') {
+            request.url = `${pathname}/index.html`;
+          } else if (!pathname.includes('.') && !seoPages[pathname]) {
+            response.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+            request.url = '/spa.html';
+          }
+          next();
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
-      '@active-router': path.resolve(import.meta.dirname, staffPortal ? './src/app/router/staffRouter.tsx' : './src/app/router/router.tsx'),
+      '@active-router': path.resolve(
+        import.meta.dirname,
+        staffPortal ? './src/app/router/staffRouter.tsx' : './src/app/router/router.tsx',
+      ),
     },
     dedupe: ['react', 'react-dom'],
   },

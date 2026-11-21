@@ -17,26 +17,35 @@ export function PublicNavbar() {
 
   const navRef = useRef<HTMLElement>(null);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const mobileMenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Close both the desktop dropdown and the mobile panel on every navigation
-  // (including via the logo or the top-bar "Get Started" link, which have no
-  // individual onClick handler of their own).
-  useEffect(() => {
+  const closeMenus = useCallback(() => {
     setActiveGroup(null);
     setMobileOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+    if (mobileMenuTimeoutRef.current) clearTimeout(mobileMenuTimeoutRef.current);
+    mobileMenuTimeoutRef.current = setTimeout(() => {
+      setMobileMenuMounted(false);
+      mobileMenuTimeoutRef.current = null;
+    }, MOBILE_MENU_TRANSITION_MS);
+  }, []);
 
-  // Keep the mobile panel mounted through its close transition so it can
-  // animate out instead of vanishing instantly.
+  const openMobileMenu = useCallback(() => {
+    if (mobileMenuTimeoutRef.current) clearTimeout(mobileMenuTimeoutRef.current);
+    mobileMenuTimeoutRef.current = null;
+    setMobileMenuMounted(true);
+    setMobileOpen(true);
+  }, []);
+
+  useEffect(() => () => {
+    if (mobileMenuTimeoutRef.current) clearTimeout(mobileMenuTimeoutRef.current);
+  }, []);
+
+  // Close menus for browser back/forward navigation. Link clicks close them
+  // directly in their onClick handlers below.
   useEffect(() => {
-    if (mobileOpen) {
-      setMobileMenuMounted(true);
-      return;
-    }
-    const timeout = setTimeout(() => setMobileMenuMounted(false), MOBILE_MENU_TRANSITION_MS);
-    return () => clearTimeout(timeout);
-  }, [mobileOpen]);
+    window.addEventListener('popstate', closeMenus);
+    return () => window.removeEventListener('popstate', closeMenus);
+  }, [closeMenus]);
 
   // Passive, efficient scroll listener (threshold: 8px)
   useEffect(() => {
@@ -50,17 +59,17 @@ export function PublicNavbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (navRef.current && !navRef.current.contains(event.target as Node)) {
+      closeMenus();
+    }
+  }, [closeMenus]);
+
   // Click/tap outside to close the desktop dropdown or the mobile panel
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(event.target as Node)) {
-        setActiveGroup(null);
-        setMobileOpen(false);
-      }
-    };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [handleClickOutside]);
 
   // Handle Escape key to close active dropdown or mobile menu
   useEffect(() => {
@@ -68,17 +77,17 @@ export function PublicNavbar() {
       if (e.key === 'Escape') {
         if (activeGroup) {
           const currentTrigger = triggerRefs.current[activeGroup];
-          setActiveGroup(null);
+          closeMenus();
           currentTrigger?.focus();
         }
         if (mobileOpen) {
-          setMobileOpen(false);
+          closeMenus();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeGroup, mobileOpen]);
+  }, [activeGroup, closeMenus, mobileOpen]);
 
   // Body scroll lock when mobile navigation is open
   useEffect(() => {
@@ -119,6 +128,7 @@ export function PublicNavbar() {
         <div className="flex items-center gap-8">
           <Link
             to="/"
+            onClick={closeMenus}
             className="flex items-center rounded-lg focus-visible:outline-2 focus-visible:outline-blue-400"
             aria-label="GiantPay Home"
           >
@@ -137,6 +147,7 @@ export function PublicNavbar() {
                   <Link
                     key={group.label}
                     to={group.to}
+                    onClick={closeMenus}
                     className={cn(
                       'px-3.5 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-blue-400',
                       isActive
@@ -215,7 +226,7 @@ export function PublicNavbar() {
                                   : 'text-slate-600 hover:bg-white/80 hover:text-slate-950'
                               )}
                               aria-current={isCurrent ? 'page' : undefined}
-                              onClick={() => setActiveGroup(null)}
+                              onClick={closeMenus}
                             >
                               <span className="text-sm font-semibold text-slate-800 group-hover:text-[#1B4FD8] transition-colors">
                                 {item.label}
@@ -241,12 +252,14 @@ export function PublicNavbar() {
         <div className="hidden sm:flex items-center gap-3">
           <Link
             to="/login"
+            onClick={closeMenus}
             className="inline-flex items-center justify-center rounded-xl border border-slate-200/80 bg-white/50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white hover:border-slate-300 transition-all focus-visible:outline-2 focus-visible:outline-blue-400"
           >
             Sign In
           </Link>
           <Link
             to="/register"
+            onClick={closeMenus}
             className="inline-flex items-center justify-center rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98] shadow-sm focus-visible:outline-2 focus-visible:outline-blue-400"
             style={{
               background: 'linear-gradient(135deg, #1a6dcc 0%, #0d4694 100%)',
@@ -261,13 +274,14 @@ export function PublicNavbar() {
         <div className="flex items-center gap-2 sm:hidden">
           <Link
             to="/register"
+            onClick={closeMenus}
             className="inline-flex min-h-[44px] items-center rounded-lg px-3 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500"
           >
             Get Started
           </Link>
           <button
             type="button"
-            onClick={() => setMobileOpen((prev) => !prev)}
+            onClick={() => (mobileOpen ? closeMenus() : openMobileMenu())}
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
             className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-slate-200/80 bg-white/50 text-slate-700 hover:bg-white hover:text-slate-950 transition-colors focus-visible:outline-2 focus-visible:outline-blue-400"
@@ -310,7 +324,7 @@ export function PublicNavbar() {
                   <Link
                     key={group.label}
                     to={group.to}
-                    onClick={() => setMobileOpen(false)}
+                    onClick={closeMenus}
                     className={cn(
                       'flex min-h-[44px] items-center rounded-xl px-4 text-base font-semibold transition-colors',
                       isActive ? 'bg-blue-600/20 text-white' : 'text-white/85 hover:bg-white/5 hover:text-white'
@@ -357,7 +371,7 @@ export function PublicNavbar() {
                           <Link
                             key={item.label}
                             to={item.to}
-                            onClick={() => setMobileOpen(false)}
+                            onClick={closeMenus}
                             className={cn(
                               'flex min-h-[44px] flex-col justify-center rounded-lg px-3 py-1.5 transition-colors',
                               isCurrent ? 'bg-blue-600/30 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
@@ -382,14 +396,14 @@ export function PublicNavbar() {
           <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-3">
             <Link
               to="/login"
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMenus}
               className="flex min-h-[44px] items-center justify-center rounded-xl border border-white/20 bg-white/5 px-4 text-center text-sm font-semibold text-white hover:bg-white/10"
             >
               Sign In
             </Link>
             <Link
               to="/register"
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMenus}
               className="flex min-h-[44px] items-center justify-center rounded-xl px-4 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-md"
             >
               Get Started Free

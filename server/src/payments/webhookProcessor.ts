@@ -5,7 +5,7 @@ import { newId } from '../security.js';
 import type { ProviderWebhookEvent } from '../providers/types.js';
 import { payloadHash } from '../providers/sandboxProvider.js';
 import { decidePaymentTransition, type PaymentStatus } from './paymentState.js';
-import { postSuccessfulPayment } from '../ledger/ledgerService.js';
+import { postSuccessfulPayment, reverseJournalEntry } from '../ledger/ledgerService.js';
 
 export type WebhookProcessResult =
   | { outcome: 'PROCESSED' | 'DUPLICATE'; paymentStatus?: PaymentStatus }
@@ -27,13 +27,25 @@ export async function processPaymentWebhook(
 ): Promise<WebhookProcessResult> {
   const hash = payloadHash(rawBody);
   return transaction(db, async (client) => {
-    const paymentResult = await client.query('SELECT * FROM payments WHERE reference=$1 FOR UPDATE', [event.paymentReference]);
+    const referenceCandidates = [...new Set([event.paymentReference, ...(event.paymentReferenceCandidates ?? [])])];
+    const lockOrder = [...referenceCandidates].sort();
+    const candidatePayments = await client.query(
+      'SELECT * FROM payments WHERE reference=ANY($1::text[]) ORDER BY reference FOR UPDATE',
+      [lockOrder],
+    );
+    const providerMatches = candidatePayments.rows
+      .filter(payment => payment.provider_name === provider)
+      .sort((a, b) => referenceCandidates.indexOf(a.reference) - referenceCandidates.indexOf(b.reference));
+    const resolvedPayments = providerMatches.length ? providerMatches : candidatePayments.rows;
+    const resolvedReference = resolvedPayments[0]?.reference ?? event.paymentReference;
+    const ambiguousReference = providerMatches.length > 1;
+    const paymentResult = { rowCount: resolvedPayments.length, rows: resolvedPayments };
     if (recoveryLease) {
       // Fence financial effects under the same lock used by callbacks. Database
       // wall time matters here: this transaction may have waited for that lock.
       const lease = await client.query(`SELECT id FROM payments WHERE id=$1 AND reference=$2
         AND recovery_lease_token=$3 AND recovery_lease_until > clock_timestamp()`,
-      [recoveryLease.paymentId,event.paymentReference,recoveryLease.token]);
+      [recoveryLease.paymentId,resolvedReference,recoveryLease.token]);
       if (!lease.rowCount) return { outcome: 'STALE_RECOVERY_LEASE' };
     }
     if (paymentResult.rowCount && paymentResult.rows[0].provider_name !== provider) return { outcome: 'PROVIDER_MISMATCH' };
@@ -56,7 +68,7 @@ export async function processPaymentWebhook(
        (id,provider,provider_event_id,event_type,payload_hash,signature_verified,processing_status,payment_reference)
        VALUES($1,$2,$3,$4,$5,true,'RECEIVED',$6)
        ON CONFLICT(provider,provider_event_id) DO NOTHING RETURNING id`,
-      [receiptId, provider, event.eventId, event.eventType, hash, event.paymentReference],
+      [receiptId, provider, event.eventId, event.eventType, hash, resolvedReference],
     );
     if (!reserved.rowCount) {
       const winner = await existingReceipt(client, provider, event.eventId);
@@ -71,6 +83,11 @@ export async function processPaymentWebhook(
       return { outcome: 'DUPLICATE' };
     }
 
+    if (ambiguousReference) {
+      await client.query(`UPDATE webhook_receipts SET processing_status='SUSPICIOUS',failure_code='AMBIGUOUS_PAYMENT_REFERENCE',processed_at=now() WHERE id=$1`, [receiptId]);
+      return { outcome: 'PAYLOAD_CONFLICT' };
+    }
+
     if (!paymentResult.rowCount) {
       await client.query(
         `UPDATE webhook_receipts SET processing_status='FAILED',failure_code='UNKNOWN_PAYMENT',processed_at=now() WHERE id=$1`,
@@ -80,6 +97,10 @@ export async function processPaymentWebhook(
     }
 
     const payment = paymentResult.rows[0];
+    if (provider === 'onekhusa' && event.amountMinor !== undefined && event.amountMinor !== Number(payment.gross_minor)) {
+      await client.query(`UPDATE webhook_receipts SET processing_status='SUSPICIOUS',failure_code='AMOUNT_MISMATCH',processed_at=now() WHERE id=$1`, [receiptId]);
+      return { outcome: 'PAYLOAD_CONFLICT' };
+    }
     if (provider === 'flutterwave' && event.status === 'SUCCEEDED' && payment.provider_transaction_id && payment.provider_transaction_id !== event.providerPaymentId) {
       await client.query(`UPDATE webhook_receipts SET processing_status='SUSPICIOUS',failure_code='PROVIDER_TRANSACTION_MISMATCH',processed_at=now() WHERE id=$1`, [receiptId]);
       return { outcome: 'PAYLOAD_CONFLICT' };
@@ -96,6 +117,13 @@ export async function processPaymentWebhook(
     if (decision === 'APPLY') {
       if (provider === 'flutterwave' && event.status === 'SUCCEEDED') {
         await client.query('UPDATE payments SET provider_transaction_id=$1 WHERE id=$2', [event.providerPaymentId, payment.id]);
+      }
+      let providerReversalEntryId: string | null = null;
+      if (provider === 'onekhusa' && event.status === 'REFUNDED') {
+        const original = await client.query(`SELECT id FROM journal_entries WHERE source_type='PAYMENT_SUCCESS' AND source_id=$1 FOR UPDATE`, [payment.id]);
+        if (!original.rowCount) throw new Error('OneKhusa reversal has no original successful-payment journal entry.');
+        providerReversalEntryId = await reverseJournalEntry(client, original.rows[0].id, `OneKhusa reversal: ${event.eventId}`, null, `onekhusa:${event.eventId}`, true);
+        await client.query('UPDATE payments SET refunded_minor=gross_minor WHERE id=$1', [payment.id]);
       }
       await client.query('UPDATE payments SET status=$1,updated_at=now() WHERE id=$2', [event.status, payment.id]);
       const attemptUpdate = await client.query(
@@ -124,16 +152,22 @@ export async function processPaymentWebhook(
           [newId('evt'), payment.id, ledger.entryId],
         );
       }
+      if (providerReversalEntryId) {
+        await client.query(
+          `INSERT INTO payment_events(id,payment_id,type,label,detail) VALUES($1,$2,'REFUND_COMPLETED','Provider reversal recorded',$3)`,
+          [newId('evt'), payment.id, providerReversalEntryId],
+        );
+      }
       await client.query(
         `INSERT INTO audit_events(id,actor_id,merchant_id,action,resource_type,resource_id,metadata)
          VALUES($1,NULL,$2,'PAYMENT_STATUS_CHANGED','payment',$3,$4)`,
         [newId('aud'), payment.merchant_id, payment.id, { provider, eventId: event.eventId, from: payment.status, to: event.status, journalEntryId: ledger?.entryId }],
       );
-      const outboundType = event.status === 'PROCESSING' ? 'payment.processing' : event.status === 'FAILED' ? 'payment.failed' : null;
+      const outboundType = event.status === 'PROCESSING' ? 'payment.processing' : event.status === 'FAILED' ? 'payment.failed' : event.status === 'REFUNDED' ? 'payment.refunded' : null;
       if (outboundType) await client.query(
         `INSERT INTO outbox_events(id,event_type,aggregate_type,aggregate_id,payload,deduplication_key)
          VALUES($1,$2,'payment',$3,$4,$5) ON CONFLICT(deduplication_key) DO NOTHING`,
-        [newId('obx'),outboundType,payment.id,{merchantId:payment.merchant_id,paymentId:payment.id,paymentReference:payment.reference,status:event.status},`${outboundType}:${payment.id}:${event.eventId}`],
+        [newId('obx'),outboundType,payment.id,{merchantId:payment.merchant_id,paymentId:payment.id,paymentReference:payment.reference,status:event.status,reversalEntryId:providerReversalEntryId},`${outboundType}:${payment.id}:${event.eventId}`],
       );
     }
 

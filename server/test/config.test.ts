@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.js';
+import { qrCheckoutUrl } from '../src/payments/qrCheckoutUrl.js';
 
 const base = {
   DATABASE_URL: 'postgres://localhost/test',
@@ -17,11 +18,20 @@ describe('configuration safety', () => {
   });
 
   it('fails closed to secure binary evidence and allows explicit sandbox metadata mode only in sandbox', () => {
-    expect(loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'secure_binary' });
-    expect(loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' });
-    expect(loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox', ONBOARDING_EVIDENCE_MODE: 'secure_binary' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'secure_binary' });
+    expect(loadConfig({ ...base, FRONTEND_ORIGIN: 'https://checkout.example.test', NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'secure_binary' });
+    expect(loadConfig({ ...base, FRONTEND_ORIGIN: 'https://checkout.example.test', NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' });
+    expect(loadConfig({ ...base, FRONTEND_ORIGIN: 'https://checkout.example.test', NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'sandbox', ONBOARDING_EVIDENCE_MODE: 'secure_binary' })).toMatchObject({ ONBOARDING_EVIDENCE_MODE: 'secure_binary' });
     expect(() => loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'local', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toThrow(/restricted to sandbox/i);
-    expect(() => loadConfig({ ...base, NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'production', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toThrow(/restricted to sandbox/i);
+    expect(() => loadConfig({ ...base, FRONTEND_ORIGIN: 'https://checkout.example.test', NODE_ENV: 'test', DEPLOYMENT_ENVIRONMENT: 'production', ONBOARDING_EVIDENCE_MODE: 'sandbox_metadata' })).toThrow(/restricted to sandbox/i);
+  });
+
+  it('validates public checkout origins', () => {
+    expect(loadConfig({ ...base, FRONTEND_ORIGIN: 'https://checkout.example.test/' }).FRONTEND_ORIGIN).toBe('https://checkout.example.test');
+    expect(qrCheckoutUrl(loadConfig({ ...base, FRONTEND_ORIGIN: 'https://checkout.example.test/' }).FRONTEND_ORIGIN, 'opaque_token')).toBe('https://checkout.example.test/checkout/qr/opaque_token');
+    for (const origin of ['http://example.test', 'https://user@example.test', 'https://example.test/path', 'https://example.test/?x=1', 'https://example.test/#x', 'ftp://example.test']) {
+      expect(() => loadConfig({ ...base, FRONTEND_ORIGIN: origin })).toThrow();
+    }
+    expect(() => loadConfig({ ...base, DEPLOYMENT_ENVIRONMENT: 'sandbox' })).toThrow(/HTTPS/);
   });
 
   it('blocks sandbox in production', () => {

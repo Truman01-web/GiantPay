@@ -1,0 +1,101 @@
+import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { expect, test } from '@playwright/test';
+import jsQR from 'jsqr';
+
+test('synthetic merchant QR and sandbox callbacks through local API', async ({ page, request }) => {
+  console.log('Checking local API status');
+  await page.goto('/status', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByText(/Last check:/)).toBeVisible({ timeout: 20_000 });
+  if (!(await page.getByRole('status').textContent())?.includes('Operational')) await page.getByRole('button', { name: /refresh status/i }).click();
+  await expect(page.getByRole('status')).toHaveText('Operational', { timeout: 20_000 });
+  await expect(page.getByText(/Local API/)).toBeVisible();
+  console.log('Signing in');
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  console.log('Login page:', page.url());
+  await page.getByLabel('Email address').fill('owner@example.test');
+  console.log('Entered email');
+  await page.locator('input[type="password"]').fill('Synthetic-browser-password-26!');
+  console.log('Entered password');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+  console.log('Creating QR');
+  await page.goto('/scan-to-pay/create');
+  await page.getByLabel('Label / Counter Name').fill('Synthetic counter');
+  await page.getByLabel(/^Amount/).fill('1000');
+  await expect(page.getByLabel('Maximum Payments (optional)')).toHaveValue('');
+  const qrResponse = page.waitForResponse((response) => response.url().endsWith('/v1/qr') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create QR Code' }).click();
+  const qr = await qrResponse;
+  expect(qr.status()).toBe(201);
+  const qrData = await qr.json();
+  expect(qrData.maxSuccessfulPayments).toBeNull();
+  await expect(page.getByRole('heading', { name: 'QR Code Created' })).toBeVisible();
+  const qrPixels = await page.locator('svg[aria-label="QR code for Synthetic counter"]').evaluate(async (svg) => {
+    const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 600;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = '#fff'; context.fillRect(0, 0, 600, 600);
+      context.drawImage(image, 0, 0, 600, 600);
+      return Array.from(context.getImageData(0, 0, 600, 600).data);
+    } finally { URL.revokeObjectURL(url); }
+  });
+  expect(jsQR(new Uint8ClampedArray(qrPixels), 600, 600)?.data).toBe(qrData.checkoutUrl);
+  console.log('QR created');
+  expect(new URL(qrData.checkoutUrl).origin).toBe('http://127.0.0.1:4189');
+  async function submitPayment() {
+    const customer = await page.context().browser()!.newPage();
+    await customer.goto(qrData.checkoutUrl);
+    await customer.getByText('Card (Visa / Mastercard)').click();
+    const submitted = customer.waitForResponse((response) => response.url().endsWith('/submit') && response.request().method() === 'POST');
+    await customer.getByRole('button', { name: /Pay Now/ }).click();
+    const response = await submitted;
+    expect(response.status()).toBe(202);
+    const body = await response.json();
+    await expect(customer.getByRole('heading', { name: /Confirming your payment|Payment pending/ })).toBeVisible();
+    await expect(customer.getByRole('heading', { name: 'Payment successful' })).toHaveCount(0);
+    await expect(customer.getByText('Backend-confirmed payment receipt')).toHaveCount(0);
+    return { customer, reference: body.reference as string };
+  }
+  async function callback(reference: string, state: 'SUCCEEDED' | 'FAILED') {
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const body = JSON.stringify({ eventId: randomUUID(), eventType: 'payment.status.changed', paymentReference: reference, providerPaymentId: `sbx_${createHash('sha256').update(reference).digest('hex').slice(0, 24)}`, status: state, occurredAt: new Date().toISOString() });
+    const signature = createHmac('sha256', 's'.repeat(32)).update(`${timestamp}.${body}`).digest('hex');
+    const send = () => request.post('http://127.0.0.1:4018/v1/webhooks/providers/sandbox', { headers: { 'content-type': 'application/json', 'x-giantpay-timestamp': timestamp, 'x-giantpay-signature': signature }, data: body });
+    expect((await send()).ok()).toBe(true);
+    expect((await send()).ok()).toBe(true);
+  }
+  const success = await submitPayment();
+  console.log('Submitted successful payment', success.reference);
+  await callback(success.reference, 'SUCCEEDED');
+  await expect(success.customer.getByRole('heading', { name: 'Payment successful' })).toBeVisible({ timeout: 15_000 });
+  await expect(success.customer.getByText('Backend-confirmed payment receipt')).toBeVisible();
+  const failure = await submitPayment();
+  console.log('Submitted failed payment', failure.reference);
+  await callback(failure.reference, 'FAILED');
+  await expect(failure.customer.getByRole('heading', { name: 'Payment failed' })).toBeVisible({ timeout: 15_000 });
+  await expect(failure.customer.getByRole('heading', { name: 'Payment successful' })).toHaveCount(0);
+  await page.goto('/transactions');
+  await expect(page.getByText(success.reference).first()).toBeVisible();
+  await expect(page.getByText(failure.reference).first()).toBeVisible();
+  console.log(`Synthetic references: ${success.reference}, ${failure.reference}`);
+  await page.goto('/reports');
+  await page.getByRole('button', { name: 'Export CSV' }).click();
+  await page.getByRole('button', { name: 'Generate Export' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await page.getByRole('button', { name: 'CSV Exports' }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Download' }).first().click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/\.csv$/);
+  const stream = await file.createReadStream();
+  let csv = '';
+  for await (const chunk of stream!) csv += chunk.toString();
+  expect(csv).toContain(success.reference);
+  expect(csv).toContain(failure.reference);
+});

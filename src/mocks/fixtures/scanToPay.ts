@@ -15,7 +15,7 @@ export const MOCK_SCAN_TO_PAY_CODES: ScanToPayCode[] = [
     successfulPaymentsCount: 14,
     createdAt: '2026-09-01T08:00:00.000Z',
     updatedAt: '2026-09-01T08:00:00.000Z',
-    checkoutUrl: 'http://localhost:5173/checkout/qr/demo_qr_ready',
+    checkoutUrl: 'https://giantpay.mw/checkout/qr/demo_qr_ready_______________________________',
   },
   {
     id: 'qr_demo_2',
@@ -31,7 +31,7 @@ export const MOCK_SCAN_TO_PAY_CODES: ScanToPayCode[] = [
     successfulPaymentsCount: 8,
     createdAt: '2026-09-10T10:30:00.000Z',
     updatedAt: '2026-09-10T10:30:00.000Z',
-    checkoutUrl: 'http://localhost:5173/checkout/qr/demo_qr_custom',
+    checkoutUrl: 'https://giantpay.mw/checkout/qr/demo_qr_custom______________________________',
   },
   {
     id: 'qr_demo_3',
@@ -47,6 +47,6 @@ export const MOCK_SCAN_TO_PAY_CODES: ScanToPayCode[] = [
     successfulPaymentsCount: 1,
     createdAt: '2026-09-15T12:00:00.000Z',
     updatedAt: '2026-09-20T23:59:59.000Z',
-    checkoutUrl: 'http://localhost:5173/checkout/qr/demo_qr_expired',
+    checkoutUrl: 'https://giantpay.mw/checkout/qr/demo_qr_expired_____________________________',
   },
 ];

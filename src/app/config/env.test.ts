@@ -22,6 +22,16 @@ describe('frontend environment separation', () => {
     expect(() => validateFrontendEnv({ VITE_API_URL: 'https://user:secret@api.giantpay.mw' })).toThrow(/credential-free/);
   });
 
+  it('validates a configured checkout origin for hosted and local frontends', () => {
+    const api = 'https://api.example.test';
+    expect(validateFrontendEnv({ VITE_API_URL: api, VITE_APP_ENV: 'sandbox', VITE_PUBLIC_CHECKOUT_ORIGIN: 'https://checkout.example.test/' }).publicCheckoutOrigin).toBe('https://checkout.example.test');
+    expect(validateFrontendEnv({ VITE_API_URL: api, VITE_APP_ENV: 'development', VITE_PUBLIC_CHECKOUT_ORIGIN: 'http://127.0.0.1:4189' }).publicCheckoutOrigin).toBe('http://127.0.0.1:4189');
+    for (const origin of ['https://user@example.test', 'https://example.test/path', 'https://example.test/?x=1', 'http://example.test']) {
+      expect(() => validateFrontendEnv({ VITE_API_URL: api, VITE_PUBLIC_CHECKOUT_ORIGIN: origin })).toThrow();
+    }
+    expect(() => validateFrontendEnv({ VITE_API_URL: api, VITE_APP_ENV: 'sandbox', VITE_PUBLIC_CHECKOUT_ORIGIN: 'http://127.0.0.1:4189' })).toThrow(/HTTPS/);
+  });
+
   it('requires an explicit valid portal context and forbids staff mocks',()=>{
     expect(validateFrontendEnv({VITE_API_URL:'https://api.giantpay.mw',VITE_PORTAL_CONTEXT:'staff'}).portalContext).toBe('staff');
     expect(()=>validateFrontendEnv({VITE_API_URL:'https://api.giantpay.mw',VITE_PORTAL_CONTEXT:'staff',VITE_USE_MOCK_API:'true'})).toThrow(/staff portal/i);

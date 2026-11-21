@@ -47,7 +47,10 @@ export function QrCheckoutFlow() {
     return (
       <Card>
         <CardContent className="text-center">
-          <AlertCircle className="mx-auto h-10 w-10 text-[var(--color-neutral-400)]" aria-hidden="true" />
+          <AlertCircle
+            className="mx-auto h-10 w-10 text-[var(--color-neutral-400)]"
+            aria-hidden="true"
+          />
           <h1 className="mt-3 text-[length:var(--text-h3)] font-semibold text-[var(--color-navy-900)]">
             {notFound ? 'Invalid QR Checkout Link' : 'Could not load payment details'}
           </h1>
@@ -56,28 +59,17 @@ export function QrCheckoutFlow() {
               ? 'This QR code is invalid or has been revoked. Please ask the merchant for a new QR code.'
               : 'Please check your connection and try again.'}
           </p>
+          {!notFound && (
+            <Button className="mt-4" variant="secondary" onClick={() => qrQuery.refetch()}>
+              Try again
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
   }
 
   const qr = qrQuery.data;
-
-  if (qr.status === 'EXPIRED') {
-    return (
-      <Card>
-        <CardContent className="text-center">
-          <AlertCircle className="mx-auto h-10 w-10 text-[var(--color-neutral-400)]" aria-hidden="true" />
-          <h1 className="mt-3 text-[length:var(--text-h3)] font-semibold text-[var(--color-navy-900)]">
-            QR Code Expired
-          </h1>
-          <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
-            This QR code from {qr.merchantDisplayName} is no longer active.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (isRedirecting) {
     return <FullPageLoader label="Redirecting to secure payment page…" />;
@@ -88,11 +80,7 @@ export function QrCheckoutFlow() {
   if (submittedReference) {
     if (polled.status) {
       return (
-        <PaymentResult
-          status={polled.status}
-          polling={polled.polling}
-          onRefresh={polled.refresh}
-        />
+        <PaymentResult status={polled.status} polling={polled.polling} onRefresh={polled.refresh} />
       );
     }
     if (!polled.polling && polled.error) {
@@ -109,6 +97,25 @@ export function QrCheckoutFlow() {
       );
     }
     return <FullPageLoader label="Verifying payment with bank/network…" />;
+  }
+
+  if (qr.status === 'EXPIRED') {
+    return (
+      <Card>
+        <CardContent className="text-center">
+          <AlertCircle
+            className="mx-auto h-10 w-10 text-[var(--color-neutral-400)]"
+            aria-hidden="true"
+          />
+          <h1 className="mt-3 text-[length:var(--text-h3)] font-semibold text-[var(--color-navy-900)]">
+            QR Code Expired
+          </h1>
+          <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
+            This QR code from {qr.merchantDisplayName} is no longer active.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   const isCustomerEntered = qr.mode === 'CUSTOMER_ENTERED';
@@ -222,11 +229,16 @@ export function QrCheckoutFlow() {
               </FormField>
               {qr.minAmountMinor != null && (
                 <p className="mt-1 text-xs text-[var(--color-neutral-500)]">
-                  Min: <AmountDisplay amountMinor={qr.minAmountMinor} currency={qr.currency} size="sm" />
+                  Min:{' '}
+                  <AmountDisplay amountMinor={qr.minAmountMinor} currency={qr.currency} size="sm" />
                   {qr.maxAmountMinor != null && (
                     <>
                       {' · '}Max:{' '}
-                      <AmountDisplay amountMinor={qr.maxAmountMinor} currency={qr.currency} size="sm" />
+                      <AmountDisplay
+                        amountMinor={qr.maxAmountMinor}
+                        currency={qr.currency}
+                        size="sm"
+                      />
                     </>
                   )}
                 </p>
@@ -302,12 +314,7 @@ export function QrCheckoutFlow() {
             </FormField>
           </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            loading={submit.isPending}
-            className="mt-2"
-          >
+          <Button type="submit" size="lg" loading={submit.isPending} className="mt-2">
             Pay Now
             {effectiveAmountMinor != null && effectiveAmountMinor > 0 && (
               <>

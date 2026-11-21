@@ -67,7 +67,7 @@ export async function postSuccessfulPayment(client: pg.PoolClient, payment: Paym
   return { entryId, created: true };
 }
 
-export async function reverseJournalEntry(client: pg.PoolClient, originalId: string, reason: string, actorId: string | null, sourceEventId: string) {
+export async function reverseJournalEntry(client: pg.PoolClient, originalId: string, reason: string, actorId: string | null, sourceEventId: string, providerReversal = false) {
   if (reason.trim().length < 3) throw new LedgerError('ACCOUNTING_DATA_INVALID', 'A reversal reason is required.');
   const original = await client.query('SELECT * FROM journal_entries WHERE id=$1', [originalId]);
   if (!original.rowCount) throw new LedgerError('LEDGER_ENTRY_NOT_FOUND', 'Ledger entry was not found.');
@@ -76,8 +76,8 @@ export async function reverseJournalEntry(client: pg.PoolClient, originalId: str
   try {
     await client.query(
       `INSERT INTO journal_entries(id,merchant_id,source_type,source_id,source_event_id,description,reversed_entry_id,reversal_reason,actor_id)
-       VALUES($1,$2,'REVERSAL',$3,$4,$5,$3,$6,$7)`,
-      [reversalId, original.rows[0].merchant_id, originalId, sourceEventId, `Reversal of ${originalId}`, reason.trim(), actorId],
+       VALUES($1,$2,$3,$4,$5,$6,$4,$7,$8)`,
+      [reversalId, original.rows[0].merchant_id, providerReversal ? 'PROVIDER_REVERSAL' : 'REVERSAL', originalId, sourceEventId, `Reversal of ${originalId}`, reason.trim(), actorId],
     );
   } catch (error: any) {
     if (error?.code === '23505') throw new LedgerError('LEDGER_REVERSAL_CONFLICT', 'Ledger entry has already been reversed.');

@@ -25,3 +25,5 @@ jobs:
       - run: pnpm run build
         env:
           VITE_APP_ENV: production
+      - name: Verify crawlable public artifacts and private fallbacks
+        run: node --experimental-strip-types scripts/check-public-build.mjs
