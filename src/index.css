@@ -15,6 +15,16 @@
   --landing-hero-teal: #38bdf8;
   --landing-hero-orange: #f97316;
   --landing-hero-red: #ef4444;
+  /* Single source of truth for the public header's height (h-16 → h-20 at
+     sm:), so the mobile nav panel can position/size itself against it
+     without duplicating the breakpoint logic. */
+  --header-height: 4rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --header-height: 5rem;
+  }
 }
 
 @layer base {

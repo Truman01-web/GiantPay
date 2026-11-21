@@ -118,11 +118,16 @@ async function request<T>(
     });
   } catch (cause) {
     if (timedOut) {
+      console.error(`[GiantPay API] Timeout: ${method} ${url}`);
       throw new ApiError({ status: 0, code: 'TIMEOUT', message: 'The request timed out. Please try again.' });
     }
     if (options?.signal?.aborted) {
       throw cause;
     }
+    // No HTTP response at all — DNS failure, connection refused, offline,
+    // or blocked before a response (e.g. a CORS preflight rejection never
+    // surfaces as a readable status to JS; it just fails fetch() outright).
+    console.error(`[GiantPay API] Network error (no response): ${method} ${url}`, cause);
     throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: NETWORK_ERROR_MESSAGE });
   } finally {
     clearTimeout(timeout);
@@ -135,6 +140,7 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    console.error(`[GiantPay API] ${response.status} ${method} ${url}`);
     throw await parseErrorResponse(response);
   }
 

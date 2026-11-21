@@ -122,7 +122,10 @@ export const authHandlers = [
       maskedDestination: 'm***@example.invalid',
       expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
       resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
-      delivery: { available: false, queued: false, errorCode: 'DELIVERY_UNAVAILABLE' },
+      // Simulate the real happy path locally — any 6-digit code is accepted
+      // by /auth/registration/verify below, so this just needs to render the
+      // code-entry step instead of the delivery-unavailable dead end.
+      delivery: { available: true, queued: true },
     }),
   ),
 
@@ -134,7 +137,7 @@ export const authHandlers = [
       maskedDestination: 'm***@example.invalid',
       expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
       resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
-      delivery: { available: false, queued: false, errorCode: 'DELIVERY_UNAVAILABLE' },
+      delivery: { available: true, queued: true },
     }),
   ),
 

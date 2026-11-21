@@ -52,6 +52,19 @@ describe('registration email verification', () => {
   });
 
   it('never claims delivery when the backend reports it unavailable and retains recovery', async () => {
+    server.use(
+      http.post(`${env.apiUrl}/v1/auth/register`, () =>
+        HttpResponse.json({
+          accepted: true,
+          verificationRequired: true,
+          challengeId: 'mock-registration-challenge-000000000001',
+          maskedDestination: 'm***@example.invalid',
+          expiresAt: new Date(Date.now() + 600_000).toISOString(),
+          resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+          delivery: { available: false, queued: false, errorCode: 'DELIVERY_UNAVAILABLE' },
+        }),
+      ),
+    );
     renderForm();
     await submitRegistration();
     expect(await screen.findByText(/email delivery is currently unavailable/i)).toBeInTheDocument();
