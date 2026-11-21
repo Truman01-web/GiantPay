@@ -499,11 +499,11 @@ bundle behaves correctly, separate from the dev server.
 
 ## Deployment
 
-This is a static single-page app — `dist/` is deployable to any static
-host or CDN (a Node server is only needed for local preview). The exact
-hosting target isn't fixed in this repository (no Dockerfile, Vercel/Netlify
-config, or `.htaccess` is checked in), so treat the following as the
-general procedure and adapt the specifics to your actual host:
+This is a static single-page app — `dist/` is deployable to a static host or
+CDN (a Node server is only needed for local preview). The repository includes
+SPA fallback rules for Apache (`public/.htaccess`) and Netlify/Cloudflare Pages
+(`public/_redirects`). Other hosts need an equivalent rewrite configured in
+their hosting settings.
 
 1. **Set production environment variables** before building — through your
    CI/CD platform's environment configuration, or a `.env.production` file
@@ -533,10 +533,21 @@ with a custom error response, etc.) have a built-in "SPA fallback" or
 rewrite-rule setting for exactly this — consult your host's docs for the
 specific option name.
 
-**If you are deploying to an Apache-based host (for example cPanel)**,
-where this repository doesn't already provide the rewrite config, a
-minimal `.htaccess` placed in the same directory as the deployed `dist/`
-contents looks like:
+The checked-in fallback rules serve the private app shell (`spa.html`) for
+unknown paths while leaving generated public pages and existing files intact.
+This matters for direct visits and refreshes on paths such as `/dashboard`,
+`/login`, and `/onboarding`; serving `index.html` for those paths would return
+the public homepage shell instead. The rules are copied into `dist/` by the
+normal Vite build. The Apache rule assumes the app is deployed at the domain
+root; adjust `RewriteBase` for a subdirectory deployment and set Vite's `base`
+option to match.
+
+For other static hosts, configure a fallback to `/spa.html` after checking
+their static-file precedence. Keep generated public route files, `assets/`,
+and other real files available normally; only missing paths should use the
+SPA shell. The SPA shell includes noindex metadata for private routes.
+
+The Apache rule is:
 
 ```apache
 <IfModule mod_rewrite.c>
@@ -549,13 +560,7 @@ contents looks like:
 </IfModule>
 ```
 
-Adjust `RewriteBase` if the app is deployed under a subdirectory rather
-than the domain root — and if so, also set Vite's `base` option in
-`vite.config.ts` (not currently set, so it defaults to `/`) to match,
-otherwise built asset URLs will be wrong. Only add this file if your host
-is actually Apache-based; it does nothing (and isn't needed) on Nginx,
-Vercel, Netlify, or similar platforms, which have their own rewrite
-mechanisms.
+The `_redirects` file uses the equivalent Netlify/Cloudflare Pages rule.
 
 ## Security practices
 
