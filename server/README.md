@@ -4,13 +4,18 @@ Fastify/PostgreSQL backend foundation for the GiantPay frontend. It is a
 sandbox system, not a licensed payment gateway.
 
 ```powershell
-Copy-Item .env.example .env
-docker compose up -d postgres
-npm install
-npm run db:migrate
-npm run db:seed
-npm run dev
+Copy-Item server/.env.example server/.env
+docker compose -f server/docker-compose.yml up -d postgres
+pnpm --filter giantpay-api db:migrate
+pnpm --filter giantpay-api db:seed
+pnpm --filter giantpay-api dev
 ```
+
+Run these commands from the repository root after `pnpm install`. The
+frontend must use `VITE_USE_MOCK_API=false` and `VITE_API_URL=http://localhost:4000`
+to send requests to this API. Registration email delivery is disabled unless
+approved SMTP settings are configured; see
+[`docs/registration-otp-email-delivery.md`](docs/registration-otp-email-delivery.md).
 
 Real-money execution, reconciliation, settlement, MFA and regulatory reporting
 remain production stop conditions.

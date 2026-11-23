@@ -41,8 +41,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="max-w-sm text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
             Please try again. If this keeps happening, contact support.
           </p>
-          <Button variant="secondary" onClick={() => this.setState({ hasError: false })}>
-            Try again
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            Reload page
           </Button>
         </div>
       );
