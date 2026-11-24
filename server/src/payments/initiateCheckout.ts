@@ -23,6 +23,7 @@ export interface CheckoutResponse { reference: string; checkoutUrl: string | nul
 // Commit an intent before any network I/O. Only its creator may submit it.
 // A lost response remains PROCESSING and must never create a second charge.
 export async function initiateCheckout(db: Db, provider: PaymentProvider, input: CheckoutInput): Promise<CheckoutResponse> {
+  provider.validatePaymentInput?.({ paymentReference: 'GP_preflight', amountMinor: input.amountMinor, currency: input.currency, channel: input.channel, customer: input.customer });
   const fingerprint = createHash('sha256').update(JSON.stringify([
     input.sourceId, input.amountMinor, input.currency, input.channel,
     input.customer.name ?? null, input.customer.email ?? null, input.customer.phone ?? null,
@@ -53,6 +54,9 @@ export async function initiateCheckout(db: Db, provider: PaymentProvider, input:
     }
     const limit = input.kind === 'checkout' && !source.reusable ? 1 : source.max_successful_payments;
     if (limit != null) {
+      if (input.kind === 'qr-checkout' && Number(source.successful_payments_count) >= Number(limit)) {
+        throw Object.assign(new Error('QR successful-payment limit reached.'), { code: 'CHECKOUT_CAPACITY' });
+      }
       const column = input.kind === 'checkout' ? 'payment_link_id' : 'scan_to_pay_code_id';
       const count = await c.query(`SELECT count(*) count FROM payments WHERE ${column}=$1 AND status IN ('PROCESSING','PENDING','SUCCEEDED','REFUND_PENDING','PARTIALLY_REFUNDED','REFUNDED')`, [input.sourceId]);
       if (Number(count.rows[0].count) >= Number(limit)) throw Object.assign(new Error('Payment capacity is reserved.'), { code: 'CHECKOUT_CAPACITY' });

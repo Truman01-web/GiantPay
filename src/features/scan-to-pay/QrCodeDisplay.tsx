@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { Download, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { generateQrMatrix, renderQrSvgPath } from './qrSvg';
+import { isGiantPayQrUrl } from './checkoutUrl';
 
 interface QrCodeDisplayProps {
   url: string;
@@ -15,6 +16,7 @@ export function QrCodeDisplay({ url, label, size = 240, showActions = true }: Qr
 
   const { path, totalPx } = useMemo(() => {
     try {
+      if (!isGiantPayQrUrl(url)) return { path: '', totalPx: 200 };
       const matrix = generateQrMatrix(url);
       const { path, size: totalPx } = renderQrSvgPath(matrix, 6);
       return { path, totalPx };
@@ -24,7 +26,7 @@ export function QrCodeDisplay({ url, label, size = 240, showActions = true }: Qr
   }, [url]);
 
   function handleDownload() {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !path) return;
     const svgData = new XMLSerializer().serializeToString(svgRef.current);
     const canvas = document.createElement('canvas');
     canvas.width = totalPx;
@@ -47,6 +49,7 @@ export function QrCodeDisplay({ url, label, size = 240, showActions = true }: Qr
       a.href = canvas.toDataURL('image/png');
       a.click();
     };
+    img.onerror = () => URL.revokeObjectURL(blobUrl);
     img.src = blobUrl;
   }
 
@@ -54,8 +57,16 @@ export function QrCodeDisplay({ url, label, size = 240, showActions = true }: Qr
     window.print();
   }
 
+  if (!path)
+    return (
+      <p role="alert">
+          Unable to display this QR: a checkout URL on this frontend with an opaque token is required.
+        Refresh or ask support for help.
+      </p>
+    );
+
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="qr-print-area flex flex-col items-center gap-3">
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-neutral-200)] bg-white p-3 shadow-sm">
         <svg
           ref={svgRef}

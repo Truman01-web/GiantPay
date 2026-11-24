@@ -5,12 +5,14 @@ import { Toaster } from '@/components/feedback/Toaster';
 import { ErrorBoundary } from './providers/ErrorBoundary';
 import { SessionProvider } from './providers/SessionProvider';
 import { router } from '@active-router';
+import { RouteMetadata } from '@/components/marketing/RouteMetadata';
 
 export function App() {
   return (
     <ErrorBoundary boundaryName="GiantPay">
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
+          <RouteMetadata />
           <RouterProvider router={router} />
           <Toaster />
         </SessionProvider>

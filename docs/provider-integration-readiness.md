@@ -2,7 +2,11 @@
 
 ## Current boundary
 
-TNM Mpamba, Airtel Money, card-network, bank-transfer, and payout API access is not configured. The only payment provider is the deterministic sandbox adapter. No endpoint, signature, credential, certification, partnership, or production settlement behavior is inferred while commercial access remains pending.
+OneKhusa is integrated as a sandbox-only mobile-money push provider alongside the deterministic sandbox adapter. OneKhusa production collections remain rejected by configuration. Live provider contracts, credentials, settlement setup, certification, and payout API access are not configured. No live endpoint or production behavior is inferred while commercial access remains pending.
+
+The OneKhusa callback implementation checks signed raw-body HMACs, compares the callback amount with the durable intent, resolves both published reference fields, records provider reversals in the ledger, and acknowledges successful callbacks with HTTP 200. A real signed sandbox capture is still required to confirm which reference field contains the submitted reference. Synthetic signed fixtures do not satisfy that acceptance requirement.
+
+Automatic inquiry recovery is available for OneKhusa when `PAYMENT_RECOVERY_ENABLED=true` and the reconciliation worker is running. It only applies an inquiry result after matching the submitted reference, amount, and currency. Provider initiated refunds remain disabled: the public OneKhusa documentation located for this integration only describes a sandbox reversal simulator, not an approved production refund endpoint or its operational requirements.
 
 Confirmed public pricing is 3% per successful Airtel Money, TNM Mpamba, or card collection and 2% per successful bank-transfer collection. Account setup and monthly platform fees are free. Failed payments create no fee revenue. Provider commercial costs and tax treatment remain separate confirmations.
 
@@ -12,6 +16,8 @@ Confirmed public pricing is 3% per successful Airtel Money, TNM Mpamba, or card 
 - Separate sandbox and production credentials held outside source control.
 - Authenticated callback/signature and replay-protection requirements.
 - Provider-specific status, retry, timeout, reversal, refund, and reconciliation semantics.
+- OneKhusa provider approval, production credentials and endpoint confirmation, settlement setup, and a verified signed sandbox callback capture covering success, failure, reversal, reference mapping, and amount mapping.
+- A documented and approved live OneKhusa refund/reversal endpoint before enabling provider refund execution; the sandbox simulator must not be used for live funds.
 - Operational ownership, monitoring, incident response, and certification evidence.
 - Regulatory and legal approval for the intended service and customer data.
 

@@ -54,14 +54,14 @@ means feature by feature, and `HANDOVER.md` for the full status/risk log.
 | Settlements (list, detail) | Built |
 | Reconciliation (runs, exception queue, status/note update workflow) | Built |
 | Settings (profile, security/MFA) | Built |
-| Reports, Developer platform (API keys/webhooks/docs), Team & roles, Support, Admin console | Routed and permission-gated, **not yet built** — shown as an honest "on the roadmap" state, never faked |
+| Reports, Developer platform (API keys/webhooks/docs), Team & roles, Support, Admin console | Partially implemented with permission-gated routes and backend adapters; some screens or actions remain incomplete |
 
-"Built" means real API integration through the typed service layer described
-below (currently served by the mock backend — see [Mock
-mode](#mock-mode)), with loading, empty, error and permission-denied states
-handled. See [Backend dependencies](#backend-dependencies) for what each
-area still needs from a real backend, and `HANDOVER.md` for the detailed,
-dated status log.
+"Built" means the feature has a typed service integration and the documented
+loading, empty, error and permission-denied states. With the default local
+configuration, requests go to the PostgreSQL-backed API in `server/`; mocks
+are an explicit development option. Some partially implemented areas still
+have incomplete screens or actions. See [Backend dependencies](#backend-dependencies)
+and `HANDOVER.md` for detailed status.
 
 ## Technology stack
 
@@ -98,15 +98,31 @@ Only what's actually a dependency in `package.json`:
 
 ## Getting started
 
-```bash
+```powershell
 git clone https://github.com/Truman01-web/GiantPay.git
 cd GiantPay
 pnpm install
-cp .env.example .env.local
+Copy-Item .env.example .env.local
+Copy-Item server/.env.example server/.env
+docker compose -f server/docker-compose.yml up -d postgres
+pnpm --filter giantpay-api db:migrate
+pnpm --filter giantpay-api db:seed
+```
+
+Start the backend and frontend in separate terminals from the repository root:
+
+```powershell
+pnpm --filter giantpay-api dev
+```
+
+```powershell
 pnpm dev
 ```
 
-Open the URL Vite prints (default `http://localhost:5173`).
+Open the Vite URL (default `http://localhost:5173`). The frontend now calls
+the local API at `http://localhost:4000`, which stores application data in the
+PostgreSQL service. If PostgreSQL is already installed, update `DATABASE_URL`
+in `server/.env` and skip the Docker command.
 
 No environment variables need to be exported manually in your shell — Vite
 loads `.env.local` (and `.env`, `.env.[mode]`, `.env.[mode].local`) from the
@@ -114,11 +130,20 @@ project root automatically. `.env.local` is git-ignored, so each developer
 keeps their own copy; `.env.example` is the checked-in template documenting
 what's required.
 
-The defaults in `.env.example` run the app entirely against the built-in
-mock backend (MSW) — no real GiantPay API needs to be running to develop
-against sandbox-realistic data. Demo sign-in accounts are listed in
-`HANDOVER.md` and shown as quick-fill buttons on the login page. See [Mock
-mode](#mock-mode).
+The default setup uses the local PostgreSQL-backed API. To work on the UI
+without starting the backend, explicitly set `VITE_USE_MOCK_API=true` in
+`.env.local`; that mode uses demo fixtures and does not save data to
+PostgreSQL. Demo sign-in accounts are listed in `HANDOVER.md` and shown as
+quick-fill buttons on the login page. See [Mock mode](#mock-mode).
+
+Registration OTP email is disabled by default. To send real verification
+emails, configure the SMTP settings in `server/.env` using credentials from
+your approved email provider, then restart the API. Keep SMTP credentials out
+of frontend `VITE_` variables and source control. See
+[`server/docs/registration-otp-email-delivery.md`](server/docs/registration-otp-email-delivery.md).
+
+The registration form creates merchant accounts. Platform staff access is
+provisioned separately; see [`server/docs/staff-portal.md`](server/docs/staff-portal.md).
 
 ## Environment variables
 
@@ -410,7 +435,7 @@ onboarding (`features/onboarding/steps/DocumentsStep.tsx` +
 
 ## Mock mode
 
-With `VITE_USE_MOCK_API=true` (the `.env.example` default), `src/main.tsx`
+With `VITE_USE_MOCK_API=true` (an explicit local development option), `src/main.tsx`
 starts an MSW service worker before rendering the app, and every request
 from the typed API client is served by the handlers in `src/mocks/handlers`
 from deterministic, Malawi-realistic fixture data (`src/mocks/fixtures`) —
@@ -418,7 +443,8 @@ no network call ever leaves the browser. Demo sign-in accounts are listed
 in `HANDOVER.md` and shown as quick-fill buttons on `/login`.
 
 Set `VITE_USE_MOCK_API=false` and point `VITE_API_URL` at a running backend
-to develop against the real API instead. `src/app/config/env.ts` actively
+to develop against the real API. This is the default in `.env.example`.
+`src/app/config/env.ts` actively
 **refuses to start** if mocking is left on while `VITE_APP_ENV=production`,
 so a mocked build can't silently ship as the production bundle — this is a
 hard startup failure, not a warning.
@@ -499,11 +525,11 @@ bundle behaves correctly, separate from the dev server.
 
 ## Deployment
 
-This is a static single-page app — `dist/` is deployable to any static
-host or CDN (a Node server is only needed for local preview). The exact
-hosting target isn't fixed in this repository (no Dockerfile, Vercel/Netlify
-config, or `.htaccess` is checked in), so treat the following as the
-general procedure and adapt the specifics to your actual host:
+This is a static single-page app — `dist/` is deployable to a static host or
+CDN (a Node server is only needed for local preview). The repository includes
+SPA fallback rules for Apache (`public/.htaccess`) and Netlify/Cloudflare Pages
+(`public/_redirects`). Other hosts need an equivalent rewrite configured in
+their hosting settings.
 
 1. **Set production environment variables** before building — through your
    CI/CD platform's environment configuration, or a `.env.production` file
@@ -533,10 +559,21 @@ with a custom error response, etc.) have a built-in "SPA fallback" or
 rewrite-rule setting for exactly this — consult your host's docs for the
 specific option name.
 
-**If you are deploying to an Apache-based host (for example cPanel)**,
-where this repository doesn't already provide the rewrite config, a
-minimal `.htaccess` placed in the same directory as the deployed `dist/`
-contents looks like:
+The checked-in fallback rules serve the private app shell (`spa.html`) for
+unknown paths while leaving generated public pages and existing files intact.
+This matters for direct visits and refreshes on paths such as `/dashboard`,
+`/login`, and `/onboarding`; serving `index.html` for those paths would return
+the public homepage shell instead. The rules are copied into `dist/` by the
+normal Vite build. The Apache rule assumes the app is deployed at the domain
+root; adjust `RewriteBase` for a subdirectory deployment and set Vite's `base`
+option to match.
+
+For other static hosts, configure a fallback to `/spa.html` after checking
+their static-file precedence. Keep generated public route files, `assets/`,
+and other real files available normally; only missing paths should use the
+SPA shell. The SPA shell includes noindex metadata for private routes.
+
+The Apache rule is:
 
 ```apache
 <IfModule mod_rewrite.c>
@@ -549,13 +586,7 @@ contents looks like:
 </IfModule>
 ```
 
-Adjust `RewriteBase` if the app is deployed under a subdirectory rather
-than the domain root — and if so, also set Vite's `base` option in
-`vite.config.ts` (not currently set, so it defaults to `/`) to match,
-otherwise built asset URLs will be wrong. Only add this file if your host
-is actually Apache-based; it does nothing (and isn't needed) on Nginx,
-Vercel, Netlify, or similar platforms, which have their own rewrite
-mechanisms.
+The `_redirects` file uses the equivalent Netlify/Cloudflare Pages rule.
 
 ## Security practices
 

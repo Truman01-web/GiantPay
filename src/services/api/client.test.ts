@@ -27,7 +27,10 @@ describe('real API client contract', () => {
     await expect(apiClient.post('/validation', {})).rejects.toMatchObject({
       status: 422, code: 'VALIDATION_ERROR', fields: { email: 'Invalid email' }, requestId: 'req_safe',
     });
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith(`[GiantPay API] 422 POST ${base}/validation`);
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain('Check the highlighted fields.');
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain('Invalid email');
     consoleError.mockRestore();
   });
 

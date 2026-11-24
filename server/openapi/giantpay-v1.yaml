@@ -1395,6 +1395,42 @@ paths:
         '401': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '503': { $ref: '#/components/responses/Error' }
+  /webhooks/providers/onekhusa:
+    post:
+      tags: [Provider webhooks]
+      operationId: receiveOneKhusaWebhook
+      description: |
+        Active OneKhusa sandbox callback. Verify HMAC-SHA512 over the exact raw body with the secret
+        configured for the X-OneKhusa-Webhook-Event. Merchant and source references are both retained
+        as correlation candidates because published examples show distinct values; a real signed sandbox
+        capture must confirm the submitted-reference mapping before activation. The provider-reported MWK
+        amount is compared with the durable intent before any success ledger entry. Successful and duplicate
+        callbacks receive HTTP 200 acknowledged as required by OneKhusa.
+      parameters:
+        - { name: X-OneKhusa-Webhook-Event, in: header, required: true, schema: { type: string, enum: [pushpayment.success, pushpayment.failed, pushpayment.reversed] } }
+        - { name: X-OneKhusa-Webhook-Signature, in: header, required: true, schema: { type: string, pattern: '^[a-fA-F0-9]{128}$' } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [merchantReferenceNumber, transactionAmount, transactionDate, transactionStatusCode, responseCode]
+              properties:
+                merchantReferenceNumber: { type: string, minLength: 1 }
+                sourceReferenceNumber: { type: string, minLength: 1, description: Present on success and reversal events; may differ from merchantReferenceNumber. }
+                transactionReferenceNumber: { type: string }
+                transactionAmount: { type: number, exclusiveMinimum: 0, description: MWK major units; compared as tambala against the payment intent. }
+                transactionDate: { type: string, format: date-time }
+                transactionStatusCode: { type: string, enum: [S, F, R] }
+                responseCode: { type: string }
+      responses:
+        '200': { description: Callback processed or duplicate acknowledged, content: { text/plain: { schema: { type: string, const: acknowledged } } } }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
   /webhooks/providers/flutterwave/redirect:
     get:
       tags: [Checkout]

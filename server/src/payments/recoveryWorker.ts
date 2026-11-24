@@ -6,7 +6,7 @@ import { operationalMetrics } from '../operations/metrics.js';
 import { processPaymentWebhook } from './webhookProcessor.js';
 
 export interface RecoveryVerifier {
-  recoverPayment(expected: { reference: string; amountMinor: number; currency: string; transactionId: string | null }, signal?: AbortSignal): Promise<{ flwTransactionId: string; status: 'SUCCEEDED' | 'PROCESSING' }>;
+  recoverPayment(expected: { reference: string; amountMinor: number; currency: string; transactionId: string | null }, signal?: AbortSignal): Promise<{ flwTransactionId?: string; providerPaymentId?: string; status: 'SUCCEEDED' | 'FAILED' | 'PROCESSING' }>;
 }
 export const RECOVERY_MAX_ATTEMPTS = 8;
 export const recoveryDelaySeconds = (attempt: number) => Math.min(3600, 30 * 2 ** Math.min(attempt, 8));
@@ -16,7 +16,7 @@ export const recoveryDelaySeconds = (attempt: number) => Math.min(3600, 30 * 2 *
 export class PaymentRecoveryWorker {
   private shutdown = new AbortController();
   private running = new Set<Promise<boolean>>();
-  constructor(private db: Db, private verifier: RecoveryVerifier, private timeoutMs = 45_000) {}
+  constructor(private db: Db, private verifier: RecoveryVerifier, private timeoutMs = 45_000, private providerName = 'flutterwave') {}
 
   stop() { this.shutdown.abort(); }
   async drain() { await Promise.allSettled([...this.running]); }
@@ -30,11 +30,11 @@ export class PaymentRecoveryWorker {
   private async run() {
     const token = randomUUID();
     const payment = await transaction(this.db, async c => {
-      const row = (await c.query(`SELECT id,recovery_attempts FROM payments WHERE provider_name='flutterwave'
+      const row = (await c.query(`SELECT id,recovery_attempts FROM payments WHERE provider_name=$1
         AND status IN ('PROCESSING','PENDING') AND recovery_escalated_at IS NULL
         AND created_at < now()-interval '1 minute' AND recovery_next_at <= now()
         AND (recovery_lease_until IS NULL OR recovery_lease_until < now())
-        ORDER BY recovery_next_at,id FOR UPDATE SKIP LOCKED LIMIT 1`)).rows[0];
+        ORDER BY recovery_next_at,id FOR UPDATE SKIP LOCKED LIMIT 1`, [this.providerName])).rows[0];
       if (!row) return null;
       const claimed = (await c.query(`UPDATE payments SET recovery_attempts=least(recovery_attempts+1,8),
         recovery_lease_token=$2,recovery_lease_until=now()+interval '2 minutes',
@@ -57,11 +57,13 @@ export class PaymentRecoveryWorker {
           this.verifier.recoverPayment({ reference: payment.reference, amountMinor: Number(payment.gross_minor), currency: payment.currency, transactionId: payment.provider_transaction_id },signal),
           new Promise<never>((_, reject) => { onAbort = () => reject(new Error('RECOVERY_ABORTED')); if (signal.aborted) onAbort(); else signal.addEventListener('abort',onAbort,{once:true}); }),
         ]);
-        if (result.status === 'SUCCEEDED') {
-          const event = { eventId: `recovery:${payment.id}:${result.flwTransactionId}`, eventType: 'payment.status.changed' as const,
-            paymentReference: payment.reference, providerPaymentId: result.flwTransactionId, status: 'SUCCEEDED' as const, occurredAt: '1970-01-01T00:00:00.000Z' };
+        if (result.status === 'SUCCEEDED' || result.status === 'FAILED') {
+          const providerPaymentId = result.providerPaymentId ?? result.flwTransactionId;
+          if (!providerPaymentId) throw new Error('RECOVERY_REFERENCE_MISSING');
+          const event = { eventId: `recovery:${payment.id}:${providerPaymentId}:${result.status}`, eventType: 'payment.status.changed' as const,
+            paymentReference: payment.reference, providerPaymentId, status: result.status, occurredAt: '1970-01-01T00:00:00.000Z' };
           if (signal.aborted) throw new Error('RECOVERY_ABORTED');
-          const processed = await processPaymentWebhook(this.db, 'flutterwave', event, Buffer.from(JSON.stringify(event)), {paymentId:payment.id,token});
+          const processed = await processPaymentWebhook(this.db, this.providerName, event, Buffer.from(JSON.stringify(event)), {paymentId:payment.id,token});
           outcome = processed.outcome === 'PROCESSED' || processed.outcome === 'DUPLICATE' ? 'VERIFIED' : 'CONFLICT';
         }
       } catch { outcome = 'UNRESOLVED'; } // Never persist provider messages or credentials.

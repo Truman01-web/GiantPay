@@ -7,8 +7,7 @@ import { workerAllowed } from './operations/controls.js';
 import { GracefulLifecycle, ShutdownCoordinator } from './operations/lifecycle.js';
 import { OutboxWorker } from './outbox/outboxWorker.js';
 import { createPaymentProvider } from './providers/index.js';
-import { FlutterwavePaymentProvider } from './providers/flutterwaveProvider.js';
-import { PaymentRecoveryWorker } from './payments/recoveryWorker.js';
+import { PaymentRecoveryWorker, type RecoveryVerifier } from './payments/recoveryWorker.js';
 import { operationalMetrics } from './operations/metrics.js';
 
 type WorkerRole = 'outbox' | 'webhook' | 'notification' | 'reconciliation';
@@ -24,8 +23,10 @@ const notificationPublisher = new NotificationOutboxPublisher(db);
 const outbox = new OutboxWorker(db, { publish: async message => { await webhookPublisher.publish(message); if (await workerAllowed(db, 'NOTIFICATION_PROCESSING_PAUSED')) await notificationPublisher.publish(message); } }, config.OUTBOX_POLL_MS, () => workerAllowed(db, 'OUTBOX_PROCESSING_PAUSED'));
 const webhook = new WebhookDeliveryWorker(db, config, config.OUTBOX_POLL_MS, () => workerAllowed(db, 'WEBHOOK_DELIVERY_PAUSED'));
 const notifications = new NotificationDeliveryWorker(db, config.WORKER_LEASE_SECONDS, () => workerAllowed(db, 'NOTIFICATION_PROCESSING_PAUSED'));
-const recoveryProvider = role === 'reconciliation' && config.PAYMENT_RECOVERY_ENABLED && config.PAYMENT_PROVIDER === 'flutterwave' ? createPaymentProvider(config) : null;
-const recovery = recoveryProvider instanceof FlutterwavePaymentProvider ? new PaymentRecoveryWorker(db, recoveryProvider) : null;
+const recoveryProvider = role === 'reconciliation' && config.PAYMENT_RECOVERY_ENABLED && ['flutterwave','onekhusa'].includes(config.PAYMENT_PROVIDER) ? createPaymentProvider(config) : null;
+const recovery = recoveryProvider && 'recoverPayment' in recoveryProvider && typeof recoveryProvider.recoverPayment === 'function'
+  ? new PaymentRecoveryWorker(db, recoveryProvider as typeof recoveryProvider & RecoveryVerifier, 45_000, recoveryProvider.name)
+  : null;
 
 const notificationTick = async () => {
   if (stopped) return;

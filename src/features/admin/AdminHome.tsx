@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Clock, CheckCircle2, AlertTriangle, Activity, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
+import { ErrorState } from '@/components/feedback/ErrorState';
 import { useComplianceApplications, usePendingRefunds, useSystemHealth } from './useAdminQueries';
 
 function HealthIndicator({ ok, label }: { ok: boolean; label: string }) {
@@ -43,6 +44,28 @@ export function AdminHome() {
           Platform-wide activity summary and operational health.
         </p>
       </div>
+
+      {applicationsQuery.isError && (
+        <ErrorState
+          title="Merchant applications unavailable"
+          message="We could not load the merchant review queue. Try again to refresh these counts."
+          onRetry={() => void applicationsQuery.refetch()}
+        />
+      )}
+      {pendingRefundsQuery.isError && (
+        <ErrorState
+          title="Refund approvals unavailable"
+          message="We could not load pending refund approvals. Try again to refresh this count."
+          onRetry={() => void pendingRefundsQuery.refetch()}
+        />
+      )}
+      {healthQuery.isError && (
+        <ErrorState
+          title="System health unavailable"
+          message="We could not check platform health. Try again to refresh the status."
+          onRetry={() => void healthQuery.refetch()}
+        />
+      )}
 
       {/* System health banner */}
       {health && (

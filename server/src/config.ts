@@ -124,6 +124,10 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): z.output<ty
   const resolved = resolveMountedSecrets(source);
   if (resolved.NODE_ENV === 'production' && !resolved.DEPLOYMENT_ENVIRONMENT) resolved.DEPLOYMENT_ENVIRONMENT = 'production';
   const config = schema.parse(resolved);
+  const frontendOrigin = new URL(config.FRONTEND_ORIGIN);
+  if (frontendOrigin.username || frontendOrigin.password || frontendOrigin.pathname !== '/' || frontendOrigin.search || frontendOrigin.hash || !['http:', 'https:'].includes(frontendOrigin.protocol)) throw new Error('FRONTEND_ORIGIN must be a credential-free HTTP(S) origin without a path, query or fragment');
+  if (frontendOrigin.protocol === 'http:' && (config.DEPLOYMENT_ENVIRONMENT !== 'local' || !['localhost', '127.0.0.1', '[::1]'].includes(frontendOrigin.hostname))) throw new Error('FRONTEND_ORIGIN must use HTTPS except for local loopback development');
+  config.FRONTEND_ORIGIN = frontendOrigin.origin;
   if (config.NODE_ENV === 'production' && !/[?&]sslmode=(require|verify-ca|verify-full)(?:&|$)/i.test(config.DATABASE_URL)) throw new Error('DATABASE_URL must require TLS in production');
   if (config.NODE_ENV === 'production' && (!config.WEBHOOK_SECRET_KEY || config.WEBHOOK_ALLOW_HTTP_DEVELOPMENT)) throw new Error('Production webhook secret key and HTTPS-only mode are required');
   if (config.NODE_ENV === 'production' && (!config.REDIS_URL || !config.REDIS_URL.startsWith('rediss://'))) throw new Error('REDIS_URL must use TLS in production');

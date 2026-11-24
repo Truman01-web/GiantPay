@@ -165,7 +165,7 @@ export default function PrivacyPage() {
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm space-y-1.5">
             <p className="font-semibold text-slate-900">GiantPlus Ltd — GiantPay Compliance Office</p>
             <p className="text-slate-600">Golden Peacock Office Complex, Lilongwe, Malawi</p>
-            <p className="text-slate-600">Email: compliance@giantpay.mw | legal@giantplus.mw</p>
+            <p className="text-slate-600">Email: info@giantplus-mw.com</p>
           </div>
         </div>
       ),

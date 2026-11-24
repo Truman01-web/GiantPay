@@ -70,7 +70,7 @@ export function PageHero({
 
   return (
     <section
-      className={['relative isolate overflow-hidden', padding, className].join(' ')}
+      className={['relative isolate overflow-hidden', isDark ? 'text-white' : 'text-slate-900', padding, className].join(' ')}
       style={baseStyle}
     >
       {image && (

@@ -33,6 +33,10 @@ export interface ProviderWebhookEvent {
   providerPaymentId: string;
   status: PaymentStatus;
   occurredAt: string;
+  /** Alternative merchant/provider reference fields when webhook schemas differ. */
+  paymentReferenceCandidates?: string[];
+  /** Optional provider-reported gross amount in GiantPay minor units. */
+  amountMinor?: number;
 }
 
 export interface WebhookHeaders {
@@ -50,5 +54,6 @@ export interface PaymentProvider {
   initiatePayment(input: InitiatePaymentInput): Promise<ProviderPaymentResult>;
   getPaymentStatus(providerPaymentId: string): Promise<ProviderPaymentStatus>;
   parseAndVerifyWebhook(rawBody: Buffer, headers: WebhookHeaders, now?: Date): ProviderWebhookEvent;
+  validatePaymentInput?(input: InitiatePaymentInput): void;
   initiateRefund(): Promise<never>;
 }

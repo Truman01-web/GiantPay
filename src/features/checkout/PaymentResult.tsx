@@ -19,15 +19,29 @@ export function PaymentResult({
     return (
       <Card>
         <CardContent className="text-center">
-          <CheckCircle2 className="mx-auto h-12 w-12 text-[var(--color-green-600)]" aria-hidden="true" />
-          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Payment successful</h1>
+          <CheckCircle2
+            className="mx-auto h-12 w-12 text-[var(--color-green-600)]"
+            aria-hidden="true"
+          />
+          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">
+            Payment successful
+          </h1>
+          <p className="mt-2 text-sm">Backend-confirmed payment receipt</p>
           <div className="mt-2">
-            <AmountDisplay amountMinor={status.amount.amountMinor} currency={status.amount.currency} size="xl" />
+            <AmountDisplay
+              amountMinor={status.amount.amountMinor}
+              currency={status.amount.currency}
+              size="xl"
+            />
           </div>
-          <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">Paid to {status.merchantDisplayName}</p>
+          <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
+            Paid to {status.merchantDisplayName}
+          </p>
           <dl className="mt-5 flex flex-col gap-2 rounded-[var(--radius-md)] bg-[var(--color-neutral-50)] p-4 text-left">
             <div className="flex items-center justify-between">
-              <dt className="text-[length:var(--text-help)] text-[var(--color-neutral-500)]">GiantPay reference</dt>
+              <dt className="text-[length:var(--text-help)] text-[var(--color-neutral-500)]">
+                GiantPay reference
+              </dt>
               <dd className="flex items-center gap-1 text-[length:var(--text-label)] font-medium tabular-nums">
                 {status.reference}
                 <CopyButton value={status.reference} label="" />
@@ -35,14 +49,22 @@ export function PaymentResult({
             </div>
             {status.merchantReference && (
               <div className="flex items-center justify-between">
-                <dt className="text-[length:var(--text-help)] text-[var(--color-neutral-500)]">Merchant reference</dt>
-                <dd className="text-[length:var(--text-label)] font-medium">{status.merchantReference}</dd>
+                <dt className="text-[length:var(--text-help)] text-[var(--color-neutral-500)]">
+                  Merchant reference
+                </dt>
+                <dd className="text-[length:var(--text-label)] font-medium">
+                  {status.merchantReference}
+                </dd>
               </div>
             )}
             {status.confirmedAt && (
               <div className="flex items-center justify-between">
-                <dt className="text-[length:var(--text-help)] text-[var(--color-neutral-500)]">Confirmed</dt>
-                <dd className="text-[length:var(--text-label)] font-medium">{format(new Date(status.confirmedAt), 'd MMM yyyy, HH:mm')}</dd>
+                <dt className="text-[length:var(--text-help)] text-[var(--color-neutral-500)]">
+                  Confirmed
+                </dt>
+                <dd className="text-[length:var(--text-label)] font-medium">
+                  {format(new Date(status.confirmedAt), 'd MMM yyyy, HH:mm')}
+                </dd>
               </div>
             )}
           </dl>
@@ -56,25 +78,36 @@ export function PaymentResult({
       <Card>
         <CardContent className="text-center">
           <XCircle className="mx-auto h-12 w-12 text-[var(--color-red-600)]" aria-hidden="true" />
-          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Payment failed</h1>
+          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">
+            Payment failed
+          </h1>
           <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
-            We couldn&apos;t complete this payment. No funds were captured.
+            This payment was not confirmed as successful. If your account was debited, contact the
+            merchant with your reference.
           </p>
-          <p className="mt-3 text-[length:var(--text-help)] tabular-nums text-[var(--color-neutral-500)]">Reference: {status.reference}</p>
+          <p className="mt-3 text-[length:var(--text-help)] tabular-nums text-[var(--color-neutral-500)]">
+            Reference: {status.reference}
+          </p>
         </CardContent>
       </Card>
     );
   }
 
-  if (status.status === 'EXPIRED') {
+  if (status.status === 'CANCELLED' || status.status === 'EXPIRED') {
     return (
       <Card>
         <CardContent className="text-center">
-          <AlertCircle className="mx-auto h-12 w-12 text-[var(--color-neutral-400)]" aria-hidden="true" />
-          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">This payment session expired</h1>
+          <AlertCircle
+            className="mx-auto h-12 w-12 text-[var(--color-neutral-400)]"
+            aria-hidden="true"
+          />
+          <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">
+            {status.status === 'CANCELLED' ? 'Payment cancelled' : 'This payment session expired'}
+          </h1>
           <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
             Ask {status.merchantDisplayName} for a new payment link to try again.
           </p>
+          <p className="mt-3 text-sm">Reference: {status.reference}</p>
         </CardContent>
       </Card>
     );
@@ -84,19 +117,34 @@ export function PaymentResult({
   return (
     <Card>
       <CardContent className="text-center">
-        <Clock className="mx-auto h-12 w-12 animate-pulse text-[var(--color-blue-500)]" aria-hidden="true" />
-        <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">Confirming your payment</h1>
+        <Clock
+          className="mx-auto h-12 w-12 animate-pulse text-[var(--color-blue-500)]"
+          aria-hidden="true"
+        />
+        <h1 className="mt-3 text-[length:var(--text-h2)] font-semibold text-[var(--color-navy-900)]">
+          {status.status === 'PENDING' ? 'Payment pending' : 'Confirming your payment'}
+        </h1>
         <p className="mt-1 text-[length:var(--text-body)] text-[var(--color-neutral-600)]">
           This can take a moment. Please don&apos;t pay again unless you&apos;re told to.
         </p>
         <div className="mt-2">
-          <AmountDisplay amountMinor={status.amount.amountMinor} currency={status.amount.currency} size="lg" />
+          <AmountDisplay
+            amountMinor={status.amount.amountMinor}
+            currency={status.amount.currency}
+            size="lg"
+          />
         </div>
-        <p className="mt-3 text-[length:var(--text-help)] tabular-nums text-[var(--color-neutral-500)]">Reference: {status.reference}</p>
+        <p className="mt-3 text-[length:var(--text-help)] tabular-nums text-[var(--color-neutral-500)]">
+          Reference: {status.reference}
+        </p>
         <Button variant="secondary" className="mt-5" onClick={onRefresh}>
           Check status again
         </Button>
-        {!polling && <p className="mt-2 text-[length:var(--text-help)] text-[var(--color-neutral-500)]">Automatic checking has paused — use the button above to check again.</p>}
+        {!polling && (
+          <p className="mt-2 text-[length:var(--text-help)] text-[var(--color-neutral-500)]">
+            Automatic checking has paused — use the button above to check again.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

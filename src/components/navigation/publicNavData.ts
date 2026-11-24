@@ -16,6 +16,21 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
     label: 'Products',
     items: [
       {
+        label: 'QR Payments',
+        to: '/products/qr-payments',
+        description: 'Create, display, download and print merchant QR checkout',
+      },
+      {
+        label: 'Merchant Devices',
+        to: '/products/merchant-devices',
+        description: 'QR displays and contactless integration readiness',
+      },
+      {
+        label: 'Currency Exchange Demo',
+        to: '/products/currency-exchange',
+        description: 'Synthetic quotes only; exchange execution disabled',
+      },
+      {
         label: 'Payment Gateway',
         to: '/products/gateway',
         description: 'Core unified payment gateway for Malawian commerce',
@@ -28,7 +43,7 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
       {
         label: 'Payment Links',
         to: '/products/payment-links',
-        description: 'Shareable no-code links for immediate acceptance',
+        description: 'Share checkout links for sandbox testing',
       },
       {
         label: 'Hosted Checkout',
@@ -38,7 +53,7 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
       {
         label: 'Disbursements',
         to: '/products/disbursements',
-        description: 'Bulk payouts to mobile wallets and bank accounts',
+        description: 'Sandbox accounting records; real payouts disabled',
       },
     ],
   },
@@ -172,7 +187,7 @@ export const PUBLIC_NAV_GROUPS: NavGroup[] = [
       {
         label: 'Contact',
         to: '/company/contact',
-        description: 'Speak with our Lilongwe and Blantyre merchant team',
+        description: 'Contact GiantPlus in Area 46, Lilongwe',
       },
       {
         label: 'Careers',

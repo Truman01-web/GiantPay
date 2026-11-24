@@ -5,12 +5,12 @@
  * / pushpayment.reversed, identified by the X-OneKhusa-Webhook-Event header
  * and authenticated via X-OneKhusa-Webhook-Signature (HMAC-SHA512 over the
  * raw body, using a secret unique to that event). All three are registered
- * to the same callback URL and dispatched here by event header — confirmed
- * against real sandbox deliveries on 2026-11-18, see oneKhusaProvider.ts.
+ * to the same callback URL and dispatched here by event header.
  *
  * Unlike Flutterwave, no mandatory re-verification call is needed: the
- * signature is a true HMAC bound to the exact payload, not a static shared
- * token, so a verified signature is sufficient proof of authenticity.
+ * signature is HMAC-SHA512 over the raw body with the event-specific secret.
+ * The callback amount and reference are also checked against the durable
+ * intent before ledger effects.
  */
 import type { FastifyInstance } from 'fastify';
 import type { Db } from '../db.js';
@@ -79,7 +79,7 @@ export async function registerOneKhusaRoutes(
         return reply.code(409).send(apiError(request, 'PROVIDER_MISMATCH', 'Payment provider does not match.'));
       if (result.outcome === 'PAYLOAD_CONFLICT')
         return reply.code(409).send(
-          apiError(request, 'WEBHOOK_REPLAY_CONFLICT', 'Webhook event conflicts with a previous delivery.'),
+          apiError(request, 'WEBHOOK_PAYLOAD_CONFLICT', 'Webhook event conflicts with payment data or a previous delivery.'),
         );
       if (result.outcome === 'UNKNOWN_PAYMENT')
         return reply.code(404).send(apiError(request, 'UNKNOWN_PAYMENT', 'Payment reference was not found.'));
@@ -88,7 +88,7 @@ export async function registerOneKhusaRoutes(
           apiError(request, 'INVALID_PAYMENT_TRANSITION', 'Payment status transition was rejected.'),
         );
 
-      return reply.code(202).send({ accepted: true, duplicate: result.outcome === 'DUPLICATE' });
+      return reply.code(200).send('acknowledged');
     },
   );
 }
