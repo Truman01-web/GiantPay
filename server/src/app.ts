@@ -693,7 +693,7 @@ export async function buildApp(
             [email],
           )
         ).rows[0];
-      if (user) {
+      if (user && config.EXTERNAL_DELIVERY_ENABLED) {
         const token = newToken();
         await transaction(db, async (c) => {
           await c.query(

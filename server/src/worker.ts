@@ -9,6 +9,8 @@ import { OutboxWorker } from './outbox/outboxWorker.js';
 import { createPaymentProvider } from './providers/index.js';
 import { PaymentRecoveryWorker, type RecoveryVerifier } from './payments/recoveryWorker.js';
 import { operationalMetrics } from './operations/metrics.js';
+import { SmtpPasswordResetEmailPublisher } from './passwordResetEmail.js';
+import { createSmtpSender } from './smtpRegistrationOtp.js';
 
 type WorkerRole = 'outbox' | 'webhook' | 'notification' | 'reconciliation';
 const role = process.env.WORKER_ROLE as WorkerRole;
@@ -20,7 +22,8 @@ let stopped = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
 const webhookPublisher = new MerchantWebhookPublisher(db, config.WEBHOOK_MAX_ATTEMPTS);
 const notificationPublisher = new NotificationOutboxPublisher(db);
-const outbox = new OutboxWorker(db, { publish: async message => { await webhookPublisher.publish(message); if (await workerAllowed(db, 'NOTIFICATION_PROCESSING_PAUSED')) await notificationPublisher.publish(message); } }, config.OUTBOX_POLL_MS, () => workerAllowed(db, 'OUTBOX_PROCESSING_PAUSED'));
+const passwordResetPublisher = new SmtpPasswordResetEmailPublisher(db, config, createSmtpSender(config));
+const outbox = new OutboxWorker(db, { publish: async message => { await webhookPublisher.publish(message); if (await workerAllowed(db, 'NOTIFICATION_PROCESSING_PAUSED')) await notificationPublisher.publish(message); await passwordResetPublisher.publish(message); } }, config.OUTBOX_POLL_MS, () => workerAllowed(db, 'OUTBOX_PROCESSING_PAUSED'));
 const webhook = new WebhookDeliveryWorker(db, config, config.OUTBOX_POLL_MS, () => workerAllowed(db, 'WEBHOOK_DELIVERY_PAUSED'));
 const notifications = new NotificationDeliveryWorker(db, config.WORKER_LEASE_SECONDS, () => workerAllowed(db, 'NOTIFICATION_PROCESSING_PAUSED'));
 const recoveryProvider = role === 'reconciliation' && config.PAYMENT_RECOVERY_ENABLED && ['flutterwave','onekhusa'].includes(config.PAYMENT_PROVIDER) ? createPaymentProvider(config) : null;
