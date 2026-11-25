@@ -308,18 +308,19 @@ export async function buildApp(
     )(request, reply),
   );
   app.addHook('preHandler', async (request, reply) => {
-    if (
-      !['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) ||
-      !request.cookies[SESSION_COOKIE] && !request.cookies[STAFF_SESSION_COOKIE]
-    )
-      return;
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return;
     const origin = request.headers.origin;
-    const staffContext=/^\/v1\/(staff|platform|compliance|admin)(\/|$)/.test(request.url.split('?')[0]??'');
-    if (!request.cookies[staffContext?STAFF_SESSION_COOKIE:SESSION_COOKIE]) return;
+    const path = request.url.split('?')[0] ?? '';
+    const staffContext = /^\/v1\/(staff|platform|compliance|admin)(\/|$)/.test(path);
+    const sessionCookie = staffContext ? STAFF_SESSION_COOKIE : SESSION_COOKIE;
+    if (!request.cookies[sessionCookie]) return;
     if (origin !== (staffContext?config.STAFF_FRONTEND_ORIGIN:config.FRONTEND_ORIGIN))
       return reply
         .code(403)
         .send(apiError(request, 'ORIGIN_REJECTED', 'Request origin is not allowed.'));
+    // Login is a recovery boundary: a stale session cookie must not prevent a
+    // user from signing in again. Keep the exact portal-origin check above.
+    if (path === (staffContext ? '/v1/staff/auth/login' : '/v1/auth/login')) return;
     const cookie = request.cookies[staffContext?STAFF_CSRF_COOKIE:MERCHANT_CSRF_COOKIE],
       header = request.headers['x-csrf-token'];
     if (
@@ -666,7 +667,18 @@ export async function buildApp(
   app.get(
     '/v1/auth/session',
     { preHandler: [authenticate.bind(null, db, config)] },
-    async (request) => ({ session: session(request.actor!) }),
+    async (request, reply) => {
+      const csrfToken = request.cookies.giantpay_csrf ?? newToken();
+      if (!request.cookies.giantpay_csrf) {
+        const hours = Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS);
+        reply.setCookie('giantpay_csrf', csrfToken, {
+          path: '/', httpOnly: false, sameSite: 'strict',
+          secure: config.NODE_ENV === 'production' || config.COOKIE_SECURE === true,
+          maxAge: hours * 3600,
+        });
+      }
+      return { session: session(request.actor!), csrfToken };
+    },
   );
   app.post('/v1/auth/logout', async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE];

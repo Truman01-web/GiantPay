@@ -39,7 +39,7 @@ export async function authenticate(db: Db, config:Config, request: FastifyReques
         AND s.expires_at > now() AND s.absolute_expires_at > now()
         AND s.revoked_at IS NULL AND u.status='ACTIVE' AND s.last_seen_at > now()-($2 || ' minutes')::interval`, [tokenHash(token),String(config.SESSION_IDLE_MINUTES)],
   );
-  if (!result.rowCount) {operationalMetrics.increment('authentication_denials_total',{reason:'invalid_session'});return reply.code(401).send(apiError(request, 'UNAUTHENTICATED', 'Your session has expired.'));}
+  if (!result.rowCount) {operationalMetrics.increment('authentication_denials_total',{reason:'invalid_session'});return reply.clearCookie(SESSION_COOKIE,{path:'/'}).clearCookie(MERCHANT_CSRF_COOKIE,{path:'/'}).code(401).send(apiError(request, 'UNAUTHENTICATED', 'Your session has expired.'));}
   await db.query('UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1',[tokenHash(token)]);
   const row = result.rows[0];
   request.actor = { id: row.id, merchantId: row.merchant_id, name: row.name, email: row.email, role: row.role, permissions: row.permissions, mfaEnabled: row.mfa_enabled, merchantName: row.merchant_name, environment: row.environment, authType: 'session', sessionContext: 'MERCHANT' };
@@ -58,7 +58,7 @@ export async function authenticateStaff(db: Db, config:Config, request: FastifyR
       AND s.last_seen_at>now()-($2 || ' minutes')::interval AND u.status='ACTIVE' AND u.merchant_id IS NULL
       AND u.role='PLATFORM_ADMIN' AND u.staff_profile IS NOT NULL AND u.email_verified_at IS NOT NULL
       AND u.normalized_email ~ '^[^@]+@giantplus-mw[.]com$'`,[tokenHash(token),String(config.SESSION_IDLE_MINUTES)]);
-  if(!result.rowCount)return reply.code(401).send(apiError(request,'UNAUTHENTICATED','Your staff session has expired.'));
+  if(!result.rowCount)return reply.clearCookie(STAFF_SESSION_COOKIE,{path:'/'}).clearCookie(STAFF_CSRF_COOKIE,{path:'/'}).code(401).send(apiError(request,'UNAUTHENTICATED','Your staff session has expired.'));
   await db.query('UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1',[tokenHash(token)]);
   const row=result.rows[0];
   request.actor={id:row.id,merchantId:null,name:row.name,email:row.email,role:'PLATFORM_ADMIN',permissions:row.permissions,mfaEnabled:true,merchantName:null,environment:config.DEPLOYMENT_ENVIRONMENT==='production'?'production':'sandbox',authType:'session',sessionContext:'STAFF',staffProfile:row.staff_profile};

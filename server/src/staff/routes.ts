@@ -190,7 +190,14 @@ export async function registerStaffRoutes(
     },
   );
 
-  app.get('/v1/staff/auth/session', { preHandler: [authenticateStaff.bind(null, db, config)] }, async (request) => ({ session: response(request.actor, config) }));
+  app.get('/v1/staff/auth/session', { preHandler: [authenticateStaff.bind(null, db, config)] }, async (request, reply) => {
+    const csrfToken = request.cookies[STAFF_CSRF_COOKIE] ?? newToken();
+    if (!request.cookies[STAFF_CSRF_COOKIE]) {
+      const maxAge = Math.min(config.SESSION_TTL_HOURS, config.SESSION_ABSOLUTE_HOURS) * 3600;
+      reply.setCookie(STAFF_CSRF_COOKIE, csrfToken, { ...cookieOptions(config, maxAge), httpOnly: false });
+    }
+    return { session: response(request.actor, config), csrfToken };
+  });
   app.post('/v1/staff/auth/logout', async (request, reply) => {
     const token = request.cookies[STAFF_SESSION_COOKIE];
     if (token) await db.query(`UPDATE sessions SET revoked_at=coalesce(revoked_at,now()) WHERE token_hash=$1 AND session_context='STAFF'`, [tokenHash(token)]);

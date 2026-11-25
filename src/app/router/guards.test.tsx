@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { useSessionStore } from '@/services/auth/sessionStore';
-import { RequireAuth, RequireMerchant, RequirePermission, RequirePlatformAdmin } from './guards';
+import { RedirectIfAuthenticated, RequireAuth, RequireMerchant, RequirePermission, RequirePlatformAdmin } from './guards';
 
 function renderWithRouter(ui: React.ReactElement) {
   return render(<MemoryRouter initialEntries={['/dashboard']}>{ui}</MemoryRouter>);
@@ -52,6 +52,18 @@ describe('RequireAuth', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /try again/i }));
     expect(useSessionStore.getState().status).toBe('loading');
+  });
+});
+
+describe('RedirectIfAuthenticated', () => {
+  beforeEach(() => {
+    useSessionStore.setState({ status: 'loading', session: null });
+  });
+
+  it('waits for session restoration before showing the login form', () => {
+    renderWithRouter(<RedirectIfAuthenticated><div>Login form</div></RedirectIfAuthenticated>);
+    expect(screen.queryByText('Login form')).not.toBeInTheDocument();
+    expect(screen.getByText(/checking your session/i)).toBeInTheDocument();
   });
 });
 

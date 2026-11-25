@@ -53,7 +53,13 @@ export function RequirePermission({
 export function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
   const status = useSessionStatus();
   const session = useSession();
+  const sessionError = useSessionStore((s) => s.sessionError);
+  const retrySessionCheck = useSessionStore((s) => s.retrySessionCheck);
   if (status === 'authenticated') return <Navigate to={session?.user.merchantId === null ? staffLandingPath(session) : '/dashboard'} replace />;
+  if (status === 'loading') return <FullPageLoader label="Checking your session…" />;
+  if (status === 'error') {
+    return <div className="flex min-h-[60vh] items-center justify-center"><ErrorState title="We couldn't check your session" message={sessionError ?? 'Something went wrong on our side. Please try again.'} onRetry={retrySessionCheck} /></div>;
+  }
   return children;
 }
 
