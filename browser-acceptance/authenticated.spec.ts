@@ -2,7 +2,6 @@
 import jsQR from 'jsqr';
 import { createHmac } from 'node:crypto';
 import { test, expect } from '@playwright/test';
-import { totp } from '../server/src/team/security';
 
 for (const width of [1440, 390]) {
   test.describe(`${width}px merchant QR journey`, () => {
@@ -115,14 +114,17 @@ for (const width of [1440, 390]) {
   });
 }
 
-test('staff signs in through MFA, restores its session and signs out', async ({ page }) => {
+test('staff signs in through email MFA, restores its session and signs out', async ({ page }) => {
   await page.goto('http://127.0.0.1:4188/admin');
   await expect(page).toHaveURL(/\/login/);
   await page.getByLabel('Staff email').fill('browser-review@giantplus-mw.com');
   await page.locator('input[type="password"]').fill('Synthetic-browser-password-26!');
   await page.getByRole('button', { name: 'Continue securely' }).click();
-  await page.getByLabel('Authenticator code').fill(totp('JBSWY3DPEHPK3PXP').code);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByText(/We sent a six-digit sign-in code/).waitFor();
+  const email = await page.request.get('http://127.0.0.1:4017/__test__/staff-code');
+  expect(email.ok()).toBe(true);
+  await page.getByLabel('Email verification code').fill((await email.json()).code);
+  await page.getByRole('button', { name: 'Verify and sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.reload();
   await expect(page.getByText('Browser Staff', { exact: true })).toBeVisible();

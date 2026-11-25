@@ -113,6 +113,26 @@ suite('registration email OTP lifecycle', () => {
     expect(session.json().session.user.email).toBe('otp-one@example.invalid');
   });
 
+  it('accepts consumer and business email domains and sends each address an OTP', async () => {
+    const recipients = [
+      'gmail-smoke@gmail.com',
+      'hotmail-smoke@hotmail.com',
+      'business-smoke@giantplus-example.co.mw',
+    ];
+    for (const [index, email] of recipients.entries()) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/auth/register',
+        remoteAddress: `192.0.2.${210 + index}`,
+        payload: registration(email),
+      });
+      expect(response.statusCode, response.body).toBe(202);
+      expect(response.json().delivery).toEqual({ available: true, queued: true });
+      expect(delivery.messages.at(-1)?.destination).toBe(email);
+      expect(delivery.messages.at(-1)?.code).toMatch(/^\d{6}$/);
+    }
+  });
+
   it('rejects invalid and expired codes and exhausts exactly five attempts', async () => {
     await app.inject({
       method: 'POST',

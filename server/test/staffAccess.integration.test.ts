@@ -20,6 +20,7 @@ const suite=databaseUrl?describe:describe.skip,schema=`staff_access_${randomUUID
 const merchantOrigin='http://127.0.0.1:5173',staffOrigin='http://127.0.0.1:5174';
 const pepper='p'.repeat(32),password=['synthetic','password','only'].join('-');
 let admin:pg.Pool,db:pg.Pool,app:Awaited<ReturnType<typeof buildApp>>;
+const sentStaffCodes=new Map<string,string>();
 
 const cookieValue=(headers:Record<string,unknown>,name:string)=>{
   const values=(headers['set-cookie'] as string[]|string|undefined)??[];
@@ -64,10 +65,10 @@ suite('GiantPlus staff authentication boundary',()=>{
     expect(lifetime.seconds).toBeLessThanOrEqual(3600);
     expect(lifetime.absolute_seconds).toBeLessThanOrEqual(3600);
   });
-  it.each(['','/verify'])('limits staff enrollment%s attempts by challenge across client IPs',async suffix=>{
-    const challenge=('enrollment-limit'+suffix).padEnd(43,'x');
+  it('limits staff email MFA attempts by challenge across client IPs',async()=>{
+    const challenge='email-mfa-limit'.padEnd(43,'x');
     for(let i=0;i<6;i++){
-      const response=await app.inject({method:'POST',url:'/v1/staff/auth/mfa/enrollment'+suffix,remoteAddress:`192.0.2.${100+i}`,payload:{challengeId:challenge,code:'000000'}});
+      const response=await app.inject({method:'POST',url:'/v1/staff/auth/mfa/verify',remoteAddress:`192.0.2.${100+i}`,payload:{challengeId:challenge,code:'000000'}});
       expect(response.statusCode).toBe(i<5?401:429);
     }
   });
@@ -89,7 +90,7 @@ suite('GiantPlus staff authentication boundary',()=>{
     await db.query(`INSERT INTO users(id,merchant_id,name,email,normalized_email,password_hash,role,permissions,status,email_verified_at,staff_profile,staff_provisioned_at,staff_provisioned_by)
       VALUES('pending',NULL,'Pending Staff','pending@giantplus-mw.com','pending@giantplus-mw.com',$1,'PLATFORM_ADMIN',ARRAY['platform.health.read'],'PENDING_VERIFICATION',NULL,'OPERATIONS',now(),'test'),
             ('active',NULL,'Active Staff','active@giantplus-mw.com','active@giantplus-mw.com',$1,'PLATFORM_ADMIN',ARRAY['platform.health.read'],'ACTIVE',now(),'OPERATIONS',now(),'test')`,[hash]);
-    app=await buildApp(loadConfig({NODE_ENV:'test',DATABASE_URL:databaseUrl!,PASSWORD_PEPPER:pepper,COOKIE_SECRET:'c'.repeat(32),WEBHOOK_SECRET_KEY:'k'.repeat(32),FRONTEND_ORIGIN:merchantOrigin,STAFF_FRONTEND_ORIGIN:staffOrigin,PAYMENT_PROVIDER:'sandbox',SANDBOX_WEBHOOK_SECRET:'w'.repeat(32),SESSION_TTL_HOURS:'2',SESSION_ABSOLUTE_HOURS:'1'}),db,undefined,undefined,new MemoryRateLimitStore());
+    app=await buildApp(loadConfig({NODE_ENV:'test',DATABASE_URL:databaseUrl!,PASSWORD_PEPPER:pepper,COOKIE_SECRET:'c'.repeat(32),WEBHOOK_SECRET_KEY:'k'.repeat(32),FRONTEND_ORIGIN:merchantOrigin,STAFF_FRONTEND_ORIGIN:staffOrigin,PAYMENT_PROVIDER:'sandbox',SANDBOX_WEBHOOK_SECRET:'w'.repeat(32),SESSION_TTL_HOURS:'2',SESSION_ABSOLUTE_HOURS:'1'}),db,undefined,undefined,new MemoryRateLimitStore(),undefined,undefined,async message=>{const code=/\b(\d{6})\b/.exec(message.text)?.[1];if(!code)throw new Error('Staff email did not contain a six-digit code');sentStaffCodes.set(message.to,code);});
   },60_000);
   afterAll(async()=>{await app?.close();await db?.end();await admin?.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await admin?.end();},60_000);
 
@@ -99,20 +100,19 @@ suite('GiantPlus staff authentication boundary',()=>{
     expect((await db.query(`SELECT staff_profile FROM users WHERE id='legacy'`)).rows[0].staff_profile).toBeNull();
   });
 
-  it('denies pending mailbox verification and completes enrollment plus real-route MFA login',async()=>{
+  it('denies pending mailbox verification and completes single-use email OTP login',async()=>{
     const pending=await app.inject({method:'POST',url:'/v1/staff/auth/login',headers:{origin:staffOrigin},payload:{email:'pending@giantplus-mw.com',password}});
     expect(pending.statusCode).toBe(401);
 
     const login=await app.inject({method:'POST',url:'/v1/staff/auth/login',headers:{origin:staffOrigin},payload:{email:'active@giantplus-mw.com',password}});
-    expect(login.statusCode).toBe(200);expect(login.json().status).toBe('MFA_ENROLLMENT_REQUIRED');
-    const enrollment=await app.inject({method:'POST',url:'/v1/staff/auth/mfa/enrollment',headers:{origin:staffOrigin},payload:{challengeId:login.json().challengeId}});
-    expect(enrollment.statusCode).toBe(200);
-    const verified=await app.inject({method:'POST',url:'/v1/staff/auth/mfa/enrollment/verify',headers:{origin:staffOrigin},payload:{challengeId:login.json().challengeId,code:totp(enrollment.json().secret).code}});
-    expect(verified.statusCode).toBe(200);expect(verified.json().recoveryCodes).toHaveLength(10);
+    expect(login.statusCode).toBe(200);expect(login.json().status).toBe('MFA_REQUIRED');expect(login.json().method).toBe('EMAIL');
+    const firstCode=sentStaffCodes.get('active@giantplus-mw.com');expect(firstCode).toMatch(/^\d{6}$/);
+    const verified=await app.inject({method:'POST',url:'/v1/staff/auth/mfa/verify',headers:{origin:staffOrigin},payload:{challengeId:login.json().challengeId,code:firstCode}});
+    expect(verified.statusCode).toBe(200);expect(verified.json().status).toBe('AUTHENTICATED');
 
     const secondLogin=await app.inject({method:'POST',url:'/v1/staff/auth/login',headers:{origin:staffOrigin},payload:{email:'active@giantplus-mw.com',password}});
-    const recovery=verified.json().recoveryCodes[0] as string;
-    const attempts=await Promise.all([1,2].map(()=>app.inject({method:'POST',url:'/v1/staff/auth/mfa/verify',headers:{origin:staffOrigin},payload:{challengeId:secondLogin.json().challengeId,code:recovery}})));
+    expect(secondLogin.statusCode).toBe(200);const secondCode=sentStaffCodes.get('active@giantplus-mw.com');expect(secondCode).toMatch(/^\d{6}$/);
+    const attempts=await Promise.all([1,2].map(()=>app.inject({method:'POST',url:'/v1/staff/auth/mfa/verify',headers:{origin:staffOrigin},payload:{challengeId:secondLogin.json().challengeId,code:secondCode}})));
     expect(attempts.filter(result=>result.statusCode===200)).toHaveLength(1);
     expect(attempts.filter(result=>result.statusCode===401)).toHaveLength(1);
     const success=attempts.find(result=>result.statusCode===200)!;

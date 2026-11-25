@@ -36,10 +36,20 @@ export interface VolumePoint {
   successRate: number;
 }
 
+function dashboardDateRange(params: { from: string; to: string }): string {
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(params.from)
+    ? `${params.from}T00:00:00.000Z`
+    : params.from;
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(params.to)
+    ? `${params.to}T23:59:59.999Z`
+    : params.to;
+  return new URLSearchParams({ from, to }).toString();
+}
+
 export const dashboardApi = {
   getSummary: (params: { from: string; to: string }, options?: { signal?: AbortSignal }) =>
-    apiClient.get<DashboardSummary>(`/dashboard/summary?from=${params.from}&to=${params.to}`, options),
+    apiClient.get<DashboardSummary>(`/dashboard/summary?${dashboardDateRange(params)}`, options),
 
   getVolume: (params: { from: string; to: string }, options?: { signal?: AbortSignal }) =>
-    apiClient.get<VolumePoint[]>(`/dashboard/volume?from=${params.from}&to=${params.to}`, options),
+    apiClient.get<VolumePoint[]>(`/dashboard/volume?${dashboardDateRange(params)}`, options),
 };

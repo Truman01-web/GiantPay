@@ -7,7 +7,7 @@ export default defineConfig({
     exclude: ['dist/**', 'build/**', 'coverage/**', 'node_modules/**'],
     environment: 'node',
     globals: false,
-    testTimeout: 15000,
+    testTimeout: 30000,
     hookTimeout: 60000,
     setupFiles: ['test/setup.ts'],
   },

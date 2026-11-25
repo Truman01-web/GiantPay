@@ -12,6 +12,9 @@ export interface LoginResult {
   status: 'AUTHENTICATED' | 'MFA_REQUIRED' | 'MFA_ENROLLMENT_REQUIRED';
   session?: Session;
   mfaChallenge?: MfaChallenge;
+  challengeId?: string;
+  maskedDestination?: string;
+  method?: 'EMAIL';
 }
 
 export interface RegistrationResult {

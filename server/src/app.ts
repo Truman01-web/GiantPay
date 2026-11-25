@@ -37,6 +37,7 @@ import { registerNotificationRoutes } from './notifications/routes.js';
 import { registerOperationsRoutes } from './operations/routes.js';
 import { registerEvidenceRoutes, type EvidenceRuntime } from './evidence/routes.js';
 import { registerStaffRoutes } from './staff/routes.js';
+import type { SmtpSender } from './smtpRegistrationOtp.js';
 import { registerScanToPayRoutes } from './payments/scanToPayRoutes.js';
 import { registerFlutterwaveRoutes } from './payments/flutterwaveRoutes.js';
 import { registerOneKhusaRoutes } from './payments/oneKhusaRoutes.js';
@@ -178,6 +179,7 @@ export async function buildApp(
   suppliedRateLimits?: RateLimitStore,
   registrationDelivery: RegistrationOtpDelivery = disabledRegistrationOtpDelivery,
   evidenceRuntime?: EvidenceRuntime,
+  staffEmailSender?: SmtpSender,
 ) {
   if (config.NODE_ENV === 'production' && !suppliedRateLimits)
     throw new Error('A distributed rate-limit store is required in production');
@@ -1108,7 +1110,7 @@ export async function buildApp(
   await registerTeamRoutes(app, config, db, rateLimits);
   await registerOnboardingRoutes(app, config, db, rateLimits);
   await registerEvidenceRoutes(app, config, db, rateLimits, evidenceRuntime);
-  await registerStaffRoutes(app, config, db, rateLimits);
+  await registerStaffRoutes(app, config, db, rateLimits, staffEmailSender);
   await registerPlatformRoutes(app, config, db, rateLimits);
   await registerDisputeRoutes(app, config, db, rateLimits);
   await registerNotificationRoutes(app, config, db, rateLimits);

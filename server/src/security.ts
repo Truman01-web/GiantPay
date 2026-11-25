@@ -52,7 +52,7 @@ export async function authenticateStaff(db: Db, config:Config, request: FastifyR
   const token=request.cookies[STAFF_SESSION_COOKIE];
   if(!token)return reply.code(401).send(apiError(request,'UNAUTHENTICATED','Sign in is required.'));
   const result=await db.query(`SELECT u.id,u.name,u.email,u.permissions,u.mfa_enabled,u.staff_profile
-    FROM sessions s JOIN users u ON u.id=s.user_id JOIN mfa_enrollments e ON e.user_id=u.id AND e.verified_at IS NOT NULL
+    FROM sessions s JOIN users u ON u.id=s.user_id
     WHERE s.token_hash=$1 AND s.session_context='STAFF' AND s.mfa_verified_at IS NOT NULL
       AND s.expires_at>now() AND s.absolute_expires_at>now() AND s.revoked_at IS NULL
       AND s.last_seen_at>now()-($2 || ' minutes')::interval AND u.status='ACTIVE' AND u.merchant_id IS NULL
